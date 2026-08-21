@@ -57,7 +57,9 @@ class ProviderSemanticsTests(unittest.TestCase):
         self.assertEqual(raised.exception.path, "$.published_at")
         self.assertEqual(record, snapshot)
 
-    def test_future_as_of_is_rejected_against_the_explicit_evaluation_time(self) -> None:
+    def test_future_as_of_is_rejected_against_the_explicit_evaluation_time(
+        self,
+    ) -> None:
         record = self._record()
         record["as_of"] = "2026-08-21T00:00:00.000001Z"
 
@@ -140,7 +142,9 @@ class ProviderSemanticsTests(unittest.TestCase):
         )
         self.assertEqual(accepted, snapshot)
 
-    def test_not_point_in_time_records_require_methodology_and_lower_quality(self) -> None:
+    def test_not_point_in_time_records_require_methodology_and_lower_quality(
+        self,
+    ) -> None:
         for field, value, expected_path in (
             ("methodology", None, "$.methodology"),
             ("quality_state", "verified", "$.quality_state"),
@@ -149,7 +153,9 @@ class ProviderSemanticsTests(unittest.TestCase):
                 record = self._record()
                 record["point_in_time_status"] = "not_point_in_time"
                 record["quality_state"] = "unverified"
-                record["methodology"] = "Current-state source without historical vintages"
+                record["methodology"] = (
+                    "Current-state source without historical vintages"
+                )
                 record[field] = value
                 with self.assertRaises(ProviderRecordValidationError) as raised:
                     validate_provider_record_semantics(
@@ -254,11 +260,13 @@ class ProviderSemanticsTests(unittest.TestCase):
         self.assertEqual(rights.exception.code, "invalid_type")
         self.assertEqual(rights.exception.path, "$.rights")
 
-    def test_timestamp_boundaries_compare_instants_and_allow_future_effective_data(self) -> None:
+    def test_timestamp_boundaries_compare_instants_and_allow_future_effective_data(
+        self,
+    ) -> None:
         record = self._record()
         record["as_of"] = "2026-08-21T08:00:00+08:00"
         record["published_at"] = "2026-08-20T09:00:00+08:00"
-        record["fetched_at"] = "2026-08-20T01:00:00Z"
+        record["fetched_at"] = "2026-08-21T00:00:00Z"
         record["valid_from"] = "2026-09-01T00:00:00Z"
         record["valid_to"] = "2026-09-01T00:00:00+00:00"
         record["rights"]["reviewed_at"] = "2026-08-20T08:00:00+08:00"
@@ -394,7 +402,9 @@ class ProviderSemanticsTests(unittest.TestCase):
                 self.assertEqual(raised.exception.code, "invalid_rfc3339")
                 self.assertEqual(raised.exception.path, expected_path)
 
-    def test_timestamp_profile_rejects_lowercase_separators_and_leap_seconds(self) -> None:
+    def test_timestamp_profile_rejects_lowercase_separators_and_leap_seconds(
+        self,
+    ) -> None:
         for value in (
             "2026-08-20t00:00:00z",
             "2016-12-31T23:59:60Z",

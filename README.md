@@ -40,19 +40,26 @@ questions into one leaderboard.
   conflict-preserving joins and deterministic JSON round trips.
 - Fail-closed provider-record chronology semantics with explicit evaluation times,
   provenance requirements and preserved lower-confidence observations.
+- One packaged-Schema-plus-semantics validation API/CLI for manager research,
+  provider records/contracts, external ratings and score evidence ledgers.
 - Synthetic A/C/E/I, closed, merged, transformed and conflicting records only;
   no real provider data is bundled.
 
 ```bash
-PYTHONPATH=src python3 -m openfundscore.cli resources list
-PYTHONPATH=src python3 -m openfundscore.cli resources resolve \
+python3 -m venv .venv
+.venv/bin/python -m pip install -e '.[test]'
+.venv/bin/python -m openfundscore.cli resources list
+.venv/bin/python -m openfundscore.cli resources resolve \
   --type scoring-config --name openfundscore-core --version 0.1.0
-PYTHONPATH=src python3 -m openfundscore.cli resources show \
+.venv/bin/python -m openfundscore.cli resources show \
   --type scoring-config --name openfundscore-core --version 0.1.0 \
   > /tmp/openfundscore-core-0.1.0.json
-PYTHONPATH=src python3 -m openfundscore.cli validate-config \
+.venv/bin/python -m openfundscore.cli validate-config \
   /tmp/openfundscore-core-0.1.0.json
-PYTHONPATH=src python3 -m unittest discover -s tests -v
+.venv/bin/python -m openfundscore.cli validate-record \
+  --type provider_record --schema-version 0.1.0 \
+  --evaluation-timestamp 2026-08-21T00:00:00Z provider-record.json
+.venv/bin/python -m unittest discover -s tests -v
 ```
 
 Packaged scoring configurations and JSON Schemas are selected by the complete
@@ -60,13 +67,16 @@ Packaged scoring configurations and JSON Schemas are selected by the complete
 repository-path fallback. `resources resolve` returns logical metadata rather
 than an installation path; `resources show` writes the verified packaged JSON.
 The research-preview `validate-config` command continues to require an explicit
-configuration path and never silently switches scoring models.
+configuration path and never silently switches scoring models. Contract records
+must use `validate_record()` or `validate-record`, which always run both packaged
+Schema and semantic validation; see [validation boundary](docs/VALIDATION.md).
 
 ## Documents
 
 - [Project charter](docs/PROJECT_CHARTER.md)
 - [Roadmap](docs/ROADMAP.md)
 - [Canonical data model](docs/CANONICAL_DATA_MODEL.md)
+- [Unified validation boundary](docs/VALIDATION.md)
 - [Fund taxonomy](docs/FUND_TAXONOMY.md)
 - [Scoring RFC](docs/SCORING_RFC.md)
 - [Manager research model](docs/MANAGER_RESEARCH.md)

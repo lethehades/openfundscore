@@ -90,8 +90,11 @@ when profile weights match; a short-bond fund is never ranked in an equity bucke
 Every score record must carry a ledger conforming to the packaged resource
 `schema / score_evidence_usage / 0.1.0`. The ledger identifies each consumed
 series, its lineage and evidence family, target component, source scope, usage
-mode and inclusive observation window. `validate_score_evidence_usage` applies
-cross-entry rules that JSON Schema cannot express.
+mode and inclusive observation window. The unified `validate_record()` boundary
+caps each ledger at 1,000 entries before Schema evaluation, runs the packaged
+Schema, then applies `validate_score_evidence_usage` cross-entry rules that JSON
+Schema cannot express. Every evidence window ends on or before the UTC date of
+the ledger `as_of` timestamp.
 
 Fund D1–D4 may use the raw outcomes of the current fund strategy. Manager
 performance, downside-control and cross-cycle scores must not reuse the same raw

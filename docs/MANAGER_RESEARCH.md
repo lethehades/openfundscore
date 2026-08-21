@@ -87,16 +87,17 @@ Validation is deliberately split into two mandatory layers, in this order:
 1. The explicitly selected packaged resource
    `schema / manager_research / 0.1.0` validates document structure, required
    fields, closed objects, primitive types, ranges and enumerations.
-2. `openfundscore.manager_research.validate_manager_research` validates semantic
-   content that JSON Schema does not own: sensitive-private-text exclusion,
-   resolution of every nested `evidence_ids` reference against top-level
-   `evidence`, and the A/B/C evidence-tier minimum for scored or high-confidence
-   `compliance_integrity`.
+2. `openfundscore.validate_record` dispatches the manager semantic checks after
+   Schema success: sensitive-private-text exclusion, resolution of every nested
+   `evidence_ids` reference against top-level `evidence`, the A/B/C evidence-tier
+   minimum for scored or high-confidence `compliance_integrity`, ordered
+   employment/tenure/performance ranges (date-only fields compare against the UTC
+   date of `as_of`), and evidence retrieval no later than the record `as_of`.
 
-Passing the JSON Schema alone is not sufficient. Callers must run both layers;
-semantic errors include the failing JSON path. The machine checks can be run with:
+Passing the JSON Schema alone is not sufficient. Callers use the unified API or
+CLI so both layers always run and failures carry stable paths:
 
 ```bash
-PYTHONPATH=src python3 -m unittest \
-  tests.test_manager_schema tests.test_manager_semantics -v
+openfundscore validate-record \
+  --type manager_research --schema-version 0.1.0 manager-research.json
 ```

@@ -2,14 +2,21 @@ from __future__ import annotations
 
 import json
 import os
-from pathlib import Path
 import shutil
 import subprocess
 import sys
 import tempfile
 import unittest
 import venv
+from pathlib import Path
 
+from tests.test_record_validation import (
+    external_rating,
+    manager_record,
+    provider_contract,
+    provider_record,
+    score_evidence_usage,
+)
 
 ROOT = Path(__file__).parents[1]
 
@@ -44,7 +51,6 @@ class InstalledWheelResourceTests(unittest.TestCase):
                     "pip",
                     "wheel",
                     str(source),
-                    "--no-deps",
                     "--wheel-dir",
                     str(wheelhouse),
                 ],
@@ -68,7 +74,9 @@ class InstalledWheelResourceTests(unittest.TestCase):
                     "pip",
                     "install",
                     "--force-reinstall",
-                    "--no-deps",
+                    "--no-index",
+                    "--find-links",
+                    str(wheelhouse),
                     str(wheels[0]),
                 ],
                 check=True,
@@ -149,6 +157,90 @@ class InstalledWheelResourceTests(unittest.TestCase):
                 json.loads(show_probe.stdout)["$schema"],
                 "https://json-schema.org/draft/2020-12/schema",
             )
+
+            records = {
+                "manager_research": manager_record(),
+                "provider_record": provider_record(),
+                "provider_contract": provider_contract(),
+                "external_rating": external_rating(),
+                "score_evidence_usage": score_evidence_usage(),
+            }
+            bundle_path = runtime / "records.json"
+            bundle_path.write_text(json.dumps(records), encoding="utf-8")
+            validation_api_probe = subprocess.run(
+                [
+                    str(python),
+                    "-c",
+                    (
+                        "import json,pathlib;"
+                        "from openfundscore.validation import validate_record;"
+                        "records=json.loads(pathlib.Path('records.json').read_text());"
+                        "[validate_record(kind,document,schema_version='0.1.0',"
+                        "evaluation_timestamp=('2026-08-21T00:00:00Z' if kind in "
+                        "{'provider_record','external_rating'} else None)) "
+                        "for kind,document in records.items()];"
+                        "print('validation-api-ok')"
+                    ),
+                ],
+                check=False,
+                cwd=runtime,
+                env=clean_environment,
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(
+                validation_api_probe.returncode,
+                0,
+                msg=(
+                    f"stdout={validation_api_probe.stdout}\n"
+                    f"stderr={validation_api_probe.stderr}"
+                ),
+            )
+            self.assertEqual(
+                validation_api_probe.stdout.strip(),
+                "validation-api-ok",
+            )
+
+            for record_type, document in records.items():
+                with self.subTest(installed_record_type=record_type):
+                    record_path = runtime / f"{record_type}.json"
+                    record_path.write_text(json.dumps(document), encoding="utf-8")
+                    command = [
+                        str(executable),
+                        "validate-record",
+                        "--type",
+                        record_type,
+                        "--schema-version",
+                        "0.1.0",
+                    ]
+                    if record_type in {"provider_record", "external_rating"}:
+                        command.extend(
+                            [
+                                "--evaluation-timestamp",
+                                "2026-08-21T00:00:00Z",
+                            ]
+                        )
+                    command.append(str(record_path))
+                    validation_cli_probe = subprocess.run(
+                        command,
+                        check=False,
+                        cwd=runtime,
+                        env=clean_environment,
+                        capture_output=True,
+                        text=True,
+                    )
+                    self.assertEqual(
+                        validation_cli_probe.returncode,
+                        0,
+                        msg=(
+                            f"stdout={validation_cli_probe.stdout}\n"
+                            f"stderr={validation_cli_probe.stderr}"
+                        ),
+                    )
+                    self.assertEqual(
+                        validation_cli_probe.stdout,
+                        f"valid: {record_type}@0.1.0 (schema+semantics)\n",
+                    )
 
 
 if __name__ == "__main__":

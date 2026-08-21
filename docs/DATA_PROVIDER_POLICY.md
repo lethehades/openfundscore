@@ -110,10 +110,11 @@ classification, benchmark or availability cannot be backfilled into a past
 simulation. Missing, stale and conflicting states remain distinct.
 
 JSON Schema validation is structural and is not sufficient on its own. After
-schema validation, local ingestion must call
-`openfundscore.provider_semantics.validate_provider_record_semantics()` with an
-explicit RFC3339 `evaluation_timestamp`. The semantic boundary is deterministic,
-does not read the clock, and never rewrites or drops a record.
+schema validation, local ingestion must call the unified
+`openfundscore.validate_record()` boundary with record type `provider_record`,
+Schema version `0.1.0` and an explicit RFC3339 `evaluation_timestamp`. The
+boundary always runs Schema and semantics in order, is deterministic, does not
+read the clock, and never rewrites or drops a record.
 
 The timestamp profile is a deterministic RFC3339 subset using ASCII digits:
 uppercase `T`, uppercase `Z` or a known numeric `±HH:MM` offset (`00`–`23`
@@ -126,10 +127,11 @@ The semantic contract enforces:
 
 - timestamps in that offset-aware profile for observation, publication, retrieval,
   validity and optional rights-review times;
-- `published_at <= fetched_at` and, when both endpoints exist,
-  `valid_from <= valid_to`;
-- `as_of <= evaluation_timestamp`, preventing a future observation from entering
-  a current or historical evaluation;
+- `published_at <= fetched_at <= evaluation_timestamp`, and
+  `as_of <= fetched_at`, preventing future knowledge from entering a current or
+  historical evaluation;
+- `valid_from <= valid_to` when both endpoints exist;
+- `as_of <= evaluation_timestamp`, preserving the explicit evaluation boundary;
 - future-effective facts through a future `valid_from` while retaining a
   non-future `as_of`;
 - both a non-empty `provider_record_id` and `source_document_hash` for
