@@ -29,3 +29,10 @@ package-dir = {"" = "src"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+"openfundscore._resources" = [
+  "index.json",
+  "schema/*/*.json",
+  "scoring-config/*/*.json",
+]

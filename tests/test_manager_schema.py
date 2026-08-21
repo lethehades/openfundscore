@@ -1,15 +1,14 @@
 from __future__ import annotations
 
-import json
 import unittest
 from copy import deepcopy
-from pathlib import Path
 from typing import Any
 
 from jsonschema import Draft202012Validator, ValidationError
 
+from openfundscore.resources import resolve_resource
 
-SCHEMA_PATH = Path(__file__).parents[1] / "schemas" / "manager_research.schema.json"
+
 COMPONENT_IDS = (
     "tenure_attributed_performance",
     "downside_control",
@@ -25,7 +24,11 @@ COMPONENT_IDS = (
 class ManagerSchemaTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
+        cls.schema = resolve_resource(
+            resource_type="schema",
+            name="manager_research",
+            version="0.1.0",
+        ).load_json()
         Draft202012Validator.check_schema(cls.schema)
         cls.validator = Draft202012Validator(cls.schema)
 

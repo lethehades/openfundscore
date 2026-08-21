@@ -6,6 +6,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from openfundscore.resources import resolve_resource
 from openfundscore.score_config import (
     ConfigValidationError,
     load_score_config,
@@ -13,12 +14,17 @@ from openfundscore.score_config import (
 )
 
 
-CONFIG_PATH = Path(__file__).parents[1] / "configs" / "scoring" / "v0.1.0.json"
+def _load_packaged_config() -> dict:
+    return resolve_resource(
+        resource_type="scoring-config",
+        name="openfundscore-core",
+        version="0.1.0",
+    ).load_json()
 
 
 class ScoreConfigTests(unittest.TestCase):
     def test_every_category_and_manager_model_totals_100(self) -> None:
-        config = load_score_config(CONFIG_PATH)
+        config = _load_packaged_config()
         validate_score_config(config)
 
         for category, profile in config["category_profiles"].items():
@@ -31,14 +37,14 @@ class ScoreConfigTests(unittest.TestCase):
         )
 
     def test_data_confidence_is_a_gate_not_a_score_dimension(self) -> None:
-        config = load_score_config(CONFIG_PATH)
+        config = _load_packaged_config()
         score_dimensions = set(config["score_dimensions"])
 
         self.assertNotIn("data_confidence", score_dimensions)
         self.assertEqual("publication_gate", config["data_confidence"]["role"])
 
     def test_model_metadata_must_match_the_public_contract(self) -> None:
-        base = load_score_config(CONFIG_PATH)
+        base = _load_packaged_config()
         cases = []
 
         for field in ("model_id", "model_version"):
@@ -68,7 +74,7 @@ class ScoreConfigTests(unittest.TestCase):
                     validate_score_config(config)
 
     def test_v0_1_model_identity_is_exact(self) -> None:
-        base = load_score_config(CONFIG_PATH)
+        base = _load_packaged_config()
         for field, value in (
             ("model_id", "renamed-openfundscore-core"),
             ("model_version", "0.1.1"),
@@ -80,7 +86,7 @@ class ScoreConfigTests(unittest.TestCase):
                     validate_score_config(invalid)
 
     def test_score_dimension_names_and_descriptions_must_be_non_empty_strings(self) -> None:
-        base = load_score_config(CONFIG_PATH)
+        base = _load_packaged_config()
         cases = []
 
         empty_name = deepcopy(base)
@@ -107,7 +113,7 @@ class ScoreConfigTests(unittest.TestCase):
                     validate_score_config(config)
 
     def test_manager_components_must_match_exact_v0_1_mapping(self) -> None:
-        base = load_score_config(CONFIG_PATH)
+        base = _load_packaged_config()
         expected = {
             "tenure_attributed_performance": 25,
             "downside_control": 15,
@@ -141,7 +147,7 @@ class ScoreConfigTests(unittest.TestCase):
                     validate_score_config(invalid)
 
     def test_manager_declared_total_must_be_integer_100(self) -> None:
-        base = load_score_config(CONFIG_PATH)
+        base = _load_packaged_config()
         cases = []
 
         for value in (None, True, 999):
@@ -158,7 +164,7 @@ class ScoreConfigTests(unittest.TestCase):
                     validate_score_config(config)
 
     def test_data_confidence_must_match_the_public_v0_1_contract(self) -> None:
-        base = load_score_config(CONFIG_PATH)
+        base = _load_packaged_config()
         expected = {
             "role": "publication_gate",
             "levels": ["high", "medium", "low", "insufficient"],
@@ -181,7 +187,7 @@ class ScoreConfigTests(unittest.TestCase):
                     validate_score_config(invalid)
 
     def test_v0_1_dimension_and_category_ids_are_exact(self) -> None:
-        base = load_score_config(CONFIG_PATH)
+        base = _load_packaged_config()
         expected_dimensions = {
             "performance_evidence",
             "downside_risk",
@@ -228,7 +234,7 @@ class ScoreConfigTests(unittest.TestCase):
                     validate_score_config(invalid)
 
     def test_unknown_fields_are_rejected_at_every_config_object_boundary(self) -> None:
-        base = load_score_config(CONFIG_PATH)
+        base = _load_packaged_config()
         cases = []
 
         top_level = deepcopy(base)
@@ -277,7 +283,7 @@ class ScoreConfigTests(unittest.TestCase):
                         load_score_config("config.json")
 
     def test_invalid_weight_and_confidence_contracts_are_rejected(self) -> None:
-        base = load_score_config(CONFIG_PATH)
+        base = _load_packaged_config()
         cases = []
 
         wrong_total = deepcopy(base)

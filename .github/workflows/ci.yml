@@ -22,5 +22,13 @@ jobs:
         run: python -m pip install -e '.[test]'
       - name: Run unit tests
         run: python -m unittest discover -s tests -v
-      - name: Validate scoring configuration
-        run: python -m openfundscore.cli validate-config configs/scoring/v0.1.0.json
+      - name: Validate packaged research resources
+        run: |
+          python -m openfundscore.cli resources list
+          python -m openfundscore.cli resources resolve \
+            --type scoring-config --name openfundscore-core --version 0.1.0
+          python -m openfundscore.cli resources show \
+            --type scoring-config --name openfundscore-core --version 0.1.0 \
+            > "${RUNNER_TEMP}/openfundscore-core-0.1.0.json"
+          python -m openfundscore.cli validate-config \
+            "${RUNNER_TEMP}/openfundscore-core-0.1.0.json"

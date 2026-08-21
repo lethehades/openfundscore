@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import json
-from pathlib import Path
 from typing import Any
 import unittest
 
@@ -11,6 +9,7 @@ from openfundscore.evidence_usage import (
     EvidenceUsageValidationError,
     validate_score_evidence_usage,
 )
+from openfundscore.resources import resolve_resource
 
 
 def _usage(target_component: str, **overrides: str) -> dict[str, str]:
@@ -39,13 +38,13 @@ def _record(*usages: dict[str, str]) -> dict[str, Any]:
     }
 
 
-ROOT = Path(__file__).parents[1]
-
-
 class EvidenceUsageSchemaTests(unittest.TestCase):
     def setUp(self) -> None:
-        schema_path = ROOT / "schemas" / "score_evidence_usage.schema.json"
-        self.schema = json.loads(schema_path.read_text(encoding="utf-8"))
+        self.schema = resolve_resource(
+            resource_type="schema",
+            name="score_evidence_usage",
+            version="0.1.0",
+        ).load_json()
         self.validator = Draft202012Validator(
             self.schema,
             format_checker=FormatChecker(),

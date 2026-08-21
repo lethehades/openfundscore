@@ -43,9 +43,10 @@ an unexplained deduction.
 | Gold/commodity | 10 | 18 | 10 | 5 | 22 | 30 | 5 | 100 |
 | Public REIT | 20 | 20 | 10 | 20 | 20 | 5 | 5 | 100 |
 
-The machine-readable source of truth is
-`configs/scoring/v0.1.0.json`. Sub-category metric definitions differ even when
-profile weights match; a short-bond fund is never ranked in an equity bucket.
+The machine-readable source of truth is the packaged resource
+`scoring-config / openfundscore-core / 0.1.0`, resolved only through the complete
+`(type, name, version)` selector. Sub-category metric definitions differ even
+when profile weights match; a short-bond fund is never ranked in an equity bucket.
 
 ## 4. Peer scoring
 
@@ -86,8 +87,8 @@ profile weights match; a short-bond fund is never ranked in an equity bucket.
 
 ### 6.1 Machine-enforced evidence usage ledger
 
-Every score record must carry a ledger conforming to
-`schemas/score_evidence_usage.schema.json`. The ledger identifies each consumed
+Every score record must carry a ledger conforming to the packaged resource
+`schema / score_evidence_usage / 0.1.0`. The ledger identifies each consumed
 series, its lineage and evidence family, target component, source scope, usage
 mode and inclusive observation window. `validate_score_evidence_usage` applies
 cross-entry rules that JSON Schema cannot express.

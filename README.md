@@ -44,14 +44,23 @@ questions into one leaderboard.
   no real provider data is bundled.
 
 ```bash
+PYTHONPATH=src python3 -m openfundscore.cli resources list
+PYTHONPATH=src python3 -m openfundscore.cli resources resolve \
+  --type scoring-config --name openfundscore-core --version 0.1.0
+PYTHONPATH=src python3 -m openfundscore.cli resources show \
+  --type scoring-config --name openfundscore-core --version 0.1.0 \
+  > /tmp/openfundscore-core-0.1.0.json
 PYTHONPATH=src python3 -m openfundscore.cli validate-config \
-  configs/scoring/v0.1.0.json
+  /tmp/openfundscore-core-0.1.0.json
 PYTHONPATH=src python3 -m unittest discover -s tests -v
 ```
 
-The research-preview CLI intentionally requires an explicit configuration path.
-The versioned default currently lives in the repository rather than being
-silently selected from package data.
+Packaged scoring configurations and JSON Schemas are selected by the complete
+`(type, name, version)` tuple. There is no `latest` alias, implicit default or
+repository-path fallback. `resources resolve` returns logical metadata rather
+than an installation path; `resources show` writes the verified packaged JSON.
+The research-preview `validate-config` command continues to require an explicit
+configuration path and never silently switches scoring models.
 
 ## Documents
 
