@@ -38,6 +38,8 @@ questions into one leaderboard.
 - Exact-identifier resolution that never merges entities by name alone.
 - Append-only SQLite storage with point-in-time knowledge cutoffs,
   conflict-preserving joins and deterministic JSON round trips.
+- Fail-closed provider-record chronology semantics with explicit evaluation times,
+  provenance requirements and preserved lower-confidence observations.
 - Synthetic A/C/E/I, closed, merged, transformed and conflicting records only;
   no real provider data is bundled.
 

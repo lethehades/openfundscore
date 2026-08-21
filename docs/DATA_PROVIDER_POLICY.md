@@ -107,3 +107,38 @@ Every observation follows `schemas/provider_record.schema.json`. Providers must
 state whether historical retrieval is truly point-in-time. Today's manager,
 classification, benchmark or availability cannot be backfilled into a past
 simulation. Missing, stale and conflicting states remain distinct.
+
+JSON Schema validation is structural and is not sufficient on its own. After
+schema validation, local ingestion must call
+`openfundscore.provider_semantics.validate_provider_record_semantics()` with an
+explicit RFC3339 `evaluation_timestamp`. The semantic boundary is deterministic,
+does not read the clock, and never rewrites or drops a record.
+
+The timestamp profile is a deterministic RFC3339 subset using ASCII digits:
+uppercase `T`, uppercase `Z` or a known numeric `±HH:MM` offset (`00`–`23`
+hours and `00`–`59` minutes), and zero to six fractional-second digits.
+Lowercase `t`/`z`, non-ASCII digits, leap-second `:60`, sub-microsecond
+precision, malformed offsets and RFC3339's unknown-local-offset marker `-00:00`
+are rejected rather than normalized or truncated.
+
+The semantic contract enforces:
+
+- timestamps in that offset-aware profile for observation, publication, retrieval,
+  validity and optional rights-review times;
+- `published_at <= fetched_at` and, when both endpoints exist,
+  `valid_from <= valid_to`;
+- `as_of <= evaluation_timestamp`, preventing a future observation from entering
+  a current or historical evaluation;
+- future-effective facts through a future `valid_from` while retaining a
+  non-future `as_of`;
+- both a non-empty `provider_record_id` and `source_document_hash` for
+  `point_in_time_status = verified`;
+- a documented methodology and non-verified quality state for reconstructed and
+  explicitly not-point-in-time records;
+- a non-verified quality state for records whose point-in-time status is unknown.
+
+`provider_claimed` remains a separate chronology assertion and is never promoted
+to `verified` by validation. `quality_state` describes observation quality, so it
+remains a separate axis from chronology confidence. A validity interval with
+equal endpoints is accepted for compatibility with the canonical model but is an
+empty half-open interval `[valid_from, valid_to)` and will not match any instant.
