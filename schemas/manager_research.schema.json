@@ -1,0 +1,279 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openfundscore.org/schemas/manager_research.schema.json",
+  "title": "OpenFundScore Manager Research Record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "manager_id",
+    "canonical_name",
+    "public_professional_only",
+    "as_of",
+    "professional_profile",
+    "employment_history",
+    "tenures",
+    "performance_evidence",
+    "style_fingerprint",
+    "workload",
+    "compliance_events",
+    "evidence",
+    "score_components"
+  ],
+  "properties": {
+    "manager_id": {"type": "string", "minLength": 1},
+    "canonical_name": {"type": "string", "minLength": 1},
+    "jurisdictions": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "public_professional_only": {"const": true},
+    "as_of": {"type": "string", "format": "date-time"},
+    "source_identities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["provider_id", "source_manager_id"],
+        "properties": {
+          "provider_id": {"type": "string", "minLength": 1},
+          "source_manager_id": {"type": "string", "minLength": 1},
+          "name_at_source": {"type": "string"}
+        }
+      }
+    },
+    "professional_profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "official_biography": {"type": ["string", "null"]},
+        "qualifications": {"type": "array", "items": {"type": "string"}},
+        "public_education": {"type": "array", "items": {"type": "string"}},
+        "education_affects_score": {"const": false}
+      }
+    },
+    "employment_history": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["organisation", "role", "start_date", "evidence_ids"],
+        "properties": {
+          "organisation": {"type": "string"},
+          "role": {"type": "string"},
+          "start_date": {"type": "string", "format": "date"},
+          "end_date": {"type": ["string", "null"], "format": "date"},
+          "evidence_ids": {"type": "array", "items": {"type": "string", "minLength": 1}}
+        }
+      }
+    },
+    "tenures": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "tenure_id",
+          "fund_strategy_id",
+          "start_date",
+          "role",
+          "attribution_mode",
+          "co_manager_ids",
+          "evidence_ids"
+        ],
+        "properties": {
+          "tenure_id": {"type": "string", "minLength": 1},
+          "fund_strategy_id": {"type": "string", "minLength": 1},
+          "start_date": {"type": "string", "format": "date"},
+          "end_date": {"type": ["string", "null"], "format": "date"},
+          "role": {"enum": ["lead", "co_manager", "team", "operator", "unknown"]},
+          "attribution_mode": {"enum": ["individual", "team", "role_weighted", "unresolved"]},
+          "attribution_share": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+          "co_manager_ids": {"type": "array", "items": {"type": "string", "minLength": 1}},
+          "mandate_version": {"type": ["string", "null"]},
+          "benchmark_id": {"type": ["string", "null"], "minLength": 1},
+          "transition_window_days": {"type": "integer", "minimum": 0},
+          "evidence_ids": {"type": "array", "items": {"type": "string", "minLength": 1}}
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {"attribution_mode": {"const": "role_weighted"}},
+              "required": ["attribution_mode"]
+            },
+            "then": {
+              "required": ["attribution_share"],
+              "properties": {"attribution_share": {"type": "number"}}
+            }
+          }
+        ]
+      }
+    },
+    "performance_evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["tenure_id", "window_start", "window_end", "metric_id", "value", "confidence"],
+        "properties": {
+          "tenure_id": {"type": "string", "minLength": 1},
+          "window_start": {"type": "string", "format": "date"},
+          "window_end": {"type": "string", "format": "date"},
+          "metric_id": {"type": "string", "minLength": 1},
+          "value": {"type": ["number", "null"]},
+          "missing_reason": {
+            "type": ["string", "null"],
+            "enum": [null, "not_applicable", "not_disclosed", "source_conflict", "insufficient_history", "unverified"]
+          },
+          "benchmark_value": {"type": ["number", "null"]},
+          "peer_percentile": {"type": ["number", "null"], "minimum": 0, "maximum": 100},
+          "factor_residual": {"type": ["number", "null"]},
+          "confidence": {"enum": ["high", "medium", "low", "insufficient"]}
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {"value": {"type": "null"}},
+              "required": ["value"]
+            },
+            "then": {
+              "required": ["missing_reason"],
+              "properties": {"missing_reason": {"type": "string", "minLength": 1}}
+            }
+          }
+        ]
+      }
+    },
+    "style_fingerprint": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "factor_exposures": {"type": "object", "additionalProperties": false},
+        "sector_country_currency": {"type": "object", "additionalProperties": false},
+        "concentration": {"type": "object", "additionalProperties": false},
+        "turnover": {"type": "object", "additionalProperties": false},
+        "active_share_tracking_error": {"type": "object", "additionalProperties": false},
+        "duration_credit_leverage": {"type": "object", "additionalProperties": false},
+        "change_points": {
+          "type": "array",
+          "items": {"type": "object", "additionalProperties": false}
+        }
+      }
+    },
+    "workload": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "concurrent_strategy_count": {"type": ["integer", "null"], "minimum": 0},
+        "deduplicated_product_count": {"type": ["integer", "null"], "minimum": 0},
+        "distinct_mandate_count": {"type": ["integer", "null"], "minimum": 0},
+        "assets_under_management": {"type": ["number", "null"], "minimum": 0},
+        "aum_currency": {"type": ["string", "null"]},
+        "team_coverage": {"type": ["string", "null"]}
+      }
+    },
+    "compliance_events": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["event_id", "jurisdiction", "status", "evidence_ids"],
+        "properties": {
+          "event_id": {"type": "string", "minLength": 1},
+          "jurisdiction": {"type": "string"},
+          "status": {"enum": ["final_verified", "pending_official", "corrected", "dismissed", "unresolved_not_scored"]},
+          "effective_date": {"type": ["string", "null"], "format": "date"},
+          "evidence_ids": {"type": "array", "items": {"type": "string", "minLength": 1}}
+        }
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["evidence_id", "tier", "source_url", "published_at", "fetched_at"],
+        "properties": {
+          "evidence_id": {"type": "string", "minLength": 1},
+          "tier": {"enum": ["A", "B", "C", "D"]},
+          "source_url": {"type": "string", "format": "uri"},
+          "source_title": {"type": ["string", "null"]},
+          "published_at": {"type": "string", "format": "date-time"},
+          "fetched_at": {"type": "string", "format": "date-time"},
+          "fact_excerpt": {"type": ["string", "null"]},
+          "content_hash": {"type": ["string", "null"]}
+        },
+        "anyOf": [
+          {
+            "required": ["fact_excerpt"],
+            "properties": {"fact_excerpt": {"type": "string", "minLength": 1}}
+          },
+          {
+            "required": ["content_hash"],
+            "properties": {"content_hash": {"type": "string", "minLength": 1}}
+          }
+        ]
+      }
+    },
+    "score_components": {
+      "type": "object",
+      "required": [
+        "tenure_attributed_performance",
+        "downside_control",
+        "cross_cycle_consistency",
+        "style_discipline",
+        "career_track_record",
+        "workload_capacity",
+        "research_platform_team",
+        "compliance_integrity"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "tenure_attributed_performance": {"$ref": "#/$defs/component"},
+        "downside_control": {"$ref": "#/$defs/component"},
+        "cross_cycle_consistency": {"$ref": "#/$defs/component"},
+        "style_discipline": {"$ref": "#/$defs/component"},
+        "career_track_record": {"$ref": "#/$defs/component"},
+        "workload_capacity": {"$ref": "#/$defs/component"},
+        "research_platform_team": {"$ref": "#/$defs/component"},
+        "compliance_integrity": {"$ref": "#/$defs/component"}
+      }
+    }
+  },
+  "$defs": {
+    "component": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["score", "confidence", "evidence_ids"],
+      "properties": {
+        "score": {"type": ["number", "null"], "minimum": 0, "maximum": 100},
+        "confidence": {"enum": ["high", "medium", "low", "insufficient"]},
+        "evidence_ids": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1}
+        },
+        "notes": {"type": ["string", "null"]}
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {"score": {"type": "null"}},
+            "required": ["score"]
+          },
+          "then": {
+            "properties": {"confidence": {"const": "insufficient"}}
+          }
+        },
+        {
+          "if": {
+            "anyOf": [
+              {"properties": {"score": {"type": "number"}}, "required": ["score"]},
+              {"properties": {"confidence": {"const": "high"}}, "required": ["confidence"]}
+            ]
+          },
+          "then": {
+            "properties": {
+              "evidence_ids": {"minItems": 1}
+            }
+          }
+        }
+      ]
+    }
+  }
+}

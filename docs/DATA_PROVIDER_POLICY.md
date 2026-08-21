@@ -1,0 +1,109 @@
+# Data Provider Policy
+
+## Principle
+
+Providers supply observations; OpenFundScore defines metrics and weights.
+Alipay/Ant Fortune is one sales-platform adapter, not the identity system,
+methodology owner or sole source.
+
+## Priority order
+
+1. regulator, exchange, official registry and legally filed disclosure;
+2. fund manager/company, custodian, administrator and official prospectus/report;
+3. benchmark administrator, central bank and statistical agency;
+4. licensed commercial data under the user's entitlement;
+5. sales/distribution platforms such as Alipay and Eastmoney;
+6. reputable reporting for qualitative discovery;
+7. user import, requiring explicit provenance and confirmation.
+
+Priority does not erase conflicts. Every record retains source, as-of date,
+publication time, retrieval time, units, currency, methodology and rights.
+
+## Initial source catalogue
+
+### Mainland China and Chinese distribution
+
+- CSRC and AMAC: registration, rules, institutions, personnel and official
+  evaluation/compliance context.
+- Exchanges and fund-company disclosures: listed funds, REITs, announcements,
+  holdings, reports, benchmark and manager changes.
+- Alipay/Ant Fortune, Eastmoney/Tiantian, banks and brokers: platform mapping,
+  displayed fees, limits and current availability where access is authorised.
+- Commercial connectors (Wind, Choice, CNI and others): optional local plugins;
+  no licensed dataset is bundled or redistributed.
+
+### Overseas regulatory and official sources
+
+- US SEC EDGAR APIs and investment-management filings:
+  https://www.sec.gov/search-filings/edgar-application-programming-interfaces
+- ESMA databases/registers and national competent-authority repositories:
+  https://www.esma.europa.eu/publications-and-data/databases-and-registers
+- UK FCA Financial Services Register (access and reuse terms must be checked):
+  https://register.fca.org.uk/
+- Hong Kong SFC authorised product list, including unit trusts, ETFs and REITs:
+  https://apps.sfc.hk/productlistWeb/searchProduct/UTMF.do
+- Singapore MAS OPERA collective-investment-scheme records:
+  https://eservices.mas.gov.sg/opera/
+- Other planned official adapters include Japan EDINET, Canada SEDAR+, ASIC,
+  and jurisdictional regulator/fund registries after field and licence review.
+
+### Benchmarks, macro and reference data
+
+- Index administrators and exchanges under their licence terms.
+- FRED/ALFRED for macro series and vintage-aware observations:
+  https://fred.stlouisfed.org/docs/api/fred/
+- World Bank developer APIs for documented international indicators:
+  https://datahelpdesk.worldbank.org/knowledgebase/topics/125589-developer-information
+- IMF, BIS, OECD and central-bank data only with an explicit series definition,
+  publication lag and revision policy.
+- OpenFIGI/ISIN or licensed security masters for identity mapping; names alone
+  are never sufficient identifiers.
+
+### International commercial/financial platforms
+
+Morningstar, LSEG/Lipper, Bloomberg, FactSet, S&P Capital IQ, MSCI/FTSE/S&P
+index data, Yahoo Finance and similar sources are connectors only when their
+terms permit the requested use. Proprietary ratings remain under
+`external_ratings` and never enter Open Score by default.
+
+## Provider contract
+
+A provider declares capabilities such as:
+
+```text
+list_funds, get_profile, get_share_classes, get_nav_series,
+get_benchmark, get_manager_tenures, get_holdings, get_fees,
+get_purchase_status, get_disclosures, get_external_ratings,
+get_entitlements
+```
+
+`get_entitlements` must state authentication mode, caching, derived-work rights,
+public display, redistribution, retention, rate limit and attribution.
+
+## Rights modes
+
+- `open_redistributable`: raw data may be redistributed under named terms.
+- `derived_only`: calculate locally; do not publish raw rows.
+- `local_entitlement`: user supplies an authorised key/file; keep results local.
+- `display_only`: show limited fields with attribution; no bulk storage/export.
+- `unknown_blocked`: do not ingest until reviewed.
+
+A public webpage is not automatically open data. Robots rules, rate limits,
+terms, copyright, database rights and account restrictions must all be checked.
+
+## Security and privacy
+
+- Never request/store Alipay password, payment PIN, SMS code, session cookie or
+  unrelated account data.
+- No bypass of login, CAPTCHA, anti-bot or platform controls.
+- API keys are user-local environment/secrets, never committed or logged.
+- Personal holdings and suitability profiles are local by default and isolated
+  per user.
+- Manager research is limited to relevant public professional evidence.
+
+## Point-in-time and quality
+
+Every observation follows `schemas/provider_record.schema.json`. Providers must
+state whether historical retrieval is truly point-in-time. Today's manager,
+classification, benchmark or availability cannot be backfilled into a past
+simulation. Missing, stale and conflicting states remain distinct.

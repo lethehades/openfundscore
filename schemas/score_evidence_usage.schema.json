@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openfundscore.org/schemas/score_evidence_usage.schema.json",
+  "title": "OpenFundScore Score Evidence Usage Record",
+  "description": "Point-in-time ledger of evidence consumed by one score record.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "score_record_id",
+    "model_version",
+    "fund_strategy_id",
+    "category_profile",
+    "as_of",
+    "usage"
+  ],
+  "properties": {
+    "score_record_id": {"type": "string", "minLength": 1},
+    "model_version": {"type": "string", "minLength": 1},
+    "fund_strategy_id": {"type": "string", "minLength": 1},
+    "category_profile": {
+      "enum": [
+        "active_equity_mixed",
+        "fixed_income_plus",
+        "index_etf",
+        "bond",
+        "money_market",
+        "qdii_active",
+        "qdii_index",
+        "fof_pension",
+        "gold_commodity",
+        "public_reit"
+      ]
+    },
+    "as_of": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T"
+    },
+    "usage": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/usage"}
+    }
+  },
+  "$defs": {
+    "usage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "lineage_id",
+        "series_id",
+        "evidence_family",
+        "target_component",
+        "source_scope",
+        "usage_mode",
+        "window_start",
+        "window_end"
+      ],
+      "properties": {
+        "lineage_id": {"type": "string", "minLength": 1},
+        "series_id": {"type": "string", "minLength": 1},
+        "evidence_family": {"type": "string", "minLength": 1},
+        "target_component": {
+          "enum": [
+            "fund_d1_performance_evidence",
+            "fund_d2_downside_risk",
+            "fund_d3_consistency",
+            "fund_d4_manager_capability",
+            "fund_d5_portfolio_structure",
+            "fund_d6_implementation_efficiency",
+            "fund_d7_governance_operations",
+            "manager_tenure_attributed_performance",
+            "manager_downside_control",
+            "manager_cross_cycle_consistency",
+            "manager_style_discipline",
+            "manager_career_track_record",
+            "manager_workload_capacity",
+            "manager_research_platform_team",
+            "manager_compliance_integrity"
+          ]
+        },
+        "source_scope": {
+          "enum": ["current_fund", "external_career", "team_platform"]
+        },
+        "usage_mode": {
+          "enum": ["raw", "residualized", "orthogonal", "descriptive"]
+        },
+        "window_start": {"type": "string", "format": "date"},
+        "window_end": {"type": "string", "format": "date"}
+      }
+    }
+  }
+}

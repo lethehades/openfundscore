@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openfundscore.org/schemas/external_rating.schema.json",
+  "title": "OpenFundScore External Rating Side Channel",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "external_rating_id",
+    "provider_id",
+    "subject_type",
+    "subject_id",
+    "rating_type",
+    "value",
+    "scale",
+    "as_of",
+    "fetched_at",
+    "source_url",
+    "affects_open_score",
+    "display_status",
+    "rights_mode"
+  ],
+  "properties": {
+    "external_rating_id": {"type": "string", "minLength": 1},
+    "provider_id": {"type": "string", "minLength": 1},
+    "subject_type": {"enum": ["fund_strategy", "share_class", "manager", "manager_company"]},
+    "subject_id": {"type": "string", "minLength": 1},
+    "rating_type": {"type": "string", "minLength": 1},
+    "value": {},
+    "scale": {"type": "string", "minLength": 1},
+    "methodology_public": {"type": "boolean"},
+    "methodology_url": {"type": ["string", "null"], "format": "uri"},
+    "as_of": {"type": "string", "format": "date-time"},
+    "published_at": {"type": ["string", "null"], "format": "date-time"},
+    "fetched_at": {"type": "string", "format": "date-time"},
+    "source_url": {"type": "string", "format": "uri"},
+    "affects_open_score": {"const": false},
+    "display_status": {"enum": ["allowed", "local_only", "blocked", "unknown"]},
+    "rights_mode": {
+      "enum": [
+        "open_redistributable",
+        "derived_only",
+        "local_entitlement",
+        "display_only",
+        "unknown_blocked"
+      ]
+    },
+    "notes": {"type": ["string", "null"]}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"rights_mode": {"const": "open_redistributable"}}},
+      "then": {"properties": {"display_status": {"const": "allowed"}}}
+    },
+    {
+      "if": {"properties": {"rights_mode": {"const": "derived_only"}}},
+      "then": {"properties": {"display_status": {"const": "blocked"}}}
+    },
+    {
+      "if": {"properties": {"rights_mode": {"const": "local_entitlement"}}},
+      "then": {"properties": {"display_status": {"const": "local_only"}}}
+    },
+    {
+      "if": {"properties": {"rights_mode": {"const": "display_only"}}},
+      "then": {"properties": {"display_status": {"const": "allowed"}}}
+    },
+    {
+      "if": {"properties": {"rights_mode": {"const": "unknown_blocked"}}},
+      "then": {"properties": {"display_status": {"const": "unknown"}}}
+    }
+  ]
+}

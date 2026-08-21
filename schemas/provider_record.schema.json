@@ -1,0 +1,189 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openfundscore.org/schemas/provider_record.schema.json",
+  "title": "OpenFundScore Provider Record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "provider_id",
+    "namespace",
+    "source_type",
+    "jurisdiction",
+    "entity_type",
+    "entity_id",
+    "field",
+    "value",
+    "as_of",
+    "published_at",
+    "fetched_at",
+    "source_url",
+    "point_in_time_status",
+    "quality_state",
+    "rights"
+  ],
+  "properties": {
+    "provider_id": {"type": "string", "minLength": 1},
+    "provider_record_id": {"type": "string"},
+    "namespace": {
+      "enum": ["canonical_observation", "external_ratings"]
+    },
+    "source_type": {
+      "enum": [
+        "regulator",
+        "exchange",
+        "official_registry",
+        "fund_company_or_manager",
+        "custodian",
+        "index_or_macro_official_source",
+        "commercial_vendor",
+        "distribution_platform",
+        "user_import"
+      ]
+    },
+    "jurisdiction": {"type": "string", "minLength": 1},
+    "entity_type": {
+      "enum": [
+        "fund_strategy",
+        "share_class",
+        "manager",
+        "manager_tenure",
+        "benchmark",
+        "holding",
+        "issuer",
+        "platform_listing",
+        "external_rating"
+      ]
+    },
+    "entity_id": {"type": "string", "minLength": 1},
+    "field": {"type": "string", "minLength": 1},
+    "value": {},
+    "unit": {"type": ["string", "null"]},
+    "currency": {"type": ["string", "null"], "pattern": "^[A-Z]{3}$"},
+    "methodology": {"type": ["string", "null"]},
+    "as_of": {"type": "string", "format": "date-time"},
+    "published_at": {"type": "string", "format": "date-time"},
+    "fetched_at": {"type": "string", "format": "date-time"},
+    "valid_from": {"type": ["string", "null"], "format": "date-time"},
+    "valid_to": {"type": ["string", "null"], "format": "date-time"},
+    "source_url": {"type": "string", "format": "uri"},
+    "source_document_hash": {"type": ["string", "null"]},
+    "point_in_time_status": {
+      "enum": ["verified", "provider_claimed", "reconstructed", "not_point_in_time", "unknown"]
+    },
+    "quality_state": {
+      "enum": ["verified", "unverified", "stale", "conflict", "missing", "not_applicable"]
+    },
+    "conflict_group": {"type": ["string", "null"]},
+    "rights": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "cache_allowed",
+        "derived_works_allowed",
+        "redistribution_allowed",
+        "attribution_required",
+        "public_display_allowed"
+      ],
+      "properties": {
+        "mode": {
+          "enum": [
+            "open_redistributable",
+            "derived_only",
+            "local_entitlement",
+            "display_only",
+            "unknown_blocked"
+          ]
+        },
+        "terms_url": {"type": ["string", "null"], "format": "uri"},
+        "cache_allowed": {"type": "boolean"},
+        "derived_works_allowed": {"type": "boolean"},
+        "redistribution_allowed": {"type": "boolean"},
+        "attribution_required": {"type": "boolean"},
+        "public_display_allowed": {"type": "boolean"},
+        "retention_days": {"type": ["integer", "null"], "minimum": 0},
+        "reviewed_at": {"type": ["string", "null"], "format": "date-time"}
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {"mode": {"const": "unknown_blocked"}},
+            "required": ["mode"]
+          },
+          "then": {
+            "properties": {
+              "cache_allowed": {"const": false},
+              "derived_works_allowed": {"const": false},
+              "redistribution_allowed": {"const": false},
+              "attribution_required": {"const": false},
+              "public_display_allowed": {"const": false}
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {"mode": {"const": "derived_only"}},
+            "required": ["mode"]
+          },
+          "then": {
+            "properties": {
+              "derived_works_allowed": {"const": true},
+              "redistribution_allowed": {"const": false}
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {"mode": {"const": "display_only"}},
+            "required": ["mode"]
+          },
+          "then": {
+            "properties": {
+              "cache_allowed": {"const": false},
+              "derived_works_allowed": {"const": false},
+              "redistribution_allowed": {"const": false},
+              "public_display_allowed": {"const": true}
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {"mode": {"const": "local_entitlement"}},
+            "required": ["mode"]
+          },
+          "then": {
+            "properties": {
+              "redistribution_allowed": {"const": false},
+              "public_display_allowed": {"const": false}
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {"mode": {"const": "open_redistributable"}},
+            "required": ["mode"]
+          },
+          "then": {
+            "properties": {
+              "redistribution_allowed": {"const": true}
+            }
+          }
+        }
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {"entity_type": {"const": "external_rating"}},
+        "required": ["entity_type"]
+      },
+      "then": {
+        "properties": {"namespace": {"const": "external_ratings"}}
+      },
+      "else": {
+        "properties": {"namespace": {"const": "canonical_observation"}}
+      }
+    }
+  ]
+}

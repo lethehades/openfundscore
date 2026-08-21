@@ -1,0 +1,146 @@
+{
+  "model_id": "openfundscore-core",
+  "model_version": "0.1.0",
+  "status": "research-preview",
+  "score_dimensions": {
+    "performance_evidence": "Benchmark- and peer-relative performance evidence",
+    "downside_risk": "Drawdown, tail loss, recovery and stress resilience",
+    "consistency": "Rolling-window persistence and regime consistency",
+    "manager_capability": "Public professional evidence about the manager or investment team",
+    "portfolio_structure": "Holdings, exposures, concentration and strategy integrity",
+    "implementation_efficiency": "Fees, liquidity, tracking, capacity and investor implementation",
+    "governance_operations": "Governance, disclosure, operational and compliance quality"
+  },
+  "category_profiles": {
+    "active_equity_mixed": {
+      "weights": {
+        "performance_evidence": 24,
+        "downside_risk": 18,
+        "consistency": 12,
+        "manager_capability": 24,
+        "portfolio_structure": 10,
+        "implementation_efficiency": 7,
+        "governance_operations": 5
+      }
+    },
+    "fixed_income_plus": {
+      "weights": {
+        "performance_evidence": 18,
+        "downside_risk": 22,
+        "consistency": 12,
+        "manager_capability": 20,
+        "portfolio_structure": 15,
+        "implementation_efficiency": 8,
+        "governance_operations": 5
+      }
+    },
+    "index_etf": {
+      "weights": {
+        "performance_evidence": 10,
+        "downside_risk": 15,
+        "consistency": 10,
+        "manager_capability": 5,
+        "portfolio_structure": 20,
+        "implementation_efficiency": 35,
+        "governance_operations": 5
+      }
+    },
+    "bond": {
+      "weights": {
+        "performance_evidence": 15,
+        "downside_risk": 25,
+        "consistency": 12,
+        "manager_capability": 18,
+        "portfolio_structure": 20,
+        "implementation_efficiency": 5,
+        "governance_operations": 5
+      }
+    },
+    "money_market": {
+      "weights": {
+        "performance_evidence": 12,
+        "downside_risk": 25,
+        "consistency": 18,
+        "manager_capability": 8,
+        "portfolio_structure": 22,
+        "implementation_efficiency": 10,
+        "governance_operations": 5
+      }
+    },
+    "qdii_active": {
+      "weights": {
+        "performance_evidence": 18,
+        "downside_risk": 20,
+        "consistency": 10,
+        "manager_capability": 15,
+        "portfolio_structure": 17,
+        "implementation_efficiency": 15,
+        "governance_operations": 5
+      }
+    },
+    "qdii_index": {
+      "weights": {
+        "performance_evidence": 10,
+        "downside_risk": 18,
+        "consistency": 10,
+        "manager_capability": 5,
+        "portfolio_structure": 20,
+        "implementation_efficiency": 32,
+        "governance_operations": 5
+      }
+    },
+    "fof_pension": {
+      "weights": {
+        "performance_evidence": 15,
+        "downside_risk": 20,
+        "consistency": 12,
+        "manager_capability": 20,
+        "portfolio_structure": 20,
+        "implementation_efficiency": 8,
+        "governance_operations": 5
+      }
+    },
+    "gold_commodity": {
+      "weights": {
+        "performance_evidence": 10,
+        "downside_risk": 18,
+        "consistency": 10,
+        "manager_capability": 5,
+        "portfolio_structure": 22,
+        "implementation_efficiency": 30,
+        "governance_operations": 5
+      }
+    },
+    "public_reit": {
+      "weights": {
+        "performance_evidence": 20,
+        "downside_risk": 20,
+        "consistency": 10,
+        "manager_capability": 20,
+        "portfolio_structure": 20,
+        "implementation_efficiency": 5,
+        "governance_operations": 5
+      }
+    }
+  },
+  "manager_model": {
+    "total": 100,
+    "components": [
+      {"id": "tenure_attributed_performance", "weight": 25},
+      {"id": "downside_control", "weight": 15},
+      {"id": "cross_cycle_consistency", "weight": 15},
+      {"id": "style_discipline", "weight": 15},
+      {"id": "career_track_record", "weight": 10},
+      {"id": "workload_capacity", "weight": 8},
+      {"id": "research_platform_team", "weight": 7},
+      {"id": "compliance_integrity", "weight": 5}
+    ]
+  },
+  "data_confidence": {
+    "role": "publication_gate",
+    "levels": ["high", "medium", "low", "insufficient"],
+    "missing_data_policy": "not_zero",
+    "conflict_policy": "preserve_and_flag",
+    "short_history_policy": "lower_confidence_not_higher_score"
+  }
+}
