@@ -158,14 +158,14 @@ class ResolvedResource:
             )
         return text
 
-    def load_json(self) -> dict[str, Any]:
-        """Load the resource as a JSON object."""
+    @staticmethod
+    def _parse_json_object(text: str) -> dict[str, Any]:
         parsed = False
         document: Any = None
         try:
-            document = json.loads(self.read_text())
+            document = json.loads(text)
             parsed = True
-        except json.JSONDecodeError:
+        except (json.JSONDecodeError, RecursionError):
             pass
         if not parsed:
             raise ResourceError(
@@ -180,6 +180,16 @@ class ResolvedResource:
                 "packaged JSON resource must be an object",
             )
         return document
+
+    def read_json_text(self) -> str:
+        """Read exact UTF-8 text after validating that it is a JSON object."""
+        text = self.read_text()
+        self._parse_json_object(text)
+        return text
+
+    def load_json(self) -> dict[str, Any]:
+        """Load the resource as a JSON object."""
+        return self._parse_json_object(self.read_text())
 
 
 def _parse_catalog(document: object) -> tuple[_CatalogEntry, ...]:

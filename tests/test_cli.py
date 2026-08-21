@@ -97,6 +97,96 @@ class CliTests(unittest.TestCase):
         self.assertEqual(0, exit_code)
         self.assertEqual(expected, output.getvalue())
 
+    def test_resources_show_rejects_invalid_json_without_emitting_payload(self) -> None:
+        resource = resolve_resource(
+            resource_type="schema",
+            name="provider_record",
+            version="0.1.0",
+        )
+        for label, payload, private_marker in (
+            ("malformed", '{"private-marker":', "private-marker"),
+            ("non-object", '["private-marker"]', "private-marker"),
+        ):
+            with self.subTest(label=label):
+                output = io.StringIO()
+                stderr = io.StringIO()
+                with (
+                    patch(
+                        "openfundscore.cli.resolve_resource",
+                        return_value=resource,
+                    ),
+                    patch.object(
+                        type(resource),
+                        "read_text",
+                        return_value=payload,
+                    ) as read_text,
+                    redirect_stdout(output),
+                    redirect_stderr(stderr),
+                ):
+                    exit_code = main(
+                        [
+                            "resources",
+                            "show",
+                            "--type",
+                            "schema",
+                            "--name",
+                            "provider_record",
+                            "--version",
+                            "0.1.0",
+                        ]
+                    )
+
+                self.assertEqual(2, exit_code)
+                self.assertEqual("", output.getvalue())
+                self.assertIn("resource_format at $resource", stderr.getvalue())
+                self.assertNotIn(private_marker, stderr.getvalue())
+                self.assertNotIn("Traceback", stderr.getvalue())
+                read_text.assert_called_once_with()
+
+    def test_resources_show_wraps_parser_recursion_without_output(self) -> None:
+        resource = resolve_resource(
+            resource_type="schema",
+            name="provider_record",
+            version="0.1.0",
+        )
+        payload = '{"private-marker": true}'
+        output = io.StringIO()
+        stderr = io.StringIO()
+        with (
+            patch("openfundscore.cli.resolve_resource", return_value=resource),
+            patch.object(
+                type(resource),
+                "read_text",
+                return_value=payload,
+            ) as read_text,
+            patch(
+                "openfundscore.resources.json.loads",
+                side_effect=RecursionError("private-marker"),
+            ) as parse_json,
+            redirect_stdout(output),
+            redirect_stderr(stderr),
+        ):
+            exit_code = main(
+                [
+                    "resources",
+                    "show",
+                    "--type",
+                    "schema",
+                    "--name",
+                    "provider_record",
+                    "--version",
+                    "0.1.0",
+                ]
+            )
+
+        self.assertEqual(2, exit_code)
+        self.assertEqual("", output.getvalue())
+        self.assertIn("resource_format at $resource", stderr.getvalue())
+        self.assertNotIn("private-marker", stderr.getvalue())
+        self.assertNotIn("Traceback", stderr.getvalue())
+        read_text.assert_called_once_with()
+        parse_json.assert_called_once_with(payload)
+
     def test_resource_lookup_failures_return_2_without_traceback(self) -> None:
         output = io.StringIO()
         stderr = io.StringIO()
