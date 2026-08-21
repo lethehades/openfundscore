@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping
 from datetime import datetime
-import re
 from typing import Any
-
 
 _RFC3339_TIMESTAMP = re.compile(
     r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}"
@@ -27,6 +26,31 @@ _QUALITY_STATES = {
     "missing",
     "not_applicable",
 }
+_RIGHTS_REQUIREMENTS: dict[str, tuple[tuple[str, bool], ...]] = {
+    "unknown_blocked": (
+        ("cache_allowed", False),
+        ("derived_works_allowed", False),
+        ("redistribution_allowed", False),
+        ("attribution_required", False),
+        ("public_display_allowed", False),
+    ),
+    "derived_only": (
+        ("derived_works_allowed", True),
+        ("redistribution_allowed", False),
+    ),
+    "display_only": (
+        ("cache_allowed", False),
+        ("derived_works_allowed", False),
+        ("redistribution_allowed", False),
+        ("attribution_required", True),
+        ("public_display_allowed", True),
+    ),
+    "local_entitlement": (
+        ("redistribution_allowed", False),
+        ("public_display_allowed", False),
+    ),
+    "open_redistributable": (("redistribution_allowed", True),),
+}
 
 
 class ProviderRecordValidationError(ValueError):
@@ -45,10 +69,7 @@ def _parse_timestamp_value(value: object, *, path: str) -> datetime:
             path=path,
             message="timestamp must be a string",
         )
-    if (
-        _RFC3339_TIMESTAMP.fullmatch(value) is None
-        or value.endswith("-00:00")
-    ):
+    if _RFC3339_TIMESTAMP.fullmatch(value) is None or value.endswith("-00:00"):
         raise ProviderRecordValidationError(
             code="invalid_rfc3339",
             path=path,
@@ -76,6 +97,11 @@ def _parse_timestamp_value(value: object, *, path: str) -> datetime:
             message="timestamp must include an explicit offset",
         )
     return parsed
+
+
+def parse_rfc3339_timestamp(value: object, *, path: str) -> datetime:
+    """Parse the shared strict RFC3339 profile with a path-aware error."""
+    return _parse_timestamp_value(value, path=path)
 
 
 def _parse_required_timestamp(record: Mapping[str, Any], field: str) -> datetime:
@@ -139,6 +165,23 @@ def _require_methodology_and_lower_quality(
         )
 
 
+def _validate_rights(rights: Mapping[str, Any]) -> None:
+    mode = rights.get("mode")
+    if not isinstance(mode, str) or mode not in _RIGHTS_REQUIREMENTS:
+        raise ProviderRecordValidationError(
+            code="invalid_rights_mode",
+            path="$.rights.mode",
+            message="rights mode is unsupported",
+        )
+    for field, expected in _RIGHTS_REQUIREMENTS[mode]:
+        if rights.get(field) is not expected:
+            raise ProviderRecordValidationError(
+                code="rights_mismatch",
+                path=f"$.rights.{field}",
+                message="rights do not match their declared mode",
+            )
+
+
 def validate_provider_record_semantics(
     record: object,
     *,
@@ -174,6 +217,7 @@ def validate_provider_record_semantics(
             rights["reviewed_at"],
             path="$.rights.reviewed_at",
         )
+    _validate_rights(rights)
     evaluation_at = _parse_timestamp_value(
         evaluation_timestamp,
         path="$evaluation_timestamp",
@@ -183,6 +227,12 @@ def validate_provider_record_semantics(
             code="chronology_violation",
             path="$.published_at",
             message="published_at must be on or before fetched_at",
+        )
+    if fetched_at > evaluation_at:
+        raise ProviderRecordValidationError(
+            code="chronology_violation",
+            path="$.fetched_at",
+            message="fetched_at must be on or before the evaluation timestamp",
         )
     if valid_from is not None and valid_to is not None and valid_from > valid_to:
         raise ProviderRecordValidationError(
@@ -195,6 +245,12 @@ def validate_provider_record_semantics(
             code="future_as_of",
             path="$.as_of",
             message="as_of must be on or before the evaluation timestamp",
+        )
+    if as_of > fetched_at:
+        raise ProviderRecordValidationError(
+            code="chronology_violation",
+            path="$.as_of",
+            message="as_of must be on or before fetched_at",
         )
     point_in_time_status = _require_enum(
         record,

@@ -10,12 +10,17 @@
 
 ## Local checks
 
+Install the project in an isolated environment so runtime format validators are
+present; do not rely on a system `jsonschema` installation:
+
 ```bash
-PYTHONPATH=src python3 -m unittest discover -s tests -v
-PYTHONPATH=src python3 -m openfundscore.cli resources show \
+python3 -m venv .venv
+.venv/bin/python -m pip install -e '.[test]'
+.venv/bin/python -m unittest discover -s tests -v
+.venv/bin/python -m openfundscore.cli resources show \
   --type scoring-config --name openfundscore-core --version 0.1.0 \
   > /tmp/openfundscore-core-0.1.0.json
-PYTHONPATH=src python3 -m openfundscore.cli validate-config \
+.venv/bin/python -m openfundscore.cli validate-config \
   /tmp/openfundscore-core-0.1.0.json
 ```
 
