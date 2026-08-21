@@ -128,7 +128,8 @@
           "then": {
             "properties": {
               "derived_works_allowed": {"const": true},
-              "redistribution_allowed": {"const": false}
+              "redistribution_allowed": {"const": false},
+              "public_display_allowed": {"const": false}
             }
           }
         },

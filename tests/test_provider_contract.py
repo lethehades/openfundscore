@@ -11,7 +11,6 @@ from openfundscore.provider_semantics import (
 )
 from openfundscore.resources import resolve_resource
 
-
 SOURCE_TYPES = (
     "regulator",
     "exchange",
@@ -55,7 +54,7 @@ class ProviderContractTests(unittest.TestCase):
                 "derived_works_allowed": True,
                 "redistribution_allowed": False,
                 "attribution_required": True,
-                "public_display_allowed": True,
+                "public_display_allowed": False,
             },
             "display_only": {
                 "cache_allowed": False,
@@ -199,8 +198,12 @@ class ProviderContractTests(unittest.TestCase):
                     validator.validate(contract)
 
     def test_source_type_covers_every_provider_category(self) -> None:
-        contract_validator = Draft202012Validator(self._load("provider_contract.schema.json"))
-        record_validator = Draft202012Validator(self._load("provider_record.schema.json"))
+        contract_validator = Draft202012Validator(
+            self._load("provider_contract.schema.json")
+        )
+        record_validator = Draft202012Validator(
+            self._load("provider_record.schema.json")
+        )
 
         for source_type in SOURCE_TYPES:
             with self.subTest(schema="provider_contract", source_type=source_type):
@@ -315,6 +318,26 @@ class ProviderContractTests(unittest.TestCase):
         with self.assertRaises(ValidationError):
             validator.validate(display_only)
 
+    def test_derived_only_never_allows_public_display(self) -> None:
+        contract = self._provider_contract("derived_only")
+        contract["public_display_allowed"] = True
+        with self.assertRaises(ValidationError):
+            Draft202012Validator(self._load("provider_contract.schema.json")).validate(
+                contract
+            )
+
+        record = self._provider_record("derived_only")
+        record["rights"]["public_display_allowed"] = True
+        with self.assertRaises(ValidationError):
+            Draft202012Validator(self._load("provider_record.schema.json")).validate(
+                record
+            )
+        with self.assertRaises(ProviderRecordValidationError):
+            validate_provider_record_semantics(
+                record,
+                evaluation_timestamp="2026-08-21T00:00:00Z",
+            )
+
     def test_provider_record_rights_modes_are_self_consistent(self) -> None:
         validator = Draft202012Validator(self._load("provider_record.schema.json"))
         for mode in (
@@ -336,9 +359,7 @@ class ProviderContractTests(unittest.TestCase):
         record = self._provider_record()
         record["published_at"] = "2026-08-22T00:00:00Z"
         record["fetched_at"] = "2026-08-21T00:00:00Z"
-        Draft202012Validator(
-            self._load("provider_record.schema.json")
-        ).validate(record)
+        Draft202012Validator(self._load("provider_record.schema.json")).validate(record)
 
         with self.assertRaises(ProviderRecordValidationError) as raised:
             validate_provider_record_semantics(

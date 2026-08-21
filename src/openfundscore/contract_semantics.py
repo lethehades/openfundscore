@@ -30,6 +30,7 @@ _PROVIDER_RIGHTS: dict[str, tuple[tuple[str, bool], ...]] = {
         ("rights.attribution_required", False),
     ),
     "derived_only": (
+        ("public_display_allowed", False),
         ("rights.derived_works_allowed", True),
         ("rights.redistribution_allowed", False),
     ),

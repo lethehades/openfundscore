@@ -83,7 +83,8 @@ public display, redistribution, retention, rate limit and attribution.
 ## Rights modes
 
 - `open_redistributable`: raw data may be redistributed under named terms.
-- `derived_only`: calculate locally; do not publish raw rows.
+- `derived_only`: calculate locally; do not publicly display or publish raw or
+  normalized rows.
 - `local_entitlement`: user supplies an authorised key/file; keep results local.
 - `display_only`: show limited fields with attribution; no bulk storage/export.
 - `unknown_blocked`: do not ingest until reviewed.
@@ -145,3 +146,13 @@ to `verified` by validation. `quality_state` describes observation quality, so i
 remains a separate axis from chronology confidence. A validity interval with
 equal endpoints is accepted for compatibility with the canonical model but is an
 empty half-open interval `[valid_from, valid_to)` and will not match any instant.
+
+## Typed ingestion enforcement
+
+Schema and semantic validity do not grant a right to use data. Provider adapters
+must expose typed capabilities and an exact-time `get_entitlements()` snapshot,
+then pass each record through `openfundscore.provider_sdk.authorize_ingestion()`
+before persistence or downstream use. The boundary independently enforces
+provider identity, capability, rights mode, attribution readiness, provider-bound
+rate limits, cache TTL, display, derived-work, redistribution and retention.
+Unknown rights block ingestion. See [Provider SDK](PROVIDER_SDK.md).

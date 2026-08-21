@@ -116,6 +116,7 @@
       },
       "then": {
         "properties": {
+          "public_display_allowed": {"const": false},
           "rights": {
             "properties": {
               "derived_works_allowed": {"const": true},

@@ -37,6 +37,7 @@ _RIGHTS_REQUIREMENTS: dict[str, tuple[tuple[str, bool], ...]] = {
     "derived_only": (
         ("derived_works_allowed", True),
         ("redistribution_allowed", False),
+        ("public_display_allowed", False),
     ),
     "display_only": (
         ("cache_allowed", False),
