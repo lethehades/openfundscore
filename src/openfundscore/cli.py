@@ -102,7 +102,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 )
                 return 0
             if args.resource_command == "show":
-                sys.stdout.write(resource.read_text())
+                sys.stdout.write(resource.read_json_text())
                 return 0
         except ResourceError as exc:
             print(f"openfundscore: error: {exc}", file=sys.stderr)
