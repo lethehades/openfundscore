@@ -33,6 +33,14 @@ _SENSITIVE_TEXT_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
         re.compile(r"(?<!\d)(?:\d{17}[0-9Xx]|\d{15})(?![0-9Xx])"),
     ),
     (
+        "North American phone number",
+        re.compile(
+            r"(?<!\d)(?:\+?1[\s.-]?)?"
+            r"(?:\([2-9]\d{2}\)|[2-9]\d{2})[\s.-]?"
+            r"[2-9]\d{2}[\s.-]?\d{4}(?!\d)"
+        ),
+    ),
+    (
         "international phone number",
         re.compile(r"(?<!\w)\+(?=(?:[^\d]*\d){7,15}(?!\d))[\d\s().-]+\d"),
     ),
@@ -63,6 +71,11 @@ def _validate_text(value: Any, path: str = "$") -> None:
     if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
         for index, child in enumerate(value):
             _validate_text(child, _child_path(path, index))
+
+
+def validate_public_professional_text(value: Any, path: str = "$") -> None:
+    """Reject sensitive private content in public-professional text containers."""
+    _validate_text(value, path)
 
 
 def _validate_evidence_references(
