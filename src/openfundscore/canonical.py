@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field, fields
-from datetime import UTC, date, datetime
 import json
 import re
-from typing import Any, Callable, Mapping, cast
-from urllib.parse import unquote, urlsplit
+from collections.abc import Callable, Mapping
+from dataclasses import dataclass, field, fields
+from datetime import UTC, date, datetime
+from typing import Any, cast
+from urllib.parse import urlsplit
 
 
 class CanonicalValidationError(ValueError):
@@ -20,7 +21,11 @@ def _require_non_empty(label: str, value: str) -> None:
 
 
 def _require_aware(label: str, value: datetime) -> None:
-    if not isinstance(value, datetime) or value.tzinfo is None or value.utcoffset() is None:
+    if (
+        not isinstance(value, datetime)
+        or value.tzinfo is None
+        or value.utcoffset() is None
+    ):
         raise CanonicalValidationError(f"{label} must be a timezone-aware datetime")
 
 
@@ -31,7 +36,9 @@ def _require_date_only(label: str, value: object) -> None:
 
 def _require_currency(label: str, value: str) -> None:
     if not isinstance(value, str) or re.fullmatch(r"[A-Z]{3}", value) is None:
-        raise CanonicalValidationError(f"{label} must be an ISO 4217-style currency code")
+        raise CanonicalValidationError(
+            f"{label} must be an ISO 4217-style currency code"
+        )
 
 
 def _require_http_url(label: str, value: object) -> str:
@@ -50,16 +57,6 @@ def _require_http_url(label: str, value: object) -> str:
     ):
         raise CanonicalValidationError(f"{label} must be an HTTP(S) URL")
     return value
-
-
-def _recursively_unquote(value: str) -> str:
-    decoded = value
-    for _ in range(32):
-        updated = unquote(decoded)
-        if updated == decoded:
-            return decoded
-        decoded = updated
-    raise CanonicalValidationError("source_url encoding nesting is too deep")
 
 
 def _require_tuple_of(
@@ -116,9 +113,13 @@ class CanonicalRecord:
         if self.valid_to is not None:
             _require_aware("valid_to", self.valid_to)
             if self.valid_from > self.valid_to:
-                raise CanonicalValidationError("valid_from must be on or before valid_to")
+                raise CanonicalValidationError(
+                    "valid_from must be on or before valid_to"
+                )
         if self.published_at > self.fetched_at:
-            raise CanonicalValidationError("published_at must be on or before fetched_at")
+            raise CanonicalValidationError(
+                "published_at must be on or before fetched_at"
+            )
         if self.quality_state not in {
             "verified",
             "unverified",
@@ -127,7 +128,9 @@ class CanonicalRecord:
             "missing",
             "not_applicable",
         }:
-            raise CanonicalValidationError(f"unknown quality_state {self.quality_state!r}")
+            raise CanonicalValidationError(
+                f"unknown quality_state {self.quality_state!r}"
+            )
         if self.conflict_group is not None:
             _require_non_empty("conflict_group", self.conflict_group)
         if self.quality_state == "conflict" and self.conflict_group is None:
@@ -227,11 +230,15 @@ class FundStrategy(CanonicalRecord):
             non_empty=True,
         )
         if self.strategy_profile not in _STRATEGY_PROFILES:
-            raise CanonicalValidationError(f"unknown strategy_profile {self.strategy_profile!r}")
+            raise CanonicalValidationError(
+                f"unknown strategy_profile {self.strategy_profile!r}"
+            )
         _require_currency("base_currency", self.base_currency)
         _require_date_only("inception_date", self.inception_date)
         if self.status not in {"active", "closed", "merged", "transformed"}:
-            raise CanonicalValidationError(f"unknown fund strategy status {self.status!r}")
+            raise CanonicalValidationError(
+                f"unknown fund strategy status {self.status!r}"
+            )
         _require_tuple_of(
             "lifecycle_events",
             self.lifecycle_events,
@@ -368,8 +375,15 @@ class Benchmark(CanonicalRecord):
             ExternalIdentifier,
             non_empty=True,
         )
-        if self.benchmark_type not in {"index", "composite", "peer_rate", "contractual"}:
-            raise CanonicalValidationError(f"unknown benchmark_type {self.benchmark_type!r}")
+        if self.benchmark_type not in {
+            "index",
+            "composite",
+            "peer_rate",
+            "contractual",
+        }:
+            raise CanonicalValidationError(
+                f"unknown benchmark_type {self.benchmark_type!r}"
+            )
         _require_currency("currency", self.currency)
 
 
@@ -413,7 +427,13 @@ class ManagerTenure(CanonicalRecord):
         super().__post_init__()
         for label in ("tenure_id", "fund_strategy_id", "manager_id"):
             _require_non_empty(label, getattr(self, label))
-        if self.role not in {"lead", "co_manager", "team_member", "adviser", "operator"}:
+        if self.role not in {
+            "lead",
+            "co_manager",
+            "team_member",
+            "adviser",
+            "operator",
+        }:
             raise CanonicalValidationError(f"unknown manager role {self.role!r}")
         if self.attribution_mode not in {"individual", "team", "role_weighted"}:
             raise CanonicalValidationError(
@@ -458,7 +478,9 @@ class HoldingPosition:
             or isinstance(self.weight_bps, bool)
             or not 0 <= self.weight_bps <= 10_000
         ):
-            raise CanonicalValidationError("weight_bps must be an integer in [0, 10000]")
+            raise CanonicalValidationError(
+                "weight_bps must be an integer in [0, 10000]"
+            )
         if self.issuer_id is not None:
             _require_non_empty("issuer_id", self.issuer_id)
 
@@ -512,7 +534,9 @@ class Evidence(CanonicalRecord):
             "manager_tenure",
             "holding_snapshot",
         }:
-            raise CanonicalValidationError(f"unknown evidence subject_type {self.subject_type!r}")
+            raise CanonicalValidationError(
+                f"unknown evidence subject_type {self.subject_type!r}"
+            )
         _require_non_empty("subject_id", self.subject_id)
         if self.tier not in {"A", "B", "C", "D"}:
             raise CanonicalValidationError(f"unknown evidence tier {self.tier!r}")
@@ -524,19 +548,19 @@ class Evidence(CanonicalRecord):
         if self.fact_excerpt is not None:
             _require_non_empty("fact_excerpt", self.fact_excerpt)
         if self.subject_type in {"manager", "manager_tenure"}:
-            from .manager_research import validate_public_professional_text
-
-            protected_text = (
-                ("$.source_url", _recursively_unquote(self.source_url)),
-                ("$.fact_excerpt", self.fact_excerpt),
+            from .manager_research import (
+                validate_public_professional_source_url,
+                validate_public_professional_text,
             )
-            for path, value in protected_text:
-                if value is None:
-                    continue
-                try:
-                    validate_public_professional_text(value, path)
-                except ValueError as exc:
-                    raise CanonicalValidationError(str(exc)) from exc
+
+            try:
+                validate_public_professional_source_url(self.source_url)
+                if self.fact_excerpt is not None:
+                    validate_public_professional_text(
+                        self.fact_excerpt, "$.fact_excerpt"
+                    )
+            except ValueError as exc:
+                raise CanonicalValidationError(str(exc)) from exc
         if self.content_hash is not None:
             _require_non_empty("content_hash", self.content_hash)
 
@@ -600,7 +624,9 @@ def _encode(value: Any) -> Any:
     if isinstance(value, tuple):
         return [_encode(item) for item in value]
     if hasattr(value, "__dataclass_fields__"):
-        return {field.name: _encode(getattr(value, field.name)) for field in fields(value)}
+        return {
+            field.name: _encode(getattr(value, field.name)) for field in fields(value)
+        }
     return value
 
 
@@ -615,8 +641,7 @@ def record_to_document(record: CanonicalEntity) -> dict[str, Any]:
         "schema_version": "0.2.0",
         "record_type": record_type,
         **{
-            field.name: _encode(getattr(record, field.name))
-            for field in fields(record)
+            field.name: _encode(getattr(record, field.name)) for field in fields(record)
         },
     }
 
@@ -625,7 +650,7 @@ def _parse_datetime(label: str, value: Any) -> datetime:
     if not isinstance(value, str):
         raise CanonicalValidationError(f"{label} must be an ISO-8601 datetime")
     try:
-        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        parsed = datetime.fromisoformat(value)
     except ValueError as exc:
         raise CanonicalValidationError(f"{label} must be an ISO-8601 datetime") from exc
     _require_aware(label, parsed)

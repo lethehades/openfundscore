@@ -168,6 +168,7 @@ class Issue14ReviewRegressionTests(unittest.TestCase):
         performance = manager_record()
         performance["performance_evidence"] = [
             {
+                "observation_id": "observation-1",
                 "tenure_id": "tenure-1",
                 "window_start": "2025-01-01",
                 "window_end": "2024-01-01",
@@ -236,6 +237,7 @@ class Issue14ReviewRegressionTests(unittest.TestCase):
         manager["as_of"] = "2026-08-21T00:30:00+02:00"
         manager["performance_evidence"] = [
             {
+                "observation_id": "observation-utc",
                 "tenure_id": "tenure-utc",
                 "window_start": "2026-08-20",
                 "window_end": "2026-08-21",

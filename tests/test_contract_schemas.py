@@ -30,6 +30,8 @@ class ContractSchemaTests(unittest.TestCase):
             "performance_evidence": [],
             "style_fingerprint": {},
             "workload": {},
+            "research_platform": {},
+            "compliance_assessment": {},
             "compliance_events": [],
             "evidence": [],
             "score_components": {
@@ -104,25 +106,27 @@ class ContractSchemaTests(unittest.TestCase):
     def test_manager_research_is_public_professional_and_tenure_aware(self) -> None:
         schema = self._load("manager_research.schema.json")
         required = set(schema["required"])
-        self.assertTrue({"manager_id", "tenures", "evidence", "score_components"}.issubset(required))
+        self.assertTrue(
+            {"manager_id", "tenures", "evidence", "score_components"}.issubset(required)
+        )
         self.assertTrue(schema["properties"]["public_professional_only"]["const"])
         tenure = schema["properties"]["tenures"]["items"]["properties"]
         self.assertIn("attribution_share", tenure)
 
-    def test_scored_or_high_confidence_manager_components_require_evidence(self) -> None:
+    def test_scored_or_high_confidence_manager_components_require_evidence(
+        self,
+    ) -> None:
         validator = Draft202012Validator(self._load("manager_research.schema.json"))
 
         scored = self._manager_record()
         scored["score_components"]["downside_control"]["score"] = 75
-        with self.subTest(case="non-null score"):
-            with self.assertRaises(ValidationError):
-                validator.validate(scored)
+        with self.subTest(case="non-null score"), self.assertRaises(ValidationError):
+            validator.validate(scored)
 
         high_confidence = self._manager_record()
         high_confidence["score_components"]["downside_control"]["confidence"] = "high"
-        with self.subTest(case="high confidence"):
-            with self.assertRaises(ValidationError):
-                validator.validate(high_confidence)
+        with self.subTest(case="high confidence"), self.assertRaises(ValidationError):
+            validator.validate(high_confidence)
 
         evidenced = self._manager_record()
         evidenced["score_components"]["downside_control"].update(

@@ -87,6 +87,7 @@ class InstalledWheelResourceTests(unittest.TestCase):
             )
             shutil.rmtree(source)
 
+            manager_payload = json.dumps(manager_record())
             api_probe = subprocess.run(
                 [
                     str(python),
@@ -102,6 +103,35 @@ class InstalledWheelResourceTests(unittest.TestCase):
                         "assert d.peer_bucket=='market_neutral';"
                         "assert d.score_profile=='unrated' and not d.is_rated;"
                         "assert d.unrated_reason=='insufficient_comparable_sample';"
+                        "from openfundscore import score_manager_research;"
+                        "import json;"
+                        f"m=score_manager_research(json.loads({manager_payload!r}));"
+                        "assert m['manager_id']=='manager-1';"
+                        "assert m['model_version']=='0.1.0';"
+                        "assert m['status']=='insufficient' and m['score'] is None;"
+                        "assert len(m['component_weights'])==8;"
+                        "assert m['tenure_attribution']['aggregate_factor'] is None;"
+                        "from openfundscore.validation import validate_record;"
+                        f"bad=json.loads({manager_payload!r});"
+                        "bad['evidence']=[{'evidence_id':'e-url','tier':'A',"
+                        "'source_url':'https://example.com/source',"
+                        "'published_at':'2026-08-20T00:00:00Z',"
+                        "'fetched_at':'2026-08-21T00:00:00Z',"
+                        "'fact_excerpt':'Public professional fact',"
+                        f"'supports_components':{['tenure_attributed_performance', 'downside_control', 'cross_cycle_consistency', 'style_discipline', 'career_track_record', 'workload_capacity', 'research_platform_team', 'compliance_integrity']!r}}}];"
+                        "urls=('https://example.com/2125550198',"
+                        "'https://example.com/212%252D555%252D0198',"
+                        "'https://example.com/person%2540example.com');"
+                        "apis=(lambda d: score_manager_research(d),"
+                        "lambda d: validate_record('manager_research',d,schema_version='0.1.0'));"
+                        "\ndef _expect_value_error(api, document):\n"
+                        "    try:\n"
+                        "        api(document)\n"
+                        "    except ValueError:\n"
+                        "        return\n"
+                        "    raise AssertionError('private source URL accepted')\n"
+                        "[(lambda u,a: (bad['evidence'][0].__setitem__('source_url',u),"
+                        "_expect_value_error(a,bad)))(u,a) for u in urls for a in apis];"
                         "print('api-ok')"
                     ),
                 ],
