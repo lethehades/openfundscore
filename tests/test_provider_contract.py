@@ -7,6 +7,11 @@ from pathlib import Path
 
 from jsonschema import Draft202012Validator, ValidationError
 
+from openfundscore.provider_semantics import (
+    ProviderRecordValidationError,
+    validate_provider_record_semantics,
+)
+
 
 ROOT = Path(__file__).parents[1]
 SOURCE_TYPES = (
@@ -76,6 +81,7 @@ class ProviderContractTests(unittest.TestCase):
     def _provider_record(self, mode: str = "open_redistributable") -> dict:
         return {
             "provider_id": "provider-1",
+            "provider_record_id": "provider-record-1",
             "namespace": "canonical_observation",
             "source_type": "regulator",
             "jurisdiction": "US",
@@ -87,6 +93,7 @@ class ProviderContractTests(unittest.TestCase):
             "published_at": "2026-08-21T00:00:00Z",
             "fetched_at": "2026-08-21T00:00:00Z",
             "source_url": "https://example.com/manager-1",
+            "source_document_hash": "sha256:synthetic-provider-record",
             "point_in_time_status": "verified",
             "quality_state": "verified",
             "rights": self._rights(mode),
@@ -321,6 +328,23 @@ class ProviderContractTests(unittest.TestCase):
         contradictory["rights"]["derived_works_allowed"] = True
         with self.assertRaises(ValidationError):
             validator.validate(contradictory)
+
+    def test_schema_only_validation_cannot_replace_provider_semantics(self) -> None:
+        record = self._provider_record()
+        record["published_at"] = "2026-08-22T00:00:00Z"
+        record["fetched_at"] = "2026-08-21T00:00:00Z"
+        Draft202012Validator(
+            self._load("provider_record.schema.json")
+        ).validate(record)
+
+        with self.assertRaises(ProviderRecordValidationError) as raised:
+            validate_provider_record_semantics(
+                record,
+                evaluation_timestamp="2026-08-21T00:00:00Z",
+            )
+
+        self.assertEqual(raised.exception.code, "chronology_violation")
+        self.assertEqual(raised.exception.path, "$.published_at")
 
 
 if __name__ == "__main__":
