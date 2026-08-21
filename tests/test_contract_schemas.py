@@ -1,19 +1,21 @@
 from __future__ import annotations
 
-import json
 import unittest
 from copy import deepcopy
-from pathlib import Path
 
 from jsonschema import Draft202012Validator, ValidationError
 
-
-ROOT = Path(__file__).parents[1]
+from openfundscore.resources import resolve_resource
 
 
 class ContractSchemaTests(unittest.TestCase):
     def _load(self, name: str) -> dict:
-        return json.loads((ROOT / "schemas" / name).read_text(encoding="utf-8"))
+        resource_name = name.removesuffix(".schema.json")
+        return resolve_resource(
+            resource_type="schema",
+            name=resource_name,
+            version="0.1.0",
+        ).load_json()
 
     def _manager_record(self) -> dict:
         component = {"score": None, "confidence": "insufficient", "evidence_ids": []}

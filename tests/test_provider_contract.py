@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-import json
 import unittest
 from copy import deepcopy
-from pathlib import Path
 
 from jsonschema import Draft202012Validator, ValidationError
 
@@ -11,9 +9,9 @@ from openfundscore.provider_semantics import (
     ProviderRecordValidationError,
     validate_provider_record_semantics,
 )
+from openfundscore.resources import resolve_resource
 
 
-ROOT = Path(__file__).parents[1]
 SOURCE_TYPES = (
     "regulator",
     "exchange",
@@ -36,7 +34,12 @@ AUTHENTICATION_MODES = (
 
 class ProviderContractTests(unittest.TestCase):
     def _load(self, name: str) -> dict:
-        return json.loads((ROOT / "schemas" / name).read_text(encoding="utf-8"))
+        resource_name = name.removesuffix(".schema.json")
+        return resolve_resource(
+            resource_type="schema",
+            name=resource_name,
+            version="0.1.0",
+        ).load_json()
 
     def _rights(self, mode: str) -> dict:
         profiles = {

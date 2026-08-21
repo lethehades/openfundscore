@@ -103,7 +103,8 @@ terms, copyright, database rights and account restrictions must all be checked.
 
 ## Point-in-time and quality
 
-Every observation follows `schemas/provider_record.schema.json`. Providers must
+Every observation follows the explicitly selected packaged resource
+`schema / provider_record / 0.1.0`. Providers must
 state whether historical retrieval is truly point-in-time. Today's manager,
 classification, benchmark or availability cannot be backfilled into a past
 simulation. Missing, stale and conflicting states remain distinct.

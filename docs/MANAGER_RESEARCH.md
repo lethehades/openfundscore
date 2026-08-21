@@ -84,7 +84,8 @@ negative score.
 
 Validation is deliberately split into two mandatory layers, in this order:
 
-1. `schemas/manager_research.schema.json` validates document structure, required
+1. The explicitly selected packaged resource
+   `schema / manager_research / 0.1.0` validates document structure, required
    fields, closed objects, primitive types, ranges and enumerations.
 2. `openfundscore.manager_research.validate_manager_research` validates semantic
    content that JSON Schema does not own: sensitive-private-text exclusion,

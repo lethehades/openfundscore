@@ -1,0 +1,53 @@
+{
+  "format_version": 1,
+  "resources": [
+    {
+      "type": "schema",
+      "name": "external_rating",
+      "version": "0.1.0",
+      "internal_path": "schema/external_rating/0.1.0.schema.json",
+      "media_type": "application/schema+json",
+      "sha256": "3e9c3dd58befab09f3d73c2fdca600f2f9e18687fe5b874789beecf429cd199e"
+    },
+    {
+      "type": "schema",
+      "name": "manager_research",
+      "version": "0.1.0",
+      "internal_path": "schema/manager_research/0.1.0.schema.json",
+      "media_type": "application/schema+json",
+      "sha256": "b0f96170b2f40a53608693878fddc31109dd6ca6d6452dff69d15fdbfc175a3a"
+    },
+    {
+      "type": "schema",
+      "name": "provider_contract",
+      "version": "0.1.0",
+      "internal_path": "schema/provider_contract/0.1.0.schema.json",
+      "media_type": "application/schema+json",
+      "sha256": "3344a2b70696b173da5af67bf6f838fbbb1ca7ffe48f370733d838e01b92af04"
+    },
+    {
+      "type": "schema",
+      "name": "provider_record",
+      "version": "0.1.0",
+      "internal_path": "schema/provider_record/0.1.0.schema.json",
+      "media_type": "application/schema+json",
+      "sha256": "55b8f14ce9fedebd5a8344b445f383fa2cb3bf89921055b471d9f70c62c8caa3"
+    },
+    {
+      "type": "schema",
+      "name": "score_evidence_usage",
+      "version": "0.1.0",
+      "internal_path": "schema/score_evidence_usage/0.1.0.schema.json",
+      "media_type": "application/schema+json",
+      "sha256": "9ff9acffb1a19a8d6c0691d7dc99895211dd8224dac308f29f9270b56f7430f5"
+    },
+    {
+      "type": "scoring-config",
+      "name": "openfundscore-core",
+      "version": "0.1.0",
+      "internal_path": "scoring-config/openfundscore-core/0.1.0.json",
+      "media_type": "application/json",
+      "sha256": "e0f9f8ed58e840a078924cce2c5acae661e5a903d82402ecaf152c1ac7c85a16"
+    }
+  ]
+}
