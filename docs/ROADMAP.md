@@ -1,6 +1,6 @@
 # Roadmap
 
-## M0 — Foundation (current)
+## M0 — Foundation (complete)
 
 - public repository and Apache-2.0 code licence;
 - project, taxonomy, scoring, manager and provider contracts;
@@ -9,7 +9,7 @@
 
 Exit gate: independent specification and quality review; CI green on `main`.
 
-## M1 — Canonical entities and local storage
+## M1 — Canonical entities and local storage (current)
 
 - `fund_strategy`, `share_class`, `benchmark`, `manager`, `manager_tenure`,
   `holding_snapshot`, `provider_record` and `evidence` models;

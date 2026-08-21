@@ -31,6 +31,16 @@ questions into one leaderboard.
 - Global data-provider, taxonomy and research contracts.
 - CI tests that reject broken totals and confidence leakage.
 
+## M1 canonical-data slice
+
+- Immutable, effective-dated fund strategy, share class, benchmark, manager,
+  manager-tenure, holding-snapshot and evidence records.
+- Exact-identifier resolution that never merges entities by name alone.
+- Append-only SQLite storage with point-in-time knowledge cutoffs,
+  conflict-preserving joins and deterministic JSON round trips.
+- Synthetic A/C/E/I, closed, merged, transformed and conflicting records only;
+  no real provider data is bundled.
+
 ```bash
 PYTHONPATH=src python3 -m openfundscore.cli validate-config \
   configs/scoring/v0.1.0.json
@@ -45,6 +55,7 @@ silently selected from package data.
 
 - [Project charter](docs/PROJECT_CHARTER.md)
 - [Roadmap](docs/ROADMAP.md)
+- [Canonical data model](docs/CANONICAL_DATA_MODEL.md)
 - [Fund taxonomy](docs/FUND_TAXONOMY.md)
 - [Scoring RFC](docs/SCORING_RFC.md)
 - [Manager research model](docs/MANAGER_RESEARCH.md)
