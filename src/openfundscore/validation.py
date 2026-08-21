@@ -6,7 +6,7 @@ import math
 import re
 from collections.abc import Mapping
 from enum import StrEnum
-from typing import Any, cast
+from typing import Any, NoReturn, cast
 
 from jsonschema import Draft202012Validator, FormatChecker
 from jsonschema.exceptions import SchemaError
@@ -27,6 +27,12 @@ from .provider_semantics import (
     validate_provider_record_semantics,
 )
 from .resources import ResourceError, resolve_resource
+
+MAX_PROVIDER_VALUE_ITEMS = 10_000
+MAX_JSON_NODES = 10_000
+MAX_JSON_CONTAINER_ITEMS = 10_000
+MAX_PROVIDER_STRING_BYTES = 65_536
+MAX_PROVIDER_TOTAL_STRING_BYTES = 1_000_000
 
 
 class RecordType(StrEnum):
@@ -133,72 +139,139 @@ def _validate_json_data(
     document: object,
     *,
     schema_version: str,
-) -> None:
-    stack: list[tuple[object, str, int, bool]] = [(document, "$", 0, False)]
+) -> object:
     active_containers: set[int] = set()
-    while stack:
-        value, path, depth, leaving = stack.pop()
-        if leaving:
-            active_containers.discard(id(value))
-            continue
+    visited_nodes = 0
+    provider_string_bytes = 0
+
+    def reject(*, path: str, code: str = "non_json_value") -> NoReturn:
+        raise RecordValidationError(
+            record_type=record_type.value,
+            schema_version=schema_version,
+            stage="document" if code == "record_too_complex" else "schema",
+            code=code,
+            path=path,
+            message=(
+                "record exceeds the validation complexity limit"
+                if code == "record_too_complex"
+                else "record must be a finite JSON data structure"
+            ),
+        ) from None
+
+    def account_provider_string(value: str, *, path: str) -> None:
+        nonlocal provider_string_bytes
+        if record_type not in {
+            RecordType.PROVIDER_CONTRACT,
+            RecordType.PROVIDER_RECORD,
+        }:
+            return
+        try:
+            encoded_size = len(value.encode("utf-8"))
+        except UnicodeEncodeError:
+            reject(path=path)
+        provider_string_bytes += encoded_size
+        if (
+            encoded_size > MAX_PROVIDER_STRING_BYTES
+            or provider_string_bytes > MAX_PROVIDER_TOTAL_STRING_BYTES
+        ):
+            reject(path=path, code="record_too_complex")
+
+    def copy_value(value: object, *, path: str, depth: int) -> object:
+        nonlocal visited_nodes
+        visited_nodes += 1
+        if visited_nodes > MAX_JSON_NODES:
+            reject(path=path, code="record_too_complex")
         if depth > 512:
-            raise RecordValidationError(
-                record_type=record_type.value,
-                schema_version=schema_version,
-                stage="schema",
-                code="non_json_value",
-                path=path,
-                message="record must be a finite JSON data structure",
-            )
-        if value is None or isinstance(value, (str, bool, int)):
-            continue
+            reject(path=path)
+        if value is None:
+            return None
+        if isinstance(value, str):
+            normalized = str.__str__(value)
+            account_provider_string(normalized, path=path)
+            return normalized
+        if type(value) is bool:
+            return value
+        if isinstance(value, int) and not isinstance(value, bool):
+            return int.__int__(value)
         if isinstance(value, float):
-            if math.isfinite(value):
-                continue
-        elif isinstance(value, (dict, list)):
+            normalized_float = float.__float__(value)
+            if math.isfinite(normalized_float):
+                return normalized_float
+            reject(path=path)
+        if isinstance(value, dict):
             identity = id(value)
             if identity in active_containers:
-                raise RecordValidationError(
-                    record_type=record_type.value,
-                    schema_version=schema_version,
-                    stage="schema",
-                    code="non_json_value",
-                    path=path,
-                    message="record must be a finite JSON data structure",
-                )
+                reject(path=path)
+            pairs: tuple[tuple[object, object], ...] | None = None
+            size = MAX_JSON_CONTAINER_ITEMS + 1
+            try:
+                size = dict.__len__(value)
+                if size <= MAX_JSON_CONTAINER_ITEMS:
+                    pairs = tuple(dict.items(value))
+            except Exception:  # noqa: BLE001 - mapping subclasses are untrusted
+                pairs = None
+            if pairs is None or size > MAX_JSON_CONTAINER_ITEMS:
+                reject(path=path, code="record_too_complex")
             active_containers.add(identity)
-            stack.append((value, path, depth, True))
-            if isinstance(value, dict):
-                for key, child in reversed(tuple(value.items())):
-                    if not isinstance(key, str):
-                        raise RecordValidationError(
-                            record_type=record_type.value,
-                            schema_version=schema_version,
-                            stage="schema",
-                            code="non_json_value",
-                            path=path,
-                            message="record must be a finite JSON data structure",
-                        )
-                    stack.append((child, _child_path(path, key), depth + 1, False))
-            else:
-                for index in range(len(value) - 1, -1, -1):
-                    stack.append(
-                        (
-                            value[index],
-                            _child_path(path, index),
-                            depth + 1,
-                            False,
-                        )
+            result: dict[str, object] = {}
+            try:
+                for raw_key, child in pairs:
+                    if not isinstance(raw_key, str):
+                        reject(path=path)
+                    key = str.__str__(raw_key)
+                    account_provider_string(key, path=path)
+                    if key in result:
+                        reject(path=path)
+                    result[key] = copy_value(
+                        child,
+                        path=_child_path(path, key),
+                        depth=depth + 1,
                     )
-            continue
+            finally:
+                active_containers.discard(identity)
+            return result
+        if isinstance(value, list):
+            identity = id(value)
+            if identity in active_containers:
+                reject(path=path)
+            children: tuple[object, ...] | None = None
+            size = MAX_JSON_CONTAINER_ITEMS + 1
+            try:
+                size = list.__len__(value)
+                if size <= MAX_JSON_CONTAINER_ITEMS:
+                    children = tuple(
+                        list.__getitem__(value, index) for index in range(size)
+                    )
+            except Exception:  # noqa: BLE001 - list subclasses are untrusted
+                children = None
+            if children is None or size > MAX_JSON_CONTAINER_ITEMS:
+                reject(path=path, code="record_too_complex")
+            active_containers.add(identity)
+            try:
+                return [
+                    copy_value(
+                        child,
+                        path=_child_path(path, index),
+                        depth=depth + 1,
+                    )
+                    for index, child in enumerate(children)
+                ]
+            finally:
+                active_containers.discard(identity)
+        reject(path=path)
+        raise AssertionError("unreachable")
+
+    try:
+        return copy_value(document, path="$", depth=0)
+    except RecursionError:
         raise RecordValidationError(
             record_type=record_type.value,
             schema_version=schema_version,
             stage="schema",
             code="non_json_value",
-            path=path,
+            path="$",
             message="record must be a finite JSON data structure",
-        )
+        ) from None
 
 
 def _validate_record_complexity(
@@ -207,6 +280,18 @@ def _validate_record_complexity(
     *,
     schema_version: str,
 ) -> None:
+    if record_type is RecordType.PROVIDER_RECORD and isinstance(document, Mapping):
+        value = document.get("value")
+        if isinstance(value, (dict, list)) and len(value) > MAX_PROVIDER_VALUE_ITEMS:
+            raise RecordValidationError(
+                record_type=record_type.value,
+                schema_version=schema_version,
+                stage="document",
+                code="record_too_complex",
+                path="$.value",
+                message="record exceeds the validation complexity limit",
+            )
+        return
     if record_type is not RecordType.SCORE_EVIDENCE_USAGE:
         return
     if not isinstance(document, Mapping):
@@ -318,7 +403,11 @@ def validate_record(
             path="$record_type",
             message="record type is unsupported",
         )
-    _validate_json_data(selected, document, schema_version=schema_version)
+    document = _validate_json_data(
+        selected,
+        document,
+        schema_version=schema_version,
+    )
     _validate_record_complexity(selected, document, schema_version=schema_version)
     _validate_schema(selected, document, schema_version=schema_version)
 

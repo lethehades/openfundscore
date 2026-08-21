@@ -22,8 +22,8 @@
     "rights"
   ],
   "properties": {
-    "provider_id": {"type": "string", "minLength": 1},
-    "provider_record_id": {"type": "string"},
+    "provider_id": {"type": "string", "minLength": 1, "maxLength": 256},
+    "provider_record_id": {"type": "string", "maxLength": 256},
     "namespace": {
       "enum": ["canonical_observation", "external_ratings"]
     },
@@ -40,7 +40,7 @@
         "user_import"
       ]
     },
-    "jurisdiction": {"type": "string", "minLength": 1},
+    "jurisdiction": {"type": "string", "minLength": 1, "maxLength": 16},
     "entity_type": {
       "enum": [
         "fund_strategy",
@@ -54,26 +54,26 @@
         "external_rating"
       ]
     },
-    "entity_id": {"type": "string", "minLength": 1},
-    "field": {"type": "string", "minLength": 1},
+    "entity_id": {"type": "string", "minLength": 1, "maxLength": 512},
+    "field": {"type": "string", "minLength": 1, "maxLength": 256},
     "value": {},
-    "unit": {"type": ["string", "null"]},
+    "unit": {"type": ["string", "null"], "maxLength": 64},
     "currency": {"type": ["string", "null"], "pattern": "^[A-Z]{3}$"},
-    "methodology": {"type": ["string", "null"]},
-    "as_of": {"type": "string", "format": "date-time"},
-    "published_at": {"type": "string", "format": "date-time"},
-    "fetched_at": {"type": "string", "format": "date-time"},
-    "valid_from": {"type": ["string", "null"], "format": "date-time"},
-    "valid_to": {"type": ["string", "null"], "format": "date-time"},
-    "source_url": {"type": "string", "format": "uri"},
-    "source_document_hash": {"type": ["string", "null"]},
+    "methodology": {"type": ["string", "null"], "maxLength": 65536},
+    "as_of": {"type": "string", "format": "date-time", "maxLength": 64},
+    "published_at": {"type": "string", "format": "date-time", "maxLength": 64},
+    "fetched_at": {"type": "string", "format": "date-time", "maxLength": 64},
+    "valid_from": {"type": ["string", "null"], "format": "date-time", "maxLength": 64},
+    "valid_to": {"type": ["string", "null"], "format": "date-time", "maxLength": 64},
+    "source_url": {"type": "string", "format": "uri", "maxLength": 2048},
+    "source_document_hash": {"type": ["string", "null"], "maxLength": 256},
     "point_in_time_status": {
       "enum": ["verified", "provider_claimed", "reconstructed", "not_point_in_time", "unknown"]
     },
     "quality_state": {
       "enum": ["verified", "unverified", "stale", "conflict", "missing", "not_applicable"]
     },
-    "conflict_group": {"type": ["string", "null"]},
+    "conflict_group": {"type": ["string", "null"], "maxLength": 256},
     "rights": {
       "type": "object",
       "additionalProperties": false,
@@ -95,14 +95,14 @@
             "unknown_blocked"
           ]
         },
-        "terms_url": {"type": ["string", "null"], "format": "uri"},
+        "terms_url": {"type": ["string", "null"], "format": "uri", "maxLength": 2048},
         "cache_allowed": {"type": "boolean"},
         "derived_works_allowed": {"type": "boolean"},
         "redistribution_allowed": {"type": "boolean"},
         "attribution_required": {"type": "boolean"},
         "public_display_allowed": {"type": "boolean"},
-        "retention_days": {"type": ["integer", "null"], "minimum": 0},
-        "reviewed_at": {"type": ["string", "null"], "format": "date-time"}
+        "retention_days": {"type": ["integer", "null"], "minimum": 0, "maximum": 36500},
+        "reviewed_at": {"type": ["string", "null"], "format": "date-time", "maxLength": 64}
       },
       "allOf": [
         {
@@ -128,7 +128,8 @@
           "then": {
             "properties": {
               "derived_works_allowed": {"const": true},
-              "redistribution_allowed": {"const": false}
+              "redistribution_allowed": {"const": false},
+              "public_display_allowed": {"const": false}
             }
           }
         },

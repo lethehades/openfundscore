@@ -47,6 +47,8 @@ questions into one leaderboard.
 - A versioned complex-alternatives strategy mapping: market-neutral, long-short,
   absolute-return, derivatives-heavy and catch-all peer buckets stay explicitly
   `unrated` until comparable samples and evidence are sufficient.
+- A typed Provider SDK with explicit point-in-time entitlements and fail-closed
+  ingestion enforcement for rights, attribution, rate, cache and retention limits.
 - Synthetic A/C/E/I, closed, merged, transformed and conflicting records only;
   no real provider data is bundled.
 
@@ -90,6 +92,7 @@ Schema and semantic validation; see [validation boundary](docs/VALIDATION.md).
 - [Canonical data model](docs/CANONICAL_DATA_MODEL.md)
 - [Unified validation boundary](docs/VALIDATION.md)
 - [Public rating and redistribution gate](docs/PUBLICATION_GATE.md)
+- [Provider SDK and ingestion entitlements](docs/PROVIDER_SDK.md)
 - [Fund taxonomy](docs/FUND_TAXONOMY.md)
 - [Scoring RFC](docs/SCORING_RFC.md)
 - [Manager research model](docs/MANAGER_RESEARCH.md)

@@ -259,6 +259,58 @@ class InstalledWheelResourceTests(unittest.TestCase):
                 "publication-gate-api-ok",
             )
 
+            provider_sdk_probe = subprocess.run(
+                [
+                    str(python),
+                    "-c",
+                    (
+                        "import json,pathlib;"
+                        "from datetime import UTC,datetime;"
+                        "from zoneinfo import ZoneInfo;"
+                        "from openfundscore.provider_sdk import *;"
+                        "e=ZoneInfo('America/New_York');"
+                        "snapshot_time=datetime(2026,11,1,1,30,tzinfo=e,fold=0);"
+                        "request_time=datetime(2026,11,1,1,30,tzinfo=e,fold=1);"
+                        "caps=frozenset({ProviderCapability.GET_ENTITLEMENTS,ProviderCapability.GET_PROFILE});"
+                        "snapshot=ProviderEntitlements(provider_id='provider-1',evaluated_at=snapshot_time,"
+                        "valid_until=datetime(2026,11,2,7,tzinfo=UTC),source_type=SourceType.REGULATOR,"
+                        "jurisdictions=frozenset({'CN'}),authentication_mode=AuthenticationMode.NONE,"
+                        "capabilities=caps,rights_mode=RightsMode.OPEN_REDISTRIBUTABLE,cache_allowed=True,"
+                        "cache_ttl_seconds=3600,derived_works_allowed=True,public_display_allowed=True,"
+                        "redistribution_allowed=True,retention_days=30,attribution_required=True,"
+                        "terms_url='https://example.com/terms',rights_reviewed_at=datetime(2026,8,21,tzinfo=UTC),"
+                        "rate_limit=RateLimit(requests_per_period=10,period_seconds=60));"
+                        "Adapter=type('Adapter',(),{'provider_id':'provider-1','capabilities':caps,"
+                        "'get_entitlements':lambda self,*,evaluation_timestamp:snapshot});"
+                        "record=json.loads(pathlib.Path('records.json').read_text())['provider_record'];"
+                        "record['rights'].update({'mode':'open_redistributable','cache_allowed':True,"
+                        "'derived_works_allowed':True,'public_display_allowed':True,'redistribution_allowed':True,"
+                        "'attribution_required':True,'retention_days':30,'terms_url':'https://example.com/terms',"
+                        "'reviewed_at':'2026-08-21T00:00:00Z'});"
+                        "denied=False;"
+                        "\ntry:\n authorize_ingestion(Adapter(),record,schema_version='0.1.0',"
+                        "evaluation_timestamp=request_time,request=IngestionRequest(capability=ProviderCapability.GET_PROFILE),"
+                        "rate_limit_budget=RateLimitBudget(provider_id='provider-1',period_started_at=request_time,requests_used=0))"
+                        "\nexcept IngestionDenied as exc:\n denied=exc.code=='entitlement_contract_mismatch'"
+                        "\nassert denied\nprint('provider-sdk-ok')"
+                    ),
+                ],
+                check=False,
+                cwd=runtime,
+                env=clean_environment,
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(
+                provider_sdk_probe.returncode,
+                0,
+                msg=(
+                    f"stdout={provider_sdk_probe.stdout}\n"
+                    f"stderr={provider_sdk_probe.stderr}"
+                ),
+            )
+            self.assertEqual(provider_sdk_probe.stdout.strip(), "provider-sdk-ok")
+
             for record_type, document in records.items():
                 with self.subTest(installed_record_type=record_type):
                     record_path = runtime / f"{record_type}.json"
