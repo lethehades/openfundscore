@@ -75,3 +75,12 @@ Before any hosted real-fund leaderboard, obtain jurisdiction-appropriate review
 for fund-evaluation publication, provider licences, database rights, retention,
 attribution and conflicts. Code release does not imply permission to redistribute
 data or publicly market ratings.
+
+The package's point-in-time publication gate does not trust, interpret or record
+caller-supplied reviews, provider clearances, control assertions or human-release
+roles. It can only record an explicit hosted `NO_GO` or private `LOCAL_ONLY`
+decision until future authenticated infrastructure verifies immutable approval
+artifacts and their publication-manifest binding. The repository ships with no
+such infrastructure or artifacts. Private local research remains available
+subject to entitlements. See
+[PUBLICATION_GATE.md](PUBLICATION_GATE.md).
