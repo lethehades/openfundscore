@@ -31,6 +31,8 @@ from .resources import ResourceError, resolve_resource
 MAX_PROVIDER_VALUE_ITEMS = 10_000
 MAX_JSON_NODES = 10_000
 MAX_JSON_CONTAINER_ITEMS = 10_000
+MAX_PROVIDER_STRING_BYTES = 65_536
+MAX_PROVIDER_TOTAL_STRING_BYTES = 1_000_000
 
 
 class RecordType(StrEnum):
@@ -140,6 +142,7 @@ def _validate_json_data(
 ) -> object:
     active_containers: set[int] = set()
     visited_nodes = 0
+    provider_string_bytes = 0
 
     def reject(*, path: str, code: str = "non_json_value") -> NoReturn:
         raise RecordValidationError(
@@ -153,7 +156,25 @@ def _validate_json_data(
                 if code == "record_too_complex"
                 else "record must be a finite JSON data structure"
             ),
-        )
+        ) from None
+
+    def account_provider_string(value: str, *, path: str) -> None:
+        nonlocal provider_string_bytes
+        if record_type not in {
+            RecordType.PROVIDER_CONTRACT,
+            RecordType.PROVIDER_RECORD,
+        }:
+            return
+        try:
+            encoded_size = len(value.encode("utf-8"))
+        except UnicodeEncodeError:
+            reject(path=path)
+        provider_string_bytes += encoded_size
+        if (
+            encoded_size > MAX_PROVIDER_STRING_BYTES
+            or provider_string_bytes > MAX_PROVIDER_TOTAL_STRING_BYTES
+        ):
+            reject(path=path, code="record_too_complex")
 
     def copy_value(value: object, *, path: str, depth: int) -> object:
         nonlocal visited_nodes
@@ -165,7 +186,9 @@ def _validate_json_data(
         if value is None:
             return None
         if isinstance(value, str):
-            return str.__str__(value)
+            normalized = str.__str__(value)
+            account_provider_string(normalized, path=path)
+            return normalized
         if type(value) is bool:
             return value
         if isinstance(value, int) and not isinstance(value, bool):
@@ -196,6 +219,7 @@ def _validate_json_data(
                     if not isinstance(raw_key, str):
                         reject(path=path)
                     key = str.__str__(raw_key)
+                    account_provider_string(key, path=path)
                     if key in result:
                         reject(path=path)
                     result[key] = copy_value(

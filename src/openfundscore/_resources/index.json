@@ -23,7 +23,7 @@
       "version": "0.1.0",
       "internal_path": "schema/provider_contract/0.1.0.schema.json",
       "media_type": "application/schema+json",
-      "sha256": "e177b149480c835ec617fa16d474cf3ad3254ad2bbdd10102869066a82ace456"
+      "sha256": "71add223d5f010c3bfa6c88669a8bfd4d4a1a9f47cd1f302d78919f315da7a09"
     },
     {
       "type": "schema",
@@ -31,7 +31,7 @@
       "version": "0.1.0",
       "internal_path": "schema/provider_record/0.1.0.schema.json",
       "media_type": "application/schema+json",
-      "sha256": "b40e60ac5ec7323db95561fc003d185ae9164de098640b9ec2b76eddd037ee52"
+      "sha256": "baf590e637dc0e0bdf01eddf9d51ccbe5e9d3c16057910a9cf7b9b58ccec65bf"
     },
     {
       "type": "schema",

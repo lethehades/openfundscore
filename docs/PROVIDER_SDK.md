@@ -38,21 +38,39 @@ capability.
 1. validates the provider record with packaged Schema plus provider semantics;
 2. obtains a typed, redacted entitlement snapshot;
 3. binds adapter identity, capability and evaluation instant to that snapshot;
-4. binds the record's provider, source, jurisdiction and rights metadata to it;
-5. blocks unknown rights and every ungranted cache, derived, display or
+4. binds the requested capability to the record's entity-type data plane;
+5. binds the record's provider, source, jurisdiction and rights metadata to it;
+6. blocks unknown rights and every ungranted cache, derived, display or
    redistribution use;
-6. requires attribution readiness before attributed uses;
-7. enforces a provider-bound rate-limit window, total and burst budget;
-8. enforces explicit cache TTL and retention bounds; and
-9. returns deterministic expiry, retention and remaining-budget metadata.
+7. requires attribution readiness before attributed uses;
+8. enforces a provider-bound rate-limit window, total and burst budget;
+9. enforces explicit cache TTL and retention bounds; and
+10. returns deterministic expiry, retention and remaining-budget metadata.
 
 Provider exceptions and malformed snapshots become stable redacted
 `IngestionDenied` errors. Payloads, credentials, provider exception text and
 private contract values are not copied into public errors.
 Typed entitlement objects and their nested rate limits are reconstructed and
 revalidated at this boundary, so a forged or post-construction-mutated dataclass
-does not inherit trust from its Python type. Requests and rate-budget snapshots
+does not inherit trust from its Python type. Timestamp awareness is checked on
+the original snapshot before UTC normalization, so a naive value cannot be
+healed through the host's local timezone. Requests and rate-budget snapshots
 are reconstructed and revalidated for the same reason.
+Security-sensitive strings and frozen sets must have exact built-in runtime
+types. Subclasses with forged equality, iteration or membership behavior are
+rejected rather than treated as typed contract values.
+Provider identifiers are capped at 256 characters and terms URLs at 2,048
+characters in both typed and JSON contracts.
+
+Capability-to-record binding is explicit: fund listing covers fund strategies
+and share classes; profile covers fund strategies, share classes, managers,
+benchmarks, issuers and platform listings; share-class, NAV, benchmark,
+manager-tenure and holding calls cover their matching entity types; fees cover
+fund strategies and share classes; purchase status covers share classes and
+platform listings; disclosures cover canonical entities; and external ratings
+cover only the isolated `external_rating` namespace. A broad adapter capability
+therefore cannot authorize an unrelated record such as a holding fetched under
+`GET_PROFILE`.
 
 ## Rate-limit state
 
@@ -73,9 +91,13 @@ canonical UTC instants. Local wall-clock folds or gaps cannot extend a policy
 window or make two different instants compare equal.
 Per-period and burst allowances are capped at 1,000,000,000, an individual
 request at 1,000,000 operations, and a supplied counter at 1,000,000,000.
-Provider records are also subject to bounded container width and total JSON-node
-count before schema traversal. These are defensive implementation ceilings, not
-provider-advertised quotas.
+Provider records are also subject to bounded container width, total JSON-node
+count, 65,536 bytes per string and 1,000,000 aggregate string bytes before
+schema traversal. Provider-contract Schema mirrors the SDK maxima for rate
+allowances, periods and retention. These are defensive implementation ceilings,
+not provider-advertised quotas.
+Strings that cannot be encoded as strict UTF-8, including lone surrogates from
+escaped JSON, are rejected through the same stable redacted validation boundary.
 
 ## Adapter and data boundary
 

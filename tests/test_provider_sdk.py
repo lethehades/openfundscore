@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+import time
 import unittest
 from copy import deepcopy
 from datetime import UTC, datetime, timedelta, timezone, tzinfo
@@ -63,6 +65,18 @@ class ExplodingWideList(list):
 class AllContainsFrozenSet(frozenset):
     def __contains__(self, item) -> bool:
         return True
+
+
+class ForgedIterationFrozenSet(frozenset):
+    forged: tuple[object, ...]
+
+    def __new__(cls, actual, forged):
+        instance = super().__new__(cls, actual)
+        instance.forged = tuple(forged)
+        return instance
+
+    def __iter__(self):
+        return iter(self.forged)
 
 
 class AlwaysEqualStr(str):
@@ -978,6 +992,40 @@ class ProviderSdkTests(unittest.TestCase):
             self._authorize(value)
         self.assertEqual("entitlement_lookup_failed", raised.exception.code)
 
+    def test_mutated_naive_entitlement_timestamps_are_never_healed_by_host_timezone(
+        self,
+    ) -> None:
+        if not hasattr(time, "tzset"):
+            self.skipTest("host timezone switching requires time.tzset")
+        original_timezone = os.environ.get("TZ")
+        try:
+            os.environ["TZ"] = "America/New_York"
+            time.tzset()
+            for field, naive_local_time in (
+                ("evaluated_at", datetime(2026, 8, 20, 20, 0)),  # noqa: DTZ001
+                ("valid_until", datetime(2026, 8, 21, 20, 0)),  # noqa: DTZ001
+                (
+                    "rights_reviewed_at",
+                    datetime(2026, 8, 19, 20, 0),  # noqa: DTZ001
+                ),
+            ):
+                with self.subTest(field=field):
+                    value = entitlements()
+                    object.__setattr__(value, field, naive_local_time)
+                    with self.assertRaises(IngestionDenied) as raised:
+                        self._authorize(value, document=record())
+                    self.assertEqual(
+                        "entitlement_lookup_failed",
+                        raised.exception.code,
+                    )
+                    self.assertIsNone(raised.exception.__cause__)
+        finally:
+            if original_timezone is None:
+                os.environ.pop("TZ", None)
+            else:
+                os.environ["TZ"] = original_timezone
+            time.tzset()
+
     def test_rate_window_coverage_uses_canonical_utc_across_dst_fold(self) -> None:
         eastern = ZoneInfo("America/New_York")
         period_start = datetime(2026, 11, 1, 1, 0, tzinfo=eastern, fold=0)
@@ -1204,10 +1252,11 @@ class ProviderSdkTests(unittest.TestCase):
             self._authorize(value, document=document)
 
         budget = RateLimitBudget(
-            provider_id=AlwaysEqualStr("provider-2"),
+            provider_id="provider-1",
             period_started_at=EVALUATED_AT,
             requests_used=0,
         )
+        object.__setattr__(budget, "provider_id", AlwaysEqualStr("provider-2"))
         with self.assertRaises(IngestionDenied):
             self._authorize(value, budget=budget)
 
@@ -1236,6 +1285,160 @@ class ProviderSdkTests(unittest.TestCase):
         with self.assertRaises(IngestionDenied) as raised:
             self._authorize(value, document=document)
         self.assertNotIn("KeyError", str(raised.exception))
+
+    def test_frozenset_subclasses_cannot_forge_authorized_views(self) -> None:
+        display_only = entitlements(
+            rights_mode=RightsMode.DISPLAY_ONLY,
+            cache_allowed=False,
+            cache_ttl_seconds=None,
+            derived_works_allowed=False,
+            public_display_allowed=True,
+            redistribution_allowed=False,
+            retention_days=0,
+        )
+        hidden_use = IngestionRequest(
+            capability=ProviderCapability.GET_PROFILE,
+            attribution_ready=True,
+        )
+        object.__setattr__(
+            hidden_use,
+            "uses",
+            ForgedIterationFrozenSet({DataUse.DERIVED_WORK}, ()),
+        )
+        with self.assertRaises(IngestionDenied) as raised:
+            self._authorize(display_only, request=hidden_use)
+        self.assertEqual("invalid_ingestion_request", raised.exception.code)
+
+        forged_capabilities = entitlements()
+        object.__setattr__(
+            forged_capabilities,
+            "capabilities",
+            ForgedIterationFrozenSet(
+                {ProviderCapability.GET_ENTITLEMENTS},
+                {
+                    ProviderCapability.GET_ENTITLEMENTS,
+                    ProviderCapability.GET_PROFILE,
+                },
+            ),
+        )
+        provider = LocalProvider(forged_capabilities)
+        provider.capabilities = forged_capabilities.capabilities
+        with self.assertRaises(IngestionDenied) as raised:
+            self._authorize(forged_capabilities, provider=provider)
+        self.assertEqual("entitlement_lookup_failed", raised.exception.code)
+
+        forged_jurisdiction = entitlements()
+        object.__setattr__(
+            forged_jurisdiction,
+            "jurisdictions",
+            ForgedIterationFrozenSet({"CN"}, {"JP"}),
+        )
+        document = record_for(entitlements())
+        document["jurisdiction"] = "JP"
+        with self.assertRaises(IngestionDenied) as raised:
+            self._authorize(forged_jurisdiction, document=document)
+        self.assertEqual("entitlement_lookup_failed", raised.exception.code)
+
+    def test_schema_version_subclasses_cannot_forge_resource_identity(self) -> None:
+        value = entitlements()
+        with self.assertRaises(IngestionDenied) as raised:
+            authorize_ingestion(
+                LocalProvider(value),
+                record_for(value),
+                schema_version=AlwaysEqualStr("9.9.9"),
+                evaluation_timestamp=EVALUATED_AT,
+                request=IngestionRequest(
+                    capability=ProviderCapability.GET_PROFILE,
+                ),
+                rate_limit_budget=RateLimitBudget(
+                    provider_id="provider-1",
+                    period_started_at=EVALUATED_AT,
+                    requests_used=0,
+                ),
+            )
+        self.assertEqual("invalid_provider_record", raised.exception.code)
+
+    def test_capability_is_bound_to_the_provider_record_data_plane(self) -> None:
+        capabilities = frozenset(
+            {
+                ProviderCapability.GET_ENTITLEMENTS,
+                ProviderCapability.GET_PROFILE,
+                ProviderCapability.GET_HOLDINGS,
+            }
+        )
+        value = entitlements(capabilities=capabilities)
+        provider = LocalProvider(value)
+        provider.capabilities = capabilities
+        document = record_for(value)
+        document["entity_type"] = "holding"
+        document["entity_id"] = "holding-1"
+        with self.assertRaises(IngestionDenied) as raised:
+            self._authorize(
+                value,
+                document=document,
+                provider=provider,
+                request=IngestionRequest(
+                    capability=ProviderCapability.GET_PROFILE,
+                ),
+            )
+        self.assertEqual("capability_record_mismatch", raised.exception.code)
+        self.assertEqual("$.entity_type", raised.exception.path)
+
+    def test_provider_record_scalar_bytes_are_bounded(self) -> None:
+        document = record()
+        document["value"] = "x" * 1_000_000
+        with self.assertRaises(IngestionDenied) as raised:
+            self._authorize(entitlements(), document=document)
+        self.assertEqual("invalid_provider_record", raised.exception.code)
+        self.assertEqual("$.value", raised.exception.path)
+
+        aggregate = record()
+        aggregate["value"] = ["x" * 60_000 for _ in range(20)]
+        with self.assertRaises(IngestionDenied) as raised:
+            self._authorize(entitlements(), document=aggregate)
+        self.assertEqual("invalid_provider_record", raised.exception.code)
+
+        huge_key = record()
+        huge_key["value"] = {"k" * 70_000: 1}
+        with self.assertRaises(IngestionDenied) as raised:
+            self._authorize(entitlements(), document=huge_key)
+        self.assertEqual("invalid_provider_record", raised.exception.code)
+
+        surrogate = record()
+        surrogate["value"] = "\ud800"
+        with self.assertRaises(IngestionDenied) as raised:
+            self._authorize(entitlements(), document=surrogate)
+        self.assertEqual("invalid_provider_record", raised.exception.code)
+        self.assertNotIn("surrogate", str(raised.exception).lower())
+
+    def test_typed_provider_strings_match_packaged_schema_bounds(self) -> None:
+        for changes, expected_path in (
+            ({"provider_id": "p" * 257}, "$.provider_id"),
+            (
+                {"terms_url": "https://example.com/" + "a" * 2049},
+                "$.terms_url",
+            ),
+        ):
+            with self.subTest(expected_path=expected_path):
+                with self.assertRaises(ProviderContractError) as raised:
+                    entitlements(**changes)
+                self.assertEqual(expected_path, raised.exception.path)
+
+        with self.assertRaises(ProviderContractError) as raised:
+            RateLimitBudget(
+                provider_id="p" * 257,
+                period_started_at=EVALUATED_AT,
+                requests_used=0,
+            )
+        self.assertEqual("$.provider_id", raised.exception.path)
+
+        with self.assertRaises(ProviderContractError) as raised:
+            RateLimit(
+                requests_per_period=1,
+                period_seconds=1,
+                burst=1_000_000_001,
+            )
+        self.assertEqual("$.burst", raised.exception.path)
 
 
 if __name__ == "__main__":

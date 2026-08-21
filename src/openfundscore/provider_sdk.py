@@ -105,7 +105,44 @@ _MAX_RATE_REQUESTS = 1_000_000_000
 _MAX_REQUEST_COUNT = 1_000_000
 _MAX_CACHE_TTL_SECONDS = 365 * 24 * 60 * 60
 _MAX_RETENTION_DAYS = 36_500
+_MAX_PROVIDER_ID_LENGTH = 256
+_MAX_TERMS_URL_LENGTH = 2_048
 _UNIX_EPOCH = datetime(1970, 1, 1, tzinfo=UTC)
+_CAPABILITY_ENTITY_TYPES: dict[ProviderCapability, frozenset[str]] = {
+    ProviderCapability.LIST_FUNDS: frozenset({"fund_strategy", "share_class"}),
+    ProviderCapability.GET_PROFILE: frozenset(
+        {
+            "fund_strategy",
+            "share_class",
+            "manager",
+            "benchmark",
+            "issuer",
+            "platform_listing",
+        }
+    ),
+    ProviderCapability.GET_SHARE_CLASSES: frozenset({"share_class"}),
+    ProviderCapability.GET_NAV_SERIES: frozenset({"share_class"}),
+    ProviderCapability.GET_BENCHMARK: frozenset({"benchmark"}),
+    ProviderCapability.GET_MANAGER_TENURES: frozenset({"manager_tenure"}),
+    ProviderCapability.GET_HOLDINGS: frozenset({"holding"}),
+    ProviderCapability.GET_FEES: frozenset({"fund_strategy", "share_class"}),
+    ProviderCapability.GET_PURCHASE_STATUS: frozenset(
+        {"share_class", "platform_listing"}
+    ),
+    ProviderCapability.GET_DISCLOSURES: frozenset(
+        {
+            "fund_strategy",
+            "share_class",
+            "manager",
+            "manager_tenure",
+            "benchmark",
+            "holding",
+            "issuer",
+            "platform_listing",
+        }
+    ),
+    ProviderCapability.GET_EXTERNAL_RATINGS: frozenset({"external_rating"}),
+}
 
 
 def _is_aware(value: object) -> bool:
@@ -204,13 +241,17 @@ class RateLimit:
                 path="$.period_seconds",
                 message="rate-limit period exceeds the supported bound",
             )
-        if self.requests_per_period > _MAX_RATE_REQUESTS or (
-            self.burst is not None and self.burst > _MAX_RATE_REQUESTS
-        ):
+        if self.requests_per_period > _MAX_RATE_REQUESTS:
             raise ProviderContractError(
                 code="invalid_rate_limit",
                 path="$.requests_per_period",
                 message="rate-limit request counts exceed the supported bound",
+            )
+        if self.burst is not None and self.burst > _MAX_RATE_REQUESTS:
+            raise ProviderContractError(
+                code="invalid_rate_limit",
+                path="$.burst",
+                message="rate-limit burst exceeds the supported bound",
             )
 
 
@@ -238,7 +279,11 @@ class ProviderEntitlements:
     rate_limit: RateLimit
 
     def __post_init__(self) -> None:
-        if not isinstance(self.provider_id, str) or not self.provider_id.strip():
+        if (
+            type(self.provider_id) is not str
+            or not self.provider_id.strip()
+            or len(self.provider_id) > _MAX_PROVIDER_ID_LENGTH
+        ):
             raise ProviderContractError(
                 code="invalid_contract",
                 path="$.provider_id",
@@ -269,7 +314,7 @@ class ProviderEntitlements:
                     path=f"$.{field}",
                     message="rights flags must be booleans",
                 )
-        if not isinstance(self.rate_limit, RateLimit):
+        if type(self.rate_limit) is not RateLimit:
             raise ProviderContractError(
                 code="invalid_contract",
                 path="$.rate_limit",
@@ -318,17 +363,21 @@ class ProviderEntitlements:
                 path="$.rights_reviewed_at",
                 message="rights cannot be reviewed after their evaluation instant",
             )
-        if not _is_public_https_url(self.terms_url):
+        if (
+            type(self.terms_url) is not str
+            or len(self.terms_url) > _MAX_TERMS_URL_LENGTH
+            or not _is_public_https_url(self.terms_url)
+        ):
             raise ProviderContractError(
                 code="invalid_contract",
                 path="$.terms_url",
                 message="provider terms must be an absolute public HTTPS URL",
             )
         if (
-            not isinstance(self.jurisdictions, frozenset)
+            type(self.jurisdictions) is not frozenset
             or not self.jurisdictions
             or any(
-                not isinstance(item, str) or _JURISDICTION_RE.fullmatch(item) is None
+                type(item) is not str or _JURISDICTION_RE.fullmatch(item) is None
                 for item in self.jurisdictions
             )
         ):
@@ -338,11 +387,9 @@ class ProviderEntitlements:
                 message="jurisdictions must be a non-empty frozen set",
             )
         if (
-            not isinstance(self.capabilities, frozenset)
+            type(self.capabilities) is not frozenset
             or ProviderCapability.GET_ENTITLEMENTS not in self.capabilities
-            or any(
-                not isinstance(item, ProviderCapability) for item in self.capabilities
-            )
+            or any(type(item) is not ProviderCapability for item in self.capabilities)
         ):
             raise ProviderContractError(
                 code="missing_entitlement_capability",
@@ -450,7 +497,7 @@ class IngestionRequest:
     attribution_ready: bool = False
 
     def __post_init__(self) -> None:
-        if not isinstance(self.capability, ProviderCapability):
+        if type(self.capability) is not ProviderCapability:
             raise ProviderContractError(
                 code="invalid_request",
                 path="$.capability",
@@ -462,8 +509,8 @@ class IngestionRequest:
                 path="$.capability",
                 message="entitlement lookup is not a data-ingestion capability",
             )
-        if not isinstance(self.uses, frozenset) or any(
-            not isinstance(item, DataUse) for item in self.uses
+        if type(self.uses) is not frozenset or any(
+            type(item) is not DataUse for item in self.uses
         ):
             raise ProviderContractError(
                 code="invalid_request",
@@ -511,7 +558,11 @@ class RateLimitBudget:
     requests_used: int
 
     def __post_init__(self) -> None:
-        if not isinstance(self.provider_id, str) or not self.provider_id.strip():
+        if (
+            type(self.provider_id) is not str
+            or not self.provider_id.strip()
+            or len(self.provider_id) > _MAX_PROVIDER_ID_LENGTH
+        ):
             raise ProviderContractError(
                 code="invalid_budget",
                 path="$.provider_id",
@@ -668,10 +719,16 @@ def _validate_record_boundary(
 
 def _validated_entitlements_copy(value: ProviderEntitlements) -> ProviderEntitlements:
     if (
-        not isinstance(value.provider_id, str)
-        or not isinstance(value.jurisdictions, frozenset)
-        or not isinstance(value.capabilities, frozenset)
-        or not isinstance(value.rate_limit, RateLimit)
+        type(value.provider_id) is not str
+        or type(value.jurisdictions) is not frozenset
+        or type(value.capabilities) is not frozenset
+        or type(value.rate_limit) is not RateLimit
+        or not _is_aware(value.evaluated_at)
+        or (value.valid_until is not None and not _is_aware(value.valid_until))
+        or (
+            value.rights_reviewed_at is not None
+            and not _is_aware(value.rights_reviewed_at)
+        )
     ):
         raise TypeError("rate limit must use the typed contract")
     rate_limit = RateLimit(
@@ -688,12 +745,9 @@ def _validated_entitlements_copy(value: ProviderEntitlements) -> ProviderEntitle
             else _contract_utc(value.valid_until, path="$.valid_until")
         ),
         source_type=value.source_type,
-        jurisdictions=frozenset(
-            str.__str__(item) if isinstance(item, str) else item
-            for item in value.jurisdictions
-        ),
+        jurisdictions=frozenset(value.jurisdictions),
         authentication_mode=value.authentication_mode,
-        capabilities=frozenset(tuple(value.capabilities)),
+        capabilities=frozenset(value.capabilities),
         rights_mode=value.rights_mode,
         cache_allowed=value.cache_allowed,
         cache_ttl_seconds=value.cache_ttl_seconds,
@@ -702,11 +756,7 @@ def _validated_entitlements_copy(value: ProviderEntitlements) -> ProviderEntitle
         redistribution_allowed=value.redistribution_allowed,
         retention_days=value.retention_days,
         attribution_required=value.attribution_required,
-        terms_url=(
-            None
-            if value.terms_url is None
-            else str.__str__(value.terms_url)
-        ),
+        terms_url=(None if value.terms_url is None else str.__str__(value.terms_url)),
         rights_reviewed_at=(
             None
             if value.rights_reviewed_at is None
@@ -720,11 +770,11 @@ def _validated_entitlements_copy(value: ProviderEntitlements) -> ProviderEntitle
 
 
 def _validated_request_copy(value: IngestionRequest) -> IngestionRequest:
-    if not isinstance(value.uses, frozenset):
+    if type(value.uses) is not frozenset:
         raise TypeError("request uses must use the typed contract")
     return IngestionRequest(
         capability=value.capability,
-        uses=frozenset(tuple(value.uses)),
+        uses=frozenset(value.uses),
         request_count=value.request_count,
         cache_ttl_seconds=value.cache_ttl_seconds,
         attribution_ready=value.attribution_ready,
@@ -732,7 +782,7 @@ def _validated_request_copy(value: IngestionRequest) -> IngestionRequest:
 
 
 def _validated_budget_copy(value: RateLimitBudget) -> RateLimitBudget:
-    if not isinstance(value.provider_id, str):
+    if type(value.provider_id) is not str:
         raise TypeError("budget provider id must use the typed contract")
     return RateLimitBudget(
         provider_id=str.__str__(value.provider_id),
@@ -753,12 +803,14 @@ def _load_entitlements(
     try:
         raw_provider_id = provider.provider_id
         raw_capabilities = provider.capabilities
-        if not isinstance(raw_provider_id, str) or not isinstance(
-            raw_capabilities, frozenset
+        if (
+            type(raw_provider_id) is not str
+            or len(raw_provider_id) > _MAX_PROVIDER_ID_LENGTH
+            or type(raw_capabilities) is not frozenset
         ):
             raise TypeError("provider identity contract is malformed")
         provider_id = str.__str__(raw_provider_id)
-        capabilities = frozenset(tuple(raw_capabilities))
+        capabilities = frozenset(raw_capabilities)
         entitlements = provider.get_entitlements(
             evaluation_timestamp=evaluation_timestamp,
         )
@@ -916,6 +968,13 @@ def authorize_ingestion(
     rate_limit_budget: RateLimitBudget,
 ) -> IngestionAuthorization:
     """Validate one provider record and return a deterministic authorization."""
+    if not isinstance(schema_version, str):
+        _deny(
+            code="invalid_provider_record",
+            path="$schema_version",
+            message="provider record failed the ingestion contract",
+        )
+    schema_version = str.__str__(schema_version)
     if not _is_aware(evaluation_timestamp):
         _deny(
             code="invalid_evaluation_timestamp",
@@ -995,6 +1054,16 @@ def authorize_ingestion(
             code="capability_not_authorized",
             path="$request.capability",
             message="provider capability is unavailable or not entitled",
+        )
+    allowed_entity_types = _CAPABILITY_ENTITY_TYPES.get(request.capability)
+    if (
+        allowed_entity_types is None
+        or record.get("entity_type") not in allowed_entity_types
+    ):
+        _deny(
+            code="capability_record_mismatch",
+            path="$.entity_type",
+            message="provider capability does not authorize this record data plane",
         )
     _enforce_record_contract(record, entitlements)
     if entitlements.rights_mode is RightsMode.UNKNOWN_BLOCKED:

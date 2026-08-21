@@ -14,7 +14,7 @@
     "rights"
   ],
   "properties": {
-    "provider_id": {"type": "string", "minLength": 1},
+    "provider_id": {"type": "string", "minLength": 1, "maxLength": 256},
     "source_type": {
       "enum": [
         "regulator",
@@ -31,8 +31,9 @@
     "jurisdictions": {
       "type": "array",
       "minItems": 1,
+      "maxItems": 250,
       "uniqueItems": true,
-      "items": {"type": "string", "minLength": 1}
+      "items": {"type": "string", "minLength": 1, "maxLength": 16}
     },
     "authentication_mode": {
       "description": "Authentication method only. Credentials and secrets are never part of this contract.",
@@ -44,9 +45,9 @@
       "additionalProperties": false,
       "required": ["requests_per_period", "period_seconds"],
       "properties": {
-        "requests_per_period": {"type": "integer", "minimum": 1},
-        "period_seconds": {"type": "integer", "minimum": 1},
-        "burst": {"type": "integer", "minimum": 1}
+        "requests_per_period": {"type": "integer", "minimum": 1, "maximum": 1000000000},
+        "period_seconds": {"type": "integer", "minimum": 1, "maximum": 31536000},
+        "burst": {"type": "integer", "minimum": 1, "maximum": 1000000000}
       }
     },
     "rights": {
@@ -69,13 +70,13 @@
             "unknown_blocked"
           ]
         },
-        "terms_url": {"type": ["string", "null"], "format": "uri"},
+        "terms_url": {"type": ["string", "null"], "format": "uri", "maxLength": 2048},
         "cache_allowed": {"type": "boolean"},
         "derived_works_allowed": {"type": "boolean"},
         "redistribution_allowed": {"type": "boolean"},
         "attribution_required": {"type": "boolean"},
-        "retention_days": {"type": ["integer", "null"], "minimum": 0},
-        "reviewed_at": {"type": ["string", "null"], "format": "date-time"}
+        "retention_days": {"type": ["integer", "null"], "minimum": 0, "maximum": 36500},
+        "reviewed_at": {"type": ["string", "null"], "format": "date-time", "maxLength": 64}
       }
     }
   },

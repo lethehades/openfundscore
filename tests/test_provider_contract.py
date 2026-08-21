@@ -258,6 +258,45 @@ class ProviderContractTests(unittest.TestCase):
                 with self.assertRaises(ValidationError):
                     validator.validate(contract)
 
+        for field, value in (
+            ("requests_per_period", 1_000_000_001),
+            ("period_seconds", 31_536_001),
+            ("burst", 1_000_000_001),
+        ):
+            with self.subTest(field=field, value=value):
+                contract = self._provider_contract()
+                contract["rate_limit"][field] = value
+                with self.assertRaises(ValidationError):
+                    validator.validate(contract)
+
+    def test_contract_and_record_scalar_and_retention_bounds_are_explicit(self) -> None:
+        contract_validator = Draft202012Validator(
+            self._load("provider_contract.schema.json")
+        )
+        record_validator = Draft202012Validator(
+            self._load("provider_record.schema.json")
+        )
+
+        contract = self._provider_contract()
+        contract["provider_id"] = "p" * 257
+        with self.assertRaises(ValidationError):
+            contract_validator.validate(contract)
+
+        contract = self._provider_contract()
+        contract["rights"]["retention_days"] = 36_501
+        with self.assertRaises(ValidationError):
+            contract_validator.validate(contract)
+
+        record = self._provider_record()
+        record["field"] = "f" * 257
+        with self.assertRaises(ValidationError):
+            record_validator.validate(record)
+
+        record = self._provider_record()
+        record["rights"]["retention_days"] = 36_501
+        with self.assertRaises(ValidationError):
+            record_validator.validate(record)
+
     def test_each_rights_mode_accepts_a_self_consistent_contract(self) -> None:
         validator = Draft202012Validator(self._load("provider_contract.schema.json"))
         for mode in (
