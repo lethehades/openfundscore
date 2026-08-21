@@ -11,23 +11,48 @@ if TYPE_CHECKING:
         PublicationGateResult,
         evaluate_publication_gate,
     )
+    from .strategy_mapping import (
+        MappingDecision,
+        StrategyMappingError,
+        load_packaged_strategy_mapping,
+        load_strategy_mapping,
+        map_strategy_family,
+        validate_strategy_mapping,
+    )
     from .validation import RecordType, RecordValidationError, validate_record
 
 
 __version__ = "0.2.0.dev0"
 
 __all__ = (
+    "MappingDecision",
     "PublicationDecision",
     "PublicationGateError",
     "PublicationGateResult",
     "RecordType",
     "RecordValidationError",
+    "StrategyMappingError",
     "evaluate_publication_gate",
+    "load_packaged_strategy_mapping",
+    "load_strategy_mapping",
+    "map_strategy_family",
     "validate_record",
+    "validate_strategy_mapping",
 )
 
 
 def __getattr__(name: str) -> Any:
+    if name in {
+        "MappingDecision",
+        "StrategyMappingError",
+        "load_packaged_strategy_mapping",
+        "load_strategy_mapping",
+        "map_strategy_family",
+        "validate_strategy_mapping",
+    }:
+        from . import strategy_mapping
+
+        return getattr(strategy_mapping, name)
     if name in {"RecordType", "RecordValidationError", "validate_record"}:
         from .validation import RecordType, RecordValidationError, validate_record
 

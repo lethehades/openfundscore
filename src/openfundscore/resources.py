@@ -31,6 +31,7 @@ class ResourceType(StrEnum):
 
     SCHEMA = "schema"
     SCORING_CONFIG = "scoring-config"
+    STRATEGY_MAPPING = "strategy-mapping"
 
 
 @dataclass(frozen=True, slots=True)

@@ -36,4 +36,5 @@ where = ["src"]
   "index.json",
   "schema/*/*.json",
   "scoring-config/*/*.json",
+  "strategy-mapping/*/*.json",
 ]
