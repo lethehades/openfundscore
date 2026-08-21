@@ -1,0 +1,129 @@
+{
+  "mapping_id": "complex_alternatives",
+  "mapping_version": "0.1.0",
+  "status": "research-preview",
+  "scoring_config": {
+    "type": "scoring-config",
+    "name": "openfundscore-core",
+    "version": "0.1.0"
+  },
+  "unrated_reasons": {
+    "insufficient_comparable_sample": "No sufficient, comparable public-fund peer sample or calibrated evidence exists in this research preview; the bucket is tracked but never scored.",
+    "undefined_complex_strategy": "The product is a complex alternative strategy without a defined peer bucket or score profile; it stays explicitly unrated instead of receiving a default mapping."
+  },
+  "peer_buckets": {
+    "market_neutral": {
+      "label": "Market-neutral public funds (beta-hedged long/short, e.g. stock portfolios hedged with index futures)",
+      "included_strategies": [
+        "equity market-neutral with index-futures hedging",
+        "statistical arbitrage with near-zero net beta",
+        "beta-hedged alpha public funds"
+      ],
+      "score_profile": "unrated",
+      "unrated_reason": "insufficient_comparable_sample",
+      "admission_requirements": {
+        "min_peer_count": 30,
+        "min_track_months": 36,
+        "required_disclosures": [
+          "net_value_history",
+          "portfolio_holdings",
+          "derivative_positions",
+          "fee_schedule"
+        ]
+      }
+    },
+    "long_short_equity": {
+      "label": "Long-short equity public funds with variable net exposure",
+      "included_strategies": [
+        "discretionary long-short equity",
+        "quantitative long-short equity",
+        "equity hedge style public funds"
+      ],
+      "score_profile": "unrated",
+      "unrated_reason": "insufficient_comparable_sample",
+      "admission_requirements": {
+        "min_peer_count": 30,
+        "min_track_months": 36,
+        "required_disclosures": [
+          "net_value_history",
+          "portfolio_holdings",
+          "derivative_positions",
+          "fee_schedule"
+        ]
+      }
+    },
+    "absolute_return_multi_strategy": {
+      "label": "Absolute-return and multi-strategy public funds targeting low correlation to equity and bond beta",
+      "included_strategies": [
+        "absolute-return target public funds",
+        "multi-strategy alternative public funds",
+        "arbitrage-blend public funds"
+      ],
+      "score_profile": "unrated",
+      "unrated_reason": "insufficient_comparable_sample",
+      "admission_requirements": {
+        "min_peer_count": 30,
+        "min_track_months": 36,
+        "required_disclosures": [
+          "net_value_history",
+          "portfolio_holdings",
+          "derivative_positions",
+          "fee_schedule"
+        ]
+      }
+    },
+    "managed_futures_derivatives": {
+      "label": "Derivatives-heavy public funds (managed futures / CTA and futures-first mandates)",
+      "included_strategies": [
+        "managed futures / CTA public funds",
+        "commodity-futures trend strategies",
+        "futures-first multi-asset derivative mandates"
+      ],
+      "score_profile": "unrated",
+      "unrated_reason": "insufficient_comparable_sample",
+      "admission_requirements": {
+        "min_peer_count": 20,
+        "min_track_months": 36,
+        "required_disclosures": [
+          "net_value_history",
+          "derivative_positions",
+          "margin_and_leverage_reporting",
+          "fee_schedule"
+        ]
+      }
+    },
+    "other_complex_alternative": {
+      "label": "Other complex public-fund strategies without a defined bucket (catch-all; never default-mapped)",
+      "included_strategies": [
+        "complex strategies not matching a defined peer bucket",
+        "transforming or legally incomparable alternative products"
+      ],
+      "score_profile": "unrated",
+      "unrated_reason": "undefined_complex_strategy",
+      "admission_requirements": {
+        "min_peer_count": 2,
+        "min_track_months": 12,
+        "required_disclosures": [
+          "net_value_history"
+        ]
+      }
+    }
+  },
+  "strategy_families": {
+    "market_neutral": {
+      "peer_bucket": "market_neutral"
+    },
+    "long_short_equity": {
+      "peer_bucket": "long_short_equity"
+    },
+    "absolute_return": {
+      "peer_bucket": "absolute_return_multi_strategy"
+    },
+    "derivatives_heavy": {
+      "peer_bucket": "managed_futures_derivatives"
+    },
+    "other_complex_alternative": {
+      "peer_bucket": "other_complex_alternative"
+    }
+  }
+}

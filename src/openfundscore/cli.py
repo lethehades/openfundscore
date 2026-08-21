@@ -21,6 +21,12 @@ from .score_config import (
     load_score_config,
     validate_score_config,
 )
+from .strategy_mapping import (
+    StrategyMappingError,
+    load_strategy_mapping,
+    map_strategy_family,
+    validate_strategy_mapping,
+)
 from .validation import RecordType, RecordValidationError, validate_record
 
 _MAX_RECORD_BYTES = 8 * 1024 * 1024
@@ -151,6 +157,19 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     validate.add_argument("path", help="path to a scoring JSON file")
 
+    validate_mapping = subparsers.add_parser(
+        "validate-mapping",
+        help="validate a versioned complex-alternatives strategy mapping",
+    )
+    validate_mapping.add_argument("path", help="path to a strategy mapping JSON file")
+
+    strategy_map = subparsers.add_parser(
+        "strategy-map",
+        help="print the peer-bucket and score-profile decision for a strategy family",
+    )
+    strategy_map.add_argument("family", help="snake_case strategy family identifier")
+    strategy_map.add_argument("--mapping-version", required=True)
+
     validate_record_command = subparsers.add_parser(
         "validate-record",
         help="validate a contract record with its schema and semantics",
@@ -270,6 +289,54 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(
             f"valid: {len(config['category_profiles'])} category profiles; "
             f"manager model: {manager_total}"
+        )
+        return 0
+
+    if args.command == "validate-mapping":
+        try:
+            mapping = load_strategy_mapping(args.path)
+            validate_strategy_mapping(mapping)
+        except (ResourceError, StrategyMappingError):
+            print(
+                "openfundscore: error: strategy mapping validation failed",
+                file=sys.stderr,
+            )
+            return 2
+
+        print(
+            f"valid: {len(mapping['peer_buckets'])} peer buckets; "
+            f"{len(mapping['strategy_families'])} strategy families"
+        )
+        return 0
+
+    if args.command == "strategy-map":
+        try:
+            decision = map_strategy_family(
+                args.family,
+                mapping_version=args.mapping_version,
+            )
+        except (ResourceError, StrategyMappingError):
+            print(
+                "openfundscore: error: strategy mapping operation failed",
+                file=sys.stderr,
+            )
+            return 2
+
+        print(
+            json.dumps(
+                {
+                    "is_rated": decision.is_rated,
+                    "mapping_id": decision.mapping_id,
+                    "mapping_version": decision.mapping_version,
+                    "peer_bucket": decision.peer_bucket,
+                    "resource_sha256": decision.resource_sha256,
+                    "score_profile": decision.score_profile,
+                    "strategy_family": decision.strategy_family,
+                    "unrated_reason": decision.unrated_reason,
+                },
+                indent=2,
+                sort_keys=True,
+            )
         )
         return 0
 

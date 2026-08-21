@@ -44,6 +44,9 @@ questions into one leaderboard.
   provider records/contracts, external ratings and score evidence ledgers.
 - A fail-closed, point-in-time publication gate that keeps private local research
   separate from hosted ratings and raw-data redistribution.
+- A versioned complex-alternatives strategy mapping: market-neutral, long-short,
+  absolute-return, derivatives-heavy and catch-all peer buckets stay explicitly
+  `unrated` until comparable samples and evidence are sufficient.
 - Synthetic A/C/E/I, closed, merged, transformed and conflicting records only;
   no real provider data is bundled.
 
@@ -58,6 +61,13 @@ python3 -m venv .venv
   > /tmp/openfundscore-core-0.1.0.json
 .venv/bin/python -m openfundscore.cli validate-config \
   /tmp/openfundscore-core-0.1.0.json
+.venv/bin/python -m openfundscore.cli resources show \
+  --type strategy-mapping --name complex_alternatives --version 0.1.0 \
+  > /tmp/complex-alternatives-0.1.0.json
+.venv/bin/python -m openfundscore.cli validate-mapping \
+  /tmp/complex-alternatives-0.1.0.json
+.venv/bin/python -m openfundscore.cli strategy-map market_neutral \
+  --mapping-version 0.1.0
 .venv/bin/python -m openfundscore.cli validate-record \
   --type provider_record --schema-version 0.1.0 \
   --evaluation-timestamp 2026-08-21T00:00:00Z provider-record.json

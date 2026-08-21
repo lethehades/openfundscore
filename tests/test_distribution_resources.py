@@ -103,7 +103,7 @@ class DistributionResourceTests(unittest.TestCase):
             wheel_payloads = _wheel_resources(wheels[0])
             sdist_payloads = _sdist_resources(sdists[0])
             self.assertEqual(wheel_payloads, sdist_payloads)
-            self.assertEqual(len(wheel_payloads), 8)
+            self.assertEqual(len(wheel_payloads), 9)
 
             subprocess.run(
                 [
@@ -151,7 +151,7 @@ class DistributionResourceTests(unittest.TestCase):
                     "-c",
                     (
                         "from openfundscore.resources import list_resources,resolve_resource;"
-                        "items=list_resources();assert len(items)==6;"
+                        "items=list_resources();assert len(items)==7;"
                         "[resolve_resource(resource_type=i.key.resource_type,"
                         "name=i.key.name,version=i.key.version).load_json() for i in items];"
                         "print('sdist-wheel-ok')"

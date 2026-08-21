@@ -24,6 +24,49 @@ sufficient peer bucket and explicit profile exist. “Covered” means ingestion
 classification and reporting are supported; it does not force a misleading
 score.
 
+## Complex alternative strategies (research preview)
+
+Market-neutral, long-short, absolute-return, derivatives-heavy (managed
+futures/CTA) and other complex public-fund strategies are mapped by the
+versioned packaged resource `strategy-mapping / complex_alternatives / 0.1.0`
+and the `openfundscore.strategy_mapping` module, never by name heuristics.
+Scoring calls must select `mapping_version` explicitly; each returned decision
+includes the manifest-verified resource SHA-256 so an evaluation can cite the
+exact mapping bytes. Arbitrary validated mapping documents are inspection
+artifacts only and cannot authorize a scoring decision. The v0 validator requires
+exactly the five documented families and their five designated, distinct buckets;
+a new mapping version therefore requires an explicit code/contract update rather
+than silently inheriting v0 semantics.
+
+Custom mapping inspection uses strict UTF-8 JSON: files are capped at 1 MiB,
+duplicate object keys and non-finite numbers are rejected, parser recursion is
+normalized to a redacted error, identifiers are capped at 128 characters, text at
+4,096 characters, arrays at 256 items, and mapping objects at 64 entries. Admission
+requirements are also upper-bounded. File paths, unknown field names, parser text
+and packaged-resource errors are never echoed by the CLI.
+
+| Strategy family | Peer bucket | Score profile (0.1.0) |
+|---|---|---|
+| `market_neutral` | `market_neutral` | `unrated` — insufficient comparable sample |
+| `long_short_equity` | `long_short_equity` | `unrated` — insufficient comparable sample |
+| `absolute_return` | `absolute_return_multi_strategy` | `unrated` — insufficient comparable sample |
+| `derivatives_heavy` | `managed_futures_derivatives` | `unrated` — insufficient comparable sample |
+| `other_complex_alternative` | `other_complex_alternative` (catch-all) | `unrated` — undefined complex strategy |
+
+Rules:
+
+- Named complex families never share one diluted bucket; each keeps its own
+  peer bucket so unlike risk sources are never ranked together.
+- Every bucket declares machine-checkable admission requirements
+  (`min_peer_count`, `min_track_months`, `required_disclosures`). A bucket may
+  only be promoted from `unrated` to a real category profile in a new mapping
+  version once comparable samples and calibrated evidence meet those gates.
+- `unrated` is an explicit decision with a documented reason code; it is not a
+  category profile and never produces a score.
+- Unknown strategy families fail closed with an error. There is no default or
+  best-effort mapping, and no real score or trade is produced anywhere.
+
+
 ## Orthogonal fields
 
 - `vehicle_type`: open-ended, ETF, ETF feeder, LOF, closed-ended, FOF, REIT.

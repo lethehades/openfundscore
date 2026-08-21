@@ -197,6 +197,7 @@ class ResourceCatalogTests(unittest.TestCase):
                 ("schema", "provider_record", "0.1.0"),
                 ("schema", "score_evidence_usage", "0.1.0"),
                 ("scoring-config", "openfundscore-core", "0.1.0"),
+                ("strategy-mapping", "complex_alternatives", "0.1.0"),
             ],
         )
         self.assertTrue(

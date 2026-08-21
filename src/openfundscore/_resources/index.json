@@ -48,6 +48,14 @@
       "internal_path": "scoring-config/openfundscore-core/0.1.0.json",
       "media_type": "application/json",
       "sha256": "e0f9f8ed58e840a078924cce2c5acae661e5a903d82402ecaf152c1ac7c85a16"
+    },
+    {
+      "type": "strategy-mapping",
+      "name": "complex_alternatives",
+      "version": "0.1.0",
+      "internal_path": "strategy-mapping/complex_alternatives/0.1.0.json",
+      "media_type": "application/json",
+      "sha256": "17d39dec73d58243a11a6ce271ac7c995ea698709cf6392baad8ef0331c3b0bc"
     }
   ]
 }

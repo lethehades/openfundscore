@@ -94,9 +94,14 @@ class InstalledWheelResourceTests(unittest.TestCase):
                     (
                         "from openfundscore.resources import list_resources, resolve_resource;"
                         "items=list_resources();"
-                        "assert len(items)==6;"
+                        "assert len(items)==7;"
                         "[resolve_resource(resource_type=i.key.resource_type,"
                         "name=i.key.name,version=i.key.version).load_json() for i in items];"
+                        "from openfundscore.strategy_mapping import map_strategy_family;"
+                        "d=map_strategy_family('market_neutral',mapping_version='0.1.0');"
+                        "assert d.peer_bucket=='market_neutral';"
+                        "assert d.score_profile=='unrated' and not d.is_rated;"
+                        "assert d.unrated_reason=='insufficient_comparable_sample';"
                         "print('api-ok')"
                     ),
                 ],
@@ -122,7 +127,26 @@ class InstalledWheelResourceTests(unittest.TestCase):
                 capture_output=True,
                 text=True,
             )
-            self.assertEqual(len(json.loads(list_probe.stdout)), 6)
+            self.assertEqual(len(json.loads(list_probe.stdout)), 7)
+
+            strategy_map_probe = subprocess.run(
+                [
+                    str(executable),
+                    "strategy-map",
+                    "long_short_equity",
+                    "--mapping-version",
+                    "0.1.0",
+                ],
+                check=True,
+                cwd=runtime,
+                env=clean_environment,
+                capture_output=True,
+                text=True,
+            )
+            strategy_decision = json.loads(strategy_map_probe.stdout)
+            self.assertEqual(strategy_decision["peer_bucket"], "long_short_equity")
+            self.assertEqual(strategy_decision["score_profile"], "unrated")
+            self.assertFalse(strategy_decision["is_rated"])
 
             selector = [
                 "--type",
