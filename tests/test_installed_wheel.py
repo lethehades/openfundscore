@@ -201,6 +201,40 @@ class InstalledWheelResourceTests(unittest.TestCase):
                 "validation-api-ok",
             )
 
+            publication_gate_probe = subprocess.run(
+                [
+                    str(python),
+                    "-c",
+                    (
+                        "from openfundscore import PublicationDecision,"
+                        "evaluate_publication_gate;"
+                        "result=evaluate_publication_gate("
+                        "{'request_id':'local-1','publication_mode':"
+                        "'local_private_research','jurisdictions':[]},"
+                        "evaluation_timestamp='2026-08-21T00:00:00Z');"
+                        "assert result.decision is PublicationDecision.LOCAL_ONLY;"
+                        "print('publication-gate-api-ok')"
+                    ),
+                ],
+                check=False,
+                cwd=runtime,
+                env=clean_environment,
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(
+                publication_gate_probe.returncode,
+                0,
+                msg=(
+                    f"stdout={publication_gate_probe.stdout}\n"
+                    f"stderr={publication_gate_probe.stderr}"
+                ),
+            )
+            self.assertEqual(
+                publication_gate_probe.stdout.strip(),
+                "publication-gate-api-ok",
+            )
+
             for record_type, document in records.items():
                 with self.subTest(installed_record_type=record_type):
                     record_path = runtime / f"{record_type}.json"

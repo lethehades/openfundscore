@@ -42,6 +42,8 @@ questions into one leaderboard.
   provenance requirements and preserved lower-confidence observations.
 - One packaged-Schema-plus-semantics validation API/CLI for manager research,
   provider records/contracts, external ratings and score evidence ledgers.
+- A fail-closed, point-in-time publication gate that keeps private local research
+  separate from hosted ratings and raw-data redistribution.
 - Synthetic A/C/E/I, closed, merged, transformed and conflicting records only;
   no real provider data is bundled.
 
@@ -77,6 +79,7 @@ Schema and semantic validation; see [validation boundary](docs/VALIDATION.md).
 - [Roadmap](docs/ROADMAP.md)
 - [Canonical data model](docs/CANONICAL_DATA_MODEL.md)
 - [Unified validation boundary](docs/VALIDATION.md)
+- [Public rating and redistribution gate](docs/PUBLICATION_GATE.md)
 - [Fund taxonomy](docs/FUND_TAXONOMY.md)
 - [Scoring RFC](docs/SCORING_RFC.md)
 - [Manager research model](docs/MANAGER_RESEARCH.md)
