@@ -31,6 +31,8 @@ def manager_record() -> dict[str, Any]:
         "performance_evidence": [],
         "style_fingerprint": {},
         "workload": {},
+        "research_platform": {},
+        "compliance_assessment": {},
         "compliance_events": [],
         "evidence": [],
         "score_components": {name: deepcopy(component) for name in COMPONENT_IDS},

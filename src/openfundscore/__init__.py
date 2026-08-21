@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
+    from .manager_research import score_manager_research
     from .publication_gate import (
         PublicationDecision,
         PublicationGateError,
@@ -36,12 +37,17 @@ __all__ = (
     "load_packaged_strategy_mapping",
     "load_strategy_mapping",
     "map_strategy_family",
+    "score_manager_research",
     "validate_record",
     "validate_strategy_mapping",
 )
 
 
 def __getattr__(name: str) -> Any:
+    if name == "score_manager_research":
+        from .manager_research import score_manager_research
+
+        return score_manager_research
     if name in {
         "MappingDecision",
         "StrategyMappingError",

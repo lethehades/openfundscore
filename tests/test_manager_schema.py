@@ -8,7 +8,6 @@ from jsonschema import Draft202012Validator, ValidationError
 
 from openfundscore.resources import resolve_resource
 
-
 COMPONENT_IDS = (
     "tenure_attributed_performance",
     "downside_control",
@@ -45,11 +44,11 @@ class ManagerSchemaTests(unittest.TestCase):
             "performance_evidence": [],
             "style_fingerprint": {},
             "workload": {},
+            "research_platform": {},
+            "compliance_assessment": {},
             "compliance_events": [],
             "evidence": [],
-            "score_components": {
-                name: deepcopy(component) for name in COMPONENT_IDS
-            },
+            "score_components": {name: deepcopy(component) for name in COMPONENT_IDS},
         }
 
     def _assert_invalid(self, record: dict[str, Any]) -> None:
@@ -59,6 +58,73 @@ class ManagerSchemaTests(unittest.TestCase):
     def test_minimal_record_with_explicit_empty_research_blocks_is_valid(self) -> None:
         self.validator.validate(self._record())
 
+    def test_domain_fact_strings_must_be_nonempty(self) -> None:
+        for field in ("organisation", "role"):
+            with self.subTest(employment_field=field):
+                record = self._record()
+                record["employment_history"] = [
+                    {
+                        "organisation": "Example Asset Manager",
+                        "role": "Portfolio Manager",
+                        "start_date": "2020-01-01",
+                        "evidence_ids": [],
+                    }
+                ]
+                record["employment_history"][0][field] = ""
+                self._assert_invalid(record)
+
+        record = self._record()
+        record["workload"] = {"team_coverage": "", "evidence_ids": []}
+        self._assert_invalid(record)
+
+    def test_numeric_component_score_cannot_claim_insufficient_confidence(self) -> None:
+        record = self._record()
+        record["evidence"] = [
+            {
+                "evidence_id": "e-score",
+                "tier": "A",
+                "source_url": "https://example.com/score",
+                "published_at": "2026-08-20T00:00:00Z",
+                "fetched_at": "2026-08-21T00:00:00Z",
+                "fact_excerpt": "Auditable public professional evidence.",
+            }
+        ]
+        record["score_components"]["career_track_record"] = {
+            "score": 80,
+            "confidence": "insufficient",
+            "evidence_ids": ["e-score"],
+        }
+        self._assert_invalid(record)
+
+    def test_evidence_reference_and_support_lists_are_unique(self) -> None:
+        record = self._record()
+        record["evidence"] = [
+            {
+                "evidence_id": "e-score",
+                "tier": "A",
+                "source_url": "https://example.com/score",
+                "published_at": "2026-08-20T00:00:00Z",
+                "fetched_at": "2026-08-21T00:00:00Z",
+                "fact_excerpt": "Auditable public professional evidence.",
+                "supports_components": [
+                    "career_track_record",
+                    "career_track_record",
+                ],
+            }
+        ]
+        self._assert_invalid(record)
+
+        record = self._record()
+        record["employment_history"] = [
+            {
+                "organisation": "Example Asset Manager",
+                "role": "Portfolio Manager",
+                "start_date": "2020-01-01",
+                "evidence_ids": ["e-score", "e-score"],
+            }
+        ]
+        self._assert_invalid(record)
+
     def test_all_professional_research_blocks_are_required(self) -> None:
         required_blocks = {
             "professional_profile",
@@ -66,6 +132,8 @@ class ManagerSchemaTests(unittest.TestCase):
             "performance_evidence",
             "style_fingerprint",
             "workload",
+            "research_platform",
+            "compliance_assessment",
             "compliance_events",
         }
         self.assertTrue(required_blocks.issubset(self.schema["required"]))
@@ -84,7 +152,11 @@ class ManagerSchemaTests(unittest.TestCase):
                 is_object = node_type == "object" or (
                     isinstance(node_type, list) and "object" in node_type
                 )
-                if is_object and path != "$" and node.get("additionalProperties") is not False:
+                if (
+                    is_object
+                    and path != "$"
+                    and node.get("additionalProperties") is not False
+                ):
                     open_object_paths.append(path)
                 for key, value in node.items():
                     walk(value, f"{path}/{key}")
@@ -94,6 +166,59 @@ class ManagerSchemaTests(unittest.TestCase):
 
         walk(self.schema)
         self.assertEqual([], open_object_paths)
+
+    def test_style_fingerprint_accepts_timestamped_quantitative_snapshots(self) -> None:
+        record = self._record()
+        record["style_fingerprint"] = {
+            "factor_exposures": {
+                "as_of": "2026-08-20T00:00:00Z",
+                "measures": [
+                    {"name": "value", "value": 0.4},
+                    {"name": "momentum", "value": -0.1},
+                ],
+                "methodology": "rolling regression",
+            },
+            "change_points": [
+                {
+                    "effective_date": "2025-01-01",
+                    "known_at": "2026-08-20T00:00:00Z",
+                    "kind": "mandate_change",
+                    "explanation": "Officially documented mandate change.",
+                    "evidence_ids": ["e-style"],
+                }
+            ],
+            "evidence_ids": ["e-style"],
+        }
+        record["evidence"] = [
+            {
+                "evidence_id": "e-style",
+                "tier": "A",
+                "source_url": "https://example.com/style",
+                "published_at": "2026-08-19T00:00:00Z",
+                "fetched_at": "2026-08-20T00:00:00Z",
+                "fact_excerpt": "Public professional style evidence.",
+            }
+        ]
+        self.validator.validate(record)
+
+    def test_performance_observations_require_unique_ids(self) -> None:
+        record = self._record()
+        item = {
+            "observation_id": "observation-1",
+            "tenure_id": "tenure-1",
+            "window_start": "2020-01-01",
+            "window_end": "2020-12-31",
+            "metric_id": "factor_residual",
+            "value": 0.01,
+            "confidence": "medium",
+        }
+        record["performance_evidence"] = [item, deepcopy(item)]
+        self._assert_invalid(record)
+
+        missing = self._record()
+        del item["observation_id"]
+        missing["performance_evidence"] = [item]
+        self._assert_invalid(missing)
 
     def test_private_or_unknown_fields_are_rejected(self) -> None:
         cases = []
@@ -128,7 +253,7 @@ class ManagerSchemaTests(unittest.TestCase):
             "co_manager_ids": [],
             "evidence_ids": [],
         }
-        for share in ("missing", None, -0.01, 1.01):
+        for share in ("missing", None, -0.01, 0, 1, 1.01):
             with self.subTest(share=share):
                 record = self._record()
                 record["tenures"] = [deepcopy(tenure)]
@@ -136,7 +261,7 @@ class ManagerSchemaTests(unittest.TestCase):
                     record["tenures"][0]["attribution_share"] = share
                 self._assert_invalid(record)
 
-        for share in (0, 0.5, 1):
+        for share in (0.25, 0.5, 0.75):
             with self.subTest(valid_share=share):
                 record = self._record()
                 record["tenures"] = [deepcopy(tenure)]
@@ -145,6 +270,7 @@ class ManagerSchemaTests(unittest.TestCase):
 
     def test_null_performance_value_requires_nonempty_missing_reason(self) -> None:
         evidence = {
+            "observation_id": "observation-1",
             "tenure_id": "tenure-1",
             "window_start": "2020-01-01",
             "window_end": "2021-01-01",
@@ -169,7 +295,9 @@ class ManagerSchemaTests(unittest.TestCase):
         for confidence in ("high", "medium", "low"):
             with self.subTest(confidence=confidence):
                 record = self._record()
-                record["score_components"]["downside_control"]["confidence"] = confidence
+                record["score_components"]["downside_control"]["confidence"] = (
+                    confidence
+                )
                 self._assert_invalid(record)
 
     def test_scored_components_require_nonempty_evidence_ids(self) -> None:
@@ -195,7 +323,11 @@ class ManagerSchemaTests(unittest.TestCase):
             "published_at": "2026-08-20T00:00:00Z",
             "fetched_at": "2026-08-21T00:00:00Z",
         }
-        for fields in ({}, {"fact_excerpt": None}, {"fact_excerpt": "", "content_hash": ""}):
+        for fields in (
+            {},
+            {"fact_excerpt": None},
+            {"fact_excerpt": "", "content_hash": ""},
+        ):
             with self.subTest(fields=fields):
                 record = self._record()
                 record["evidence"] = [{**evidence, **fields}]
@@ -238,6 +370,7 @@ class ManagerSchemaTests(unittest.TestCase):
                 ],
                 "performance_evidence": [
                     {
+                        "observation_id": "observation-1",
                         "tenure_id": "tenure-1",
                         "window_start": "2020-01-01",
                         "window_end": "2021-01-01",
@@ -277,6 +410,7 @@ class ManagerSchemaTests(unittest.TestCase):
             ("tenures", 0, "fund_strategy_id"),
             ("tenures", 0, "co_manager_ids", 0),
             ("tenures", 0, "evidence_ids", 0),
+            ("performance_evidence", 0, "observation_id"),
             ("performance_evidence", 0, "tenure_id"),
             ("performance_evidence", 0, "metric_id"),
             ("compliance_events", 0, "event_id"),
