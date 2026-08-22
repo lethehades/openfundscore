@@ -38,13 +38,21 @@ class CliTests(unittest.TestCase):
 
         self.assertEqual(0, exit_code)
         document = json.loads(output.getvalue())
-        self.assertEqual(len(document), 5)
+        self.assertEqual(len(document), 7)
         self.assertEqual(
-            [item["name"] for item in document],
-            sorted(item["name"] for item in document),
+            [(item["name"], item["version"]) for item in document],
+            sorted((item["name"], item["version"]) for item in document),
         )
         self.assertTrue(all(item["type"] == "schema" for item in document))
-        self.assertTrue(all(item["version"] == "0.1.0" for item in document))
+        for resource_name in ("provider_contract", "provider_record"):
+            self.assertEqual(
+                [
+                    (item["name"], item["version"])
+                    for item in document
+                    if item["name"] == resource_name
+                ],
+                [(resource_name, "0.1.0"), (resource_name, "0.2.0")],
+            )
 
     def test_resources_resolve_returns_logical_metadata_not_a_path(self) -> None:
         output = io.StringIO()

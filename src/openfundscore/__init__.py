@@ -6,6 +6,13 @@ from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from .manager_research import score_manager_research
+    from .official_providers import (
+        OFFICIAL_PROVIDER_SCHEMA_VERSION,
+        FixedHostHttpClient,
+        ProviderHttpError,
+        SecEdgarSubmissionsAdapter,
+        WorldBankIndicatorsAdapter,
+    )
     from .publication_gate import (
         PublicationDecision,
         PublicationGateError,
@@ -26,13 +33,18 @@ if TYPE_CHECKING:
 __version__ = "0.2.0.dev0"
 
 __all__ = (
+    "OFFICIAL_PROVIDER_SCHEMA_VERSION",
+    "FixedHostHttpClient",
     "MappingDecision",
+    "ProviderHttpError",
     "PublicationDecision",
     "PublicationGateError",
     "PublicationGateResult",
     "RecordType",
     "RecordValidationError",
+    "SecEdgarSubmissionsAdapter",
     "StrategyMappingError",
+    "WorldBankIndicatorsAdapter",
     "evaluate_publication_gate",
     "load_packaged_strategy_mapping",
     "load_strategy_mapping",
@@ -44,6 +56,16 @@ __all__ = (
 
 
 def __getattr__(name: str) -> Any:
+    if name in {
+        "FixedHostHttpClient",
+        "OFFICIAL_PROVIDER_SCHEMA_VERSION",
+        "ProviderHttpError",
+        "SecEdgarSubmissionsAdapter",
+        "WorldBankIndicatorsAdapter",
+    }:
+        from . import official_providers
+
+        return getattr(official_providers, name)
     if name == "score_manager_research":
         from .manager_research import score_manager_research
 

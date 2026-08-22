@@ -27,11 +27,27 @@
     },
     {
       "type": "schema",
+      "name": "provider_contract",
+      "version": "0.2.0",
+      "internal_path": "schema/provider_contract/0.2.0.schema.json",
+      "media_type": "application/schema+json",
+      "sha256": "51d5590d9fd33615bbd8e708e851e7765ccd0ace590bb1119aa3fdf21cb1bc0c"
+    },
+    {
+      "type": "schema",
       "name": "provider_record",
       "version": "0.1.0",
       "internal_path": "schema/provider_record/0.1.0.schema.json",
       "media_type": "application/schema+json",
       "sha256": "baf590e637dc0e0bdf01eddf9d51ccbe5e9d3c16057910a9cf7b9b58ccec65bf"
+    },
+    {
+      "type": "schema",
+      "name": "provider_record",
+      "version": "0.2.0",
+      "internal_path": "schema/provider_record/0.2.0.schema.json",
+      "media_type": "application/schema+json",
+      "sha256": "36a25071c7622a6252a51c559c3adae49855a3b2e1bf954ce62c5a8b71c47f5f"
     },
     {
       "type": "schema",
