@@ -9,7 +9,7 @@ from __future__ import annotations
 import math
 from collections.abc import Callable
 from dataclasses import dataclass, fields, is_dataclass, replace
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from itertools import pairwise
 from typing import NoReturn, TypeAlias, cast
 
@@ -45,17 +45,72 @@ def _non_empty(value: object, path: str) -> None:
         _fail("invalid_identifier", path, "identifier exceeds the length limit")
 
 
-def _aware(value: object, path: str) -> None:
-    if not isinstance(value, datetime) or value.tzinfo is None:
-        _fail("timezone_required", path, "timestamp must include a timezone")
+def _canonical_utc(value: object, path: str) -> datetime:
+    if not isinstance(value, datetime) or datetime.tzinfo.__get__(value) is None:
+        _fail("invalid_timestamp", path, "timestamp could not be safely inspected")
+    inspection_failed = False
     try:
         offset = value.utcoffset()
     except Exception:  # noqa: BLE001 -- hostile tzinfo is an input boundary.
-        offset = False
-    if offset is False:
+        inspection_failed = True
+        offset = None
+    if inspection_failed or not isinstance(offset, timedelta):
         _fail("invalid_timestamp", path, "timestamp could not be safely inspected")
-    if offset is None:
-        _fail("timezone_required", path, "timestamp must include a timezone")
+    canonical: datetime | None = None
+    try:
+        safe_offset = timedelta(
+            days=timedelta.days.__get__(offset),
+            seconds=timedelta.seconds.__get__(offset),
+            microseconds=timedelta.microseconds.__get__(offset),
+        )
+        if not -timedelta(days=1) < safe_offset < timedelta(days=1):
+            _fail("invalid_timestamp", path, "timestamp could not be safely inspected")
+        wall_time = datetime(
+            datetime.year.__get__(value),
+            datetime.month.__get__(value),
+            datetime.day.__get__(value),
+            datetime.hour.__get__(value),
+            datetime.minute.__get__(value),
+            datetime.second.__get__(value),
+            datetime.microsecond.__get__(value),
+            tzinfo=UTC,
+            fold=datetime.fold.__get__(value),
+        )
+        utc_time = wall_time - safe_offset
+        canonical = datetime(
+            utc_time.year,
+            utc_time.month,
+            utc_time.day,
+            utc_time.hour,
+            utc_time.minute,
+            utc_time.second,
+            utc_time.microsecond,
+            tzinfo=UTC,
+        )
+    except WalkForwardError:
+        raise
+    except Exception:  # noqa: BLE001 -- datetime arithmetic is an input boundary.
+        canonical = None
+    if canonical is None:
+        _fail("invalid_timestamp", path, "timestamp could not be safely inspected")
+    return canonical
+
+
+def _canonicalize_timestamp(instance: object, field_name: str, path: str) -> None:
+    object.__setattr__(
+        instance,
+        field_name,
+        _canonical_utc(getattr(instance, field_name), path),
+    )
+
+
+def _canonicalize_optional_timestamp(
+    instance: object,
+    field_name: str,
+    path: str,
+) -> None:
+    if getattr(instance, field_name) is not None:
+        _canonicalize_timestamp(instance, field_name, path)
 
 
 def _finite_number(value: object, path: str, *, code: str) -> float:
@@ -128,13 +183,20 @@ class LifecycleInterval:
             "transformed",
         }:
             _fail("invalid_lifecycle", "$.lifecycle.status", "status is unsupported")
-        _aware(self.effective_from, "$.lifecycle.effective_from")
-        _aware(self.published_at, "$.lifecycle.published_at")
-        _aware(self.knowledge_at, "$.lifecycle.knowledge_at")
+        for field_name in ("effective_from", "published_at", "knowledge_at"):
+            _canonicalize_timestamp(
+                self,
+                field_name,
+                f"$.lifecycle.{field_name}",
+            )
         if self.published_at > self.knowledge_at:
             _fail("lifecycle_chronology", "$.lifecycle", "chronology is invalid")
         if self.effective_to is not None:
-            _aware(self.effective_to, "$.lifecycle.effective_to")
+            _canonicalize_optional_timestamp(
+                self,
+                "effective_to",
+                "$.lifecycle.effective_to",
+            )
             if self.effective_from >= self.effective_to:
                 _fail("lifecycle_order", "$.lifecycle", "interval is invalid")
         if self.status in {"merged", "transformed"}:
@@ -147,6 +209,111 @@ class LifecycleInterval:
             )
 
 
+def _validate_candidate_lifecycle(lifecycle: object) -> None:
+    if type(lifecycle) is not tuple or not lifecycle:
+        _fail(
+            "invalid_container",
+            "$.candidate.lifecycle",
+            "lifecycle must be a tuple",
+        )
+    typed_lifecycle = cast(tuple[LifecycleInterval, ...], lifecycle)
+    if len(typed_lifecycle) > _MAX_INPUT_ITEMS:
+        _fail(
+            "input_too_large",
+            "$.candidate.lifecycle",
+            "lifecycle exceeds the size limit",
+        )
+    if any(type(item) is not LifecycleInterval for item in typed_lifecycle):
+        _fail("invalid_type", "$.candidate.lifecycle", "lifecycle entry is invalid")
+    for item in typed_lifecycle:
+        LifecycleInterval.__post_init__(item)
+    ordered = tuple(
+        sorted(
+            typed_lifecycle,
+            key=lambda item: (
+                item.effective_from,
+                item.published_at,
+                item.knowledge_at,
+                item.status,
+                item.revision_id,
+            ),
+        )
+    )
+    if ordered != typed_lifecycle:
+        _fail("lifecycle_order", "$.candidate.lifecycle", "intervals must be sorted")
+    if len(ordered) != len(set(ordered)):
+        _fail(
+            "duplicate_lifecycle",
+            "$.candidate.lifecycle",
+            "lifecycle records repeat",
+        )
+    groups: dict[
+        tuple[datetime, datetime | None],
+        list[LifecycleInterval],
+    ] = {}
+    for item in ordered:
+        groups.setdefault((item.effective_from, item.effective_to), []).append(item)
+    for group in groups.values():
+        by_revision = {item.revision_id: item for item in group}
+        if len(by_revision) != len(group):
+            _fail(
+                "revision_chain_conflict",
+                "$.candidate.lifecycle",
+                "revision identifiers repeat within one economic record",
+            )
+        roots = [item for item in group if item.supersedes_revision_id is None]
+        children: dict[str, list[LifecycleInterval]] = {}
+        for item in group:
+            if item.supersedes_revision_id is None:
+                continue
+            parent = by_revision.get(item.supersedes_revision_id)
+            if parent is None:
+                _fail(
+                    "revision_chain_conflict",
+                    "$.candidate.lifecycle",
+                    "a superseded revision is missing or belongs to another record",
+                )
+            if (
+                item.published_at < parent.published_at
+                or item.knowledge_at <= parent.knowledge_at
+            ):
+                _fail(
+                    "revision_chronology",
+                    "$.candidate.lifecycle",
+                    "a revision cannot supersede a future or equally-known revision",
+                )
+            children.setdefault(parent.revision_id, []).append(item)
+        if len(roots) != 1 or any(len(items) != 1 for items in children.values()):
+            _fail(
+                "revision_chain_conflict",
+                "$.candidate.lifecycle",
+                "revisions must form one unbranched chain",
+            )
+        visited: set[str] = set()
+        current: LifecycleInterval | None = roots[0]
+        while current is not None and current.revision_id not in visited:
+            visited.add(current.revision_id)
+            next_items = children.get(current.revision_id, [])
+            current = next_items[0] if next_items else None
+        if len(visited) != len(group):
+            _fail(
+                "revision_chain_conflict",
+                "$.candidate.lifecycle",
+                "revisions must form one complete acyclic chain",
+            )
+    economic_ranges = tuple(sorted(groups, key=lambda item: item[0]))
+    previous_end: datetime | None = economic_ranges[0][1]
+    for effective_from, effective_to in economic_ranges[1:]:
+        if previous_end is None or effective_from < previous_end:
+            _fail(
+                "overlapping_lifecycle",
+                "$.candidate.lifecycle",
+                "distinct lifecycle economic intervals must not overlap",
+            )
+        if effective_to is None or effective_to > previous_end:
+            previous_end = effective_to
+
+
 @dataclass(frozen=True, slots=True, kw_only=True)
 class CandidateFund:
     share_class_id: str
@@ -157,115 +324,8 @@ class CandidateFund:
     def __post_init__(self) -> None:
         _non_empty(self.share_class_id, "$.candidate.share_class_id")
         _non_empty(self.strategy_id, "$.candidate.strategy_id")
-        _aware(self.inception_at, "$.candidate.inception_at")
-        if type(self.lifecycle) is not tuple or not self.lifecycle:
-            _fail(
-                "invalid_container",
-                "$.candidate.lifecycle",
-                "lifecycle must be a tuple",
-            )
-        if len(self.lifecycle) > _MAX_INPUT_ITEMS:
-            _fail(
-                "input_too_large",
-                "$.candidate.lifecycle",
-                "lifecycle exceeds the size limit",
-            )
-        if any(type(item) is not LifecycleInterval for item in self.lifecycle):
-            _fail("invalid_type", "$.candidate.lifecycle", "lifecycle entry is invalid")
-        for item in self.lifecycle:
-            _aware(item.effective_from, "$.lifecycle.effective_from")
-            _aware(item.published_at, "$.lifecycle.published_at")
-            _aware(item.knowledge_at, "$.lifecycle.knowledge_at")
-            if item.effective_to is not None:
-                _aware(item.effective_to, "$.lifecycle.effective_to")
-        ordered = tuple(
-            sorted(
-                self.lifecycle,
-                key=lambda item: (
-                    item.effective_from,
-                    item.published_at,
-                    item.knowledge_at,
-                    item.status,
-                    item.revision_id,
-                ),
-            )
-        )
-        if ordered != self.lifecycle:
-            _fail(
-                "lifecycle_order", "$.candidate.lifecycle", "intervals must be sorted"
-            )
-        if len(ordered) != len(set(ordered)):
-            _fail(
-                "duplicate_lifecycle",
-                "$.candidate.lifecycle",
-                "lifecycle records repeat",
-            )
-        groups: dict[
-            tuple[datetime, datetime | None],
-            list[LifecycleInterval],
-        ] = {}
-        for item in ordered:
-            groups.setdefault((item.effective_from, item.effective_to), []).append(item)
-        for group in groups.values():
-            by_revision = {item.revision_id: item for item in group}
-            if len(by_revision) != len(group):
-                _fail(
-                    "revision_chain_conflict",
-                    "$.candidate.lifecycle",
-                    "revision identifiers repeat within one economic record",
-                )
-            roots = [item for item in group if item.supersedes_revision_id is None]
-            children: dict[str, list[LifecycleInterval]] = {}
-            for item in group:
-                if item.supersedes_revision_id is None:
-                    continue
-                parent = by_revision.get(item.supersedes_revision_id)
-                if parent is None:
-                    _fail(
-                        "revision_chain_conflict",
-                        "$.candidate.lifecycle",
-                        "a superseded revision is missing or belongs to another record",
-                    )
-                    continue
-                if (
-                    item.published_at < parent.published_at
-                    or item.knowledge_at <= parent.knowledge_at
-                ):
-                    _fail(
-                        "revision_chronology",
-                        "$.candidate.lifecycle",
-                        "a revision cannot supersede a future or equally-known revision",
-                    )
-                children.setdefault(parent.revision_id, []).append(item)
-            if len(roots) != 1 or any(len(items) != 1 for items in children.values()):
-                _fail(
-                    "revision_chain_conflict",
-                    "$.candidate.lifecycle",
-                    "revisions must form one unbranched chain",
-                )
-            visited: set[str] = set()
-            current: LifecycleInterval | None = roots[0]
-            while current is not None and current.revision_id not in visited:
-                visited.add(current.revision_id)
-                next_items = children.get(current.revision_id, [])
-                current = next_items[0] if next_items else None
-            if len(visited) != len(group):
-                _fail(
-                    "revision_chain_conflict",
-                    "$.candidate.lifecycle",
-                    "revisions must form one complete acyclic chain",
-                )
-        economic_ranges = tuple(sorted(groups, key=lambda item: item[0]))
-        previous_end: datetime | None = economic_ranges[0][1]
-        for effective_from, effective_to in economic_ranges[1:]:
-            if previous_end is None or effective_from < previous_end:
-                _fail(
-                    "overlapping_lifecycle",
-                    "$.candidate.lifecycle",
-                    "distinct lifecycle economic intervals must not overlap",
-                )
-            if effective_to is None or effective_to > previous_end:
-                previous_end = effective_to
+        _canonicalize_timestamp(self, "inception_at", "$.candidate.inception_at")
+        _validate_candidate_lifecycle(self.lifecycle)
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -317,15 +377,19 @@ class VersionedSnapshot:
                 "$.snapshot.domain",
                 "domain exceeds the length limit",
             )
-        for path, value in (
-            ("$.snapshot.as_of", self.as_of),
-            ("$.snapshot.published_at", self.published_at),
-            ("$.snapshot.knowledge_at", self.knowledge_at),
-            ("$.snapshot.effective_from", self.effective_from),
+        for field_name in (
+            "as_of",
+            "published_at",
+            "knowledge_at",
+            "effective_from",
         ):
-            _aware(value, path)
+            _canonicalize_timestamp(self, field_name, f"$.snapshot.{field_name}")
         if self.effective_to is not None:
-            _aware(self.effective_to, "$.snapshot.effective_to")
+            _canonicalize_optional_timestamp(
+                self,
+                "effective_to",
+                "$.snapshot.effective_to",
+            )
             if self.effective_from >= self.effective_to:
                 _fail(
                     "snapshot_chronology",
@@ -474,12 +538,8 @@ class ScoreResult:
                     "$.score.supersedes_revision_id",
                     "a revision cannot supersede itself",
                 )
-        for path, value in (
-            ("$.score.score_as_of", self.score_as_of),
-            ("$.score.published_at", self.published_at),
-            ("$.score.knowledge_at", self.knowledge_at),
-        ):
-            _aware(value, path)
+        for field_name in ("score_as_of", "published_at", "knowledge_at"):
+            _canonicalize_timestamp(self, field_name, f"$.score.{field_name}")
         if not self.score_as_of <= self.published_at <= self.knowledge_at:
             _fail("score_chronology", "$.score.score_as_of", "chronology is invalid")
 
@@ -525,15 +585,19 @@ class PrecomputedScore:
                     "a revision cannot supersede itself",
                 )
         _validate_score_components(self.total_score, self.components, path="$.score")
-        for path, value in (
-            ("$.score.score_as_of", self.score_as_of),
-            ("$.score.published_at", self.published_at),
-            ("$.score.knowledge_at", self.knowledge_at),
-            ("$.score.effective_from", self.effective_from),
+        for field_name in (
+            "score_as_of",
+            "published_at",
+            "knowledge_at",
+            "effective_from",
         ):
-            _aware(value, path)
+            _canonicalize_timestamp(self, field_name, f"$.score.{field_name}")
         if self.effective_to is not None:
-            _aware(self.effective_to, "$.score.effective_to")
+            _canonicalize_optional_timestamp(
+                self,
+                "effective_to",
+                "$.score.effective_to",
+            )
             if self.effective_from >= self.effective_to:
                 _fail(
                     "score_chronology", "$.score.effective_from", "interval is invalid"
@@ -574,17 +638,17 @@ class FoldWindow:
 
     def __post_init__(self) -> None:
         _non_empty(self.fold_id, "$.fold.fold_id")
-        values = (
-            self.train_start,
-            self.train_end,
-            self.validation_start,
-            self.validation_end,
-            self.decision_at,
-            self.outcome_start,
-            self.outcome_end,
+        timestamp_fields = (
+            "train_start",
+            "train_end",
+            "validation_start",
+            "validation_end",
+            "decision_at",
+            "outcome_start",
+            "outcome_end",
         )
-        for index, value in enumerate(values):
-            _aware(value, f"$.fold.timestamps[{index}]")
+        for index, field_name in enumerate(timestamp_fields):
+            _canonicalize_timestamp(self, field_name, f"$.fold.timestamps[{index}]")
         if not (
             self.train_start
             <= self.train_end
@@ -626,18 +690,22 @@ class WalkForwardConfig:
         if any(type(item) is not FoldWindow for item in self.folds):
             _fail("invalid_type", "$.config.folds", "fold entry is invalid")
         for item in self.folds:
-            for index, value in enumerate(
+            for index, field_name in enumerate(
                 (
-                    item.train_start,
-                    item.train_end,
-                    item.validation_start,
-                    item.validation_end,
-                    item.decision_at,
-                    item.outcome_start,
-                    item.outcome_end,
+                    "train_start",
+                    "train_end",
+                    "validation_start",
+                    "validation_end",
+                    "decision_at",
+                    "outcome_start",
+                    "outcome_end",
                 )
             ):
-                _aware(value, f"$.fold.timestamps[{index}]")
+                _canonicalize_timestamp(
+                    item,
+                    field_name,
+                    f"$.fold.timestamps[{index}]",
+                )
         if (
             isinstance(self.select_count, bool)
             or not isinstance(self.select_count, int)
@@ -674,6 +742,44 @@ class ScoringView:
     fold: FoldWindow
     snapshots: tuple[VersionedSnapshot, ...]
 
+    def __post_init__(self) -> None:
+        _canonicalize_timestamp(self, "decision_at", "$.view.decision_at")
+        if type(self.fold) is not FoldWindow:
+            _fail("invalid_type", "$.view.fold", "fold entry is invalid")
+        for index, field_name in enumerate(
+            (
+                "train_start",
+                "train_end",
+                "validation_start",
+                "validation_end",
+                "decision_at",
+                "outcome_start",
+                "outcome_end",
+            )
+        ):
+            _canonicalize_timestamp(
+                self.fold,
+                field_name,
+                f"$.fold.timestamps[{index}]",
+            )
+        if type(self.snapshots) is not tuple or any(
+            type(item) is not VersionedSnapshot for item in self.snapshots
+        ):
+            _fail("invalid_type", "$.view.snapshots", "snapshot entry is invalid")
+        for item in self.snapshots:
+            for field_name in (
+                "as_of",
+                "published_at",
+                "knowledge_at",
+                "effective_from",
+            ):
+                _canonicalize_timestamp(item, field_name, f"$.snapshot.{field_name}")
+            _canonicalize_optional_timestamp(
+                item,
+                "effective_to",
+                "$.snapshot.effective_to",
+            )
+
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class FutureOutcome:
@@ -689,8 +795,8 @@ class FutureOutcome:
     def __post_init__(self) -> None:
         _non_empty(self.outcome_id, "$.outcome.outcome_id")
         _non_empty(self.strategy_id, "$.outcome.strategy_id")
-        _aware(self.window_start, "$.outcome.window_start")
-        _aware(self.window_end, "$.outcome.window_end")
+        _canonicalize_timestamp(self, "window_start", "$.outcome.window_start")
+        _canonicalize_timestamp(self, "window_end", "$.outcome.window_end")
         if self.window_start > self.window_end:
             _fail("window_order", "$.outcome", "outcome window is reversed")
         if (
@@ -820,6 +926,37 @@ class SummarySensitivity:
     mean_selected_score_delta: float | None
 
 
+def _canonicalize_nested_timestamps(value: object, path: str) -> None:
+    stack: list[tuple[object, str]] = [(value, path)]
+    seen: set[int] = set()
+    while stack:
+        item, item_path = stack.pop()
+        if isinstance(item, tuple):
+            stack.extend(
+                (nested, f"{item_path}[{index}]") for index, nested in enumerate(item)
+            )
+            continue
+        if not is_dataclass(item) or isinstance(item, type):
+            continue
+        identity = id(item)
+        if identity in seen:
+            continue
+        seen.add(identity)
+        for field in fields(item):
+            nested = getattr(item, field.name)
+            nested_path = f"{item_path}.{field.name}"
+            if isinstance(nested, datetime):
+                object.__setattr__(
+                    item,
+                    field.name,
+                    _canonical_utc(nested, nested_path),
+                )
+            elif isinstance(nested, tuple) or (
+                is_dataclass(nested) and not isinstance(nested, type)
+            ):
+                stack.append((nested, nested_path))
+
+
 @dataclass(frozen=True, slots=True, kw_only=True)
 class FoldReport:
     fold_id: str
@@ -845,6 +982,9 @@ class FoldReport:
     component_diagnostics: ComponentDiagnostics
     sensitivity: SensitivityDiagnostics
 
+    def __post_init__(self) -> None:
+        _canonicalize_nested_timestamps(self, "$.report.fold")
+
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SummaryReport:
@@ -863,6 +1003,9 @@ class SummaryReport:
 class WalkForwardReport:
     folds: tuple[FoldReport, ...]
     summary: SummaryReport
+
+    def __post_init__(self) -> None:
+        _canonicalize_nested_timestamps(self, "$.report")
 
 
 def _validate_report_finite(value: object) -> None:
@@ -1789,49 +1932,50 @@ def _validate_inputs(
     typed_outcomes = cast(tuple[FutureOutcome, ...], outcomes)
     typed_scores = cast(tuple[PrecomputedScore, ...], precomputed_scores)
     for item in typed_config.folds:
-        for index, value in enumerate(
+        for index, field_name in enumerate(
             (
-                item.train_start,
-                item.train_end,
-                item.validation_start,
-                item.validation_end,
-                item.decision_at,
-                item.outcome_start,
-                item.outcome_end,
+                "train_start",
+                "train_end",
+                "validation_start",
+                "validation_end",
+                "decision_at",
+                "outcome_start",
+                "outcome_end",
             )
         ):
-            _aware(value, f"$.fold.timestamps[{index}]")
+            _canonicalize_timestamp(item, field_name, f"$.fold.timestamps[{index}]")
     for item in typed_candidates:
-        _aware(item.inception_at, "$.candidate.inception_at")
-        for interval in item.lifecycle:
-            _aware(interval.effective_from, "$.lifecycle.effective_from")
-            _aware(interval.published_at, "$.lifecycle.published_at")
-            _aware(interval.knowledge_at, "$.lifecycle.knowledge_at")
-            if interval.effective_to is not None:
-                _aware(interval.effective_to, "$.lifecycle.effective_to")
+        _canonicalize_timestamp(item, "inception_at", "$.candidate.inception_at")
+        _validate_candidate_lifecycle(item.lifecycle)
     for item in typed_snapshots:
-        for path, value in (
-            ("$.snapshot.as_of", item.as_of),
-            ("$.snapshot.published_at", item.published_at),
-            ("$.snapshot.knowledge_at", item.knowledge_at),
-            ("$.snapshot.effective_from", item.effective_from),
+        for field_name in (
+            "as_of",
+            "published_at",
+            "knowledge_at",
+            "effective_from",
         ):
-            _aware(value, path)
-        if item.effective_to is not None:
-            _aware(item.effective_to, "$.snapshot.effective_to")
+            _canonicalize_timestamp(item, field_name, f"$.snapshot.{field_name}")
+        _canonicalize_optional_timestamp(
+            item,
+            "effective_to",
+            "$.snapshot.effective_to",
+        )
     for item in typed_outcomes:
-        _aware(item.window_start, "$.outcome.window_start")
-        _aware(item.window_end, "$.outcome.window_end")
+        _canonicalize_timestamp(item, "window_start", "$.outcome.window_start")
+        _canonicalize_timestamp(item, "window_end", "$.outcome.window_end")
     for item in typed_scores:
-        for path, value in (
-            ("$.score.score_as_of", item.score_as_of),
-            ("$.score.published_at", item.published_at),
-            ("$.score.knowledge_at", item.knowledge_at),
-            ("$.score.effective_from", item.effective_from),
+        for field_name in (
+            "score_as_of",
+            "published_at",
+            "knowledge_at",
+            "effective_from",
         ):
-            _aware(value, path)
-        if item.effective_to is not None:
-            _aware(item.effective_to, "$.score.effective_to")
+            _canonicalize_timestamp(item, field_name, f"$.score.{field_name}")
+        _canonicalize_optional_timestamp(
+            item,
+            "effective_to",
+            "$.score.effective_to",
+        )
     nested_item_count = (
         len(typed_config.folds)
         + sum(len(item.lifecycle) for item in typed_candidates)
@@ -2100,12 +2244,16 @@ def run_walk_forward(
                         "callback must return an auditable ScoreResult or None",
                     )
                 if isinstance(value, ScoreResult):
-                    for path, timestamp in (
-                        ("$.score.score_as_of", value.score_as_of),
-                        ("$.score.published_at", value.published_at),
-                        ("$.score.knowledge_at", value.knowledge_at),
+                    for field_name in (
+                        "score_as_of",
+                        "published_at",
+                        "knowledge_at",
                     ):
-                        _aware(timestamp, path)
+                        _canonicalize_timestamp(
+                            value,
+                            field_name,
+                            f"$.score.{field_name}",
+                        )
                     if (
                         value.score_as_of > fold.decision_at
                         or value.published_at > fold.decision_at

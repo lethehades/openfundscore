@@ -45,8 +45,41 @@ class HostileTimezone(tzinfo):
         return "hostile"
 
 
+class StatefulTimezone(tzinfo):
+    def __init__(
+        self,
+        *,
+        offset: timedelta = timedelta(hours=8),
+        exception_type: type[BaseException] = RuntimeError,
+    ) -> None:
+        self.offset = offset
+        self.exception_type = exception_type
+        self.calls = 0
+
+    def utcoffset(self, value):
+        self.calls += 1
+        if self.calls > 1:
+            raise self.exception_type("private-marker")
+        return self.offset
+
+    def dst(self, value):
+        return timedelta(0)
+
+    def tzname(self, value):
+        return "stateful"
+
+
 def hostile_datetime(exception_type: type[BaseException]) -> datetime:
     return datetime(2020, 1, 1, tzinfo=HostileTimezone(exception_type))
+
+
+def stateful_datetime(
+    value: str,
+    *,
+    exception_type: type[BaseException] = RuntimeError,
+) -> tuple[datetime, StatefulTimezone]:
+    zone = StatefulTimezone(exception_type=exception_type)
+    return datetime.fromisoformat(value).replace(tzinfo=zone), zone
 
 
 class HostileString(str):
@@ -222,6 +255,72 @@ class WalkForwardTests(unittest.TestCase):
                     knowledge_at=dt("2020-01-01T00:00:00Z"),
                 )
 
+    def test_lifecycle_constructor_canonicalizes_stateful_timezone_once(self) -> None:
+        effective_from, zone = stateful_datetime("2020-01-01T08:00:00")
+
+        interval = LifecycleInterval(
+            status="active",
+            effective_from=effective_from,
+            effective_to=dt("2021-01-01T00:00:00Z"),
+            published_at=dt("2020-01-01T00:00:00Z"),
+            knowledge_at=dt("2020-01-01T00:00:00Z"),
+        )
+
+        self.assertEqual(zone.calls, 1)
+        self.assertIs(interval.effective_from.tzinfo, UTC)
+        self.assertEqual(interval.effective_from, dt("2020-01-01T00:00:00Z"))
+
+    def test_snapshot_constructor_and_run_canonicalize_stateful_timezone_once(
+        self,
+    ) -> None:
+        as_of, constructor_zone = stateful_datetime("2020-12-20T08:00:00")
+        constructed = replace(required_snapshots("alpha")[0], as_of=as_of)
+        self.assertEqual(constructor_zone.calls, 1)
+        self.assertIs(constructed.as_of.tzinfo, UTC)
+
+        poisoned_snapshot = required_snapshots("alpha")[0]
+        knowledge_at, run_zone = stateful_datetime("2020-12-21T08:00:00")
+        object.__setattr__(poisoned_snapshot, "knowledge_at", knowledge_at)
+        report = run_walk_forward(
+            WalkForwardConfig(folds=(fold(),), select_count=1),
+            candidates=(candidate("alpha-A", "alpha"),),
+            snapshots=(poisoned_snapshot,) + required_snapshots("alpha")[1:],
+            outcomes=(),
+            scorer=lambda view: score_result(1.0, (("total", 1.0),)),
+        )
+
+        self.assertEqual(run_zone.calls, 1)
+        self.assertIs(poisoned_snapshot.knowledge_at.tzinfo, UTC)
+        self.assertIs(report.folds[0].audit_trail[0].knowledge_at.tzinfo, UTC)
+
+    def test_callback_score_and_report_retain_only_fixed_utc_timestamps(self) -> None:
+        callback_zone: StatefulTimezone | None = None
+
+        def scorer(view):
+            nonlocal callback_zone
+            audit = score_result(1.0, (("total", 1.0),))
+            knowledge_at, callback_zone = stateful_datetime("2020-12-21T08:00:00")
+            object.__setattr__(audit, "knowledge_at", knowledge_at)
+            return audit
+
+        report = run_walk_forward(
+            WalkForwardConfig(folds=(fold(),), select_count=1),
+            candidates=(candidate("alpha-A", "alpha"),),
+            snapshots=required_snapshots("alpha"),
+            outcomes=(),
+            scorer=scorer,
+        )
+
+        self.assertIsNotNone(callback_zone)
+        self.assertEqual(cast(StatefulTimezone, callback_zone).calls, 1)
+        audit = report.folds[0].score_audit_trail[0]
+        self.assertIs(audit.knowledge_at.tzinfo, UTC)
+        self.assertIs(report.folds[0].decision_at.tzinfo, UTC)
+        document = walk_forward_report_document(report)
+        report_document = cast(dict, document["report"])
+        fold_document = cast(dict, cast(list, report_document["folds"])[0])
+        self.assertEqual(fold_document["decision_at"], "2021-01-01T00:00:00Z")
+
     def test_hostile_timezone_run_and_report_paths_are_stably_redacted(self) -> None:
         poisoned_snapshot = required_snapshots("alpha")[0]
         object.__setattr__(
@@ -247,14 +346,11 @@ class WalkForwardTests(unittest.TestCase):
             outcomes=(),
             scorer=lambda view: score_result(1.0, (("total", 1.0),)),
         )
-        poisoned_report = replace(
-            report,
-            folds=(
-                replace(
-                    report.folds[0],
-                    decision_at=hostile_datetime(OSError),
-                ),
-            ),
+        poisoned_report = copy.deepcopy(report)
+        object.__setattr__(
+            poisoned_report.folds[0],
+            "decision_at",
+            hostile_datetime(OSError),
         )
         self.assert_timestamp_error(
             "$report",
@@ -763,6 +859,90 @@ class WalkForwardTests(unittest.TestCase):
 
         self.assertEqual(fund.lifecycle[1].supersedes_revision_id, "lifecycle-r1")
 
+    def test_run_rejects_post_init_overlapping_lifecycle_mutation(self) -> None:
+        fund = candidate("alpha-A", "alpha")
+        object.__setattr__(
+            fund,
+            "lifecycle",
+            (
+                LifecycleInterval(
+                    status="active",
+                    effective_from=dt("2018-01-01T00:00:00Z"),
+                    effective_to=dt("2022-01-01T00:00:00Z"),
+                    published_at=dt("2018-01-01T00:00:00Z"),
+                    knowledge_at=dt("2018-01-01T00:00:00Z"),
+                ),
+                LifecycleInterval(
+                    status="closed",
+                    effective_from=dt("2020-01-01T00:00:00Z"),
+                    effective_to=dt("2023-01-01T00:00:00Z"),
+                    published_at=dt("2020-01-01T00:00:00Z"),
+                    knowledge_at=dt("2020-01-01T00:00:00Z"),
+                ),
+            ),
+        )
+
+        with self.assertRaises(WalkForwardError) as raised:
+            run_walk_forward(
+                WalkForwardConfig(folds=(fold(),), select_count=1),
+                candidates=(fund,),
+                snapshots=required_snapshots("alpha"),
+                outcomes=(),
+                scorer=lambda view: score_result(1.0, (("total", 1.0),)),
+            )
+        self.assertEqual(raised.exception.code, "overlapping_lifecycle")
+        self.assertEqual(raised.exception.path, "$.candidate.lifecycle")
+        self.assertIsNone(raised.exception.__cause__)
+        self.assertIsNone(raised.exception.__context__)
+
+    def test_run_rejects_post_init_lifecycle_revision_chain_mutations(self) -> None:
+        root = LifecycleInterval(
+            revision_id="lifecycle-r1",
+            status="active",
+            effective_from=dt("2018-01-01T00:00:00Z"),
+            published_at=dt("2018-01-01T00:00:00Z"),
+            knowledge_at=dt("2018-01-01T00:00:00Z"),
+        )
+        child = replace(
+            root,
+            revision_id="lifecycle-r2",
+            supersedes_revision_id="lifecycle-r1",
+            status="closed",
+            published_at=dt("2020-01-01T00:00:00Z"),
+            knowledge_at=dt("2020-01-01T00:00:00Z"),
+        )
+        cases = (
+            (replace(child, supersedes_revision_id="missing-revision"),),
+            (
+                root,
+                child,
+                replace(
+                    child,
+                    revision_id="lifecycle-r3",
+                    published_at=dt("2020-02-01T00:00:00Z"),
+                    knowledge_at=dt("2020-02-01T00:00:00Z"),
+                ),
+            ),
+            (root, replace(root, status="closed")),
+        )
+
+        for lifecycle in cases:
+            with self.subTest(revisions=tuple(item.revision_id for item in lifecycle)):
+                fund = candidate("alpha-A", "alpha")
+                object.__setattr__(fund, "lifecycle", lifecycle)
+                with self.assertRaises(WalkForwardError) as raised:
+                    run_walk_forward(
+                        WalkForwardConfig(folds=(fold(),), select_count=1),
+                        candidates=(fund,),
+                        snapshots=required_snapshots("alpha"),
+                        outcomes=(),
+                        scorer=lambda view: score_result(1.0, (("total", 1.0),)),
+                    )
+                self.assertEqual(raised.exception.code, "revision_chain_conflict")
+                self.assertEqual(raised.exception.path, "$.candidate.lifecycle")
+                self.assertIsNone(raised.exception.__cause__)
+                self.assertIsNone(raised.exception.__context__)
+
     def test_conflicting_or_unknown_required_snapshots_fail_closed(self) -> None:
         conflicting = required_snapshots("alpha") + (
             snapshot(
@@ -1171,8 +1351,8 @@ class WalkForwardTests(unittest.TestCase):
                 lifecycle=(lifecycle,) * 100_001,
             ),
         )
-        self.assert_walk_forward_error(
-            "timezone_required",
+        self.assert_timestamp_error(
+            "$.snapshot.knowledge_at",
             lambda: replace(
                 base_snapshot,
                 knowledge_at=datetime(2020, 1, 1, tzinfo=UTC).replace(tzinfo=None),
