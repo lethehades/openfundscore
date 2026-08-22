@@ -12,6 +12,7 @@ from copy import deepcopy
 from pathlib import Path
 
 from openfundscore.mainland_official import MainlandOfficialSnapshotAdapter
+from openfundscore.walk_forward_io import synthetic_fixture_document
 from tests.test_category_metrics_cli import cli_document, manager_handoff_document
 from tests.test_mainland_official_snapshot import (
     bundle,
@@ -71,8 +72,9 @@ class InstalledWheelResourceTests(unittest.TestCase):
                 ),
             )
 
-            builder_python = shutil.which("python3")
-            self.assertIsNotNone(builder_python)
+            builder = root / "builder"
+            venv.EnvBuilder(with_pip=True).create(builder)
+            builder_python = builder / "bin" / "python"
             clean_environment = os.environ.copy()
             clean_environment.pop("PYTHONPATH", None)
             clean_environment["PYTHONNOUSERSITE"] = "1"
@@ -505,6 +507,42 @@ class InstalledWheelResourceTests(unittest.TestCase):
             )
 
             executable = environment / "bin" / "openfundscore"
+            walk_forward_path = runtime / "walk-forward.json"
+            walk_forward_path.write_text(
+                json.dumps(synthetic_fixture_document(), allow_nan=False),
+                encoding="utf-8",
+            )
+            walk_forward_probe = subprocess.run(
+                [str(executable), "walk-forward", str(walk_forward_path)],
+                check=False,
+                cwd=runtime,
+                env=clean_environment,
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(
+                walk_forward_probe.returncode,
+                0,
+                msg=(
+                    f"stdout={walk_forward_probe.stdout}\n"
+                    f"stderr={walk_forward_probe.stderr}"
+                ),
+            )
+            walk_forward_report = json.loads(walk_forward_probe.stdout)
+            self.assertEqual(walk_forward_report["report"]["summary"]["fold_count"], 2)
+            self.assertIn(
+                "component_diagnostics",
+                walk_forward_report["report"]["summary"],
+            )
+            first_fold = walk_forward_report["report"]["folds"][0]
+            self.assertEqual(len(first_fold["audit_score_ids"][0]), 3)
+            self.assertIn("strategy_id", first_fold["score_audit_trail"][0])
+            self.assertIn("revision_id", first_fold["score_audit_trail"][0])
+            self.assertIn(
+                "supersedes_revision_id",
+                first_fold["score_audit_trail"][0],
+            )
+
             mainland_snapshot_path = runtime / "mainland-snapshot.json"
             mainland_entitlement_path = runtime / "mainland-entitlements.json"
             mainland_source = bundle()

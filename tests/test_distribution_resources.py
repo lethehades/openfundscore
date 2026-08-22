@@ -63,6 +63,7 @@ _README_DOCUMENT_LINKS = frozenset(
         "docs/CANONICAL_DATA_MODEL.md",
         "docs/CATEGORY_METRICS.md",
         "docs/VALIDATION.md",
+        "docs/WALK_FORWARD.md",
         "docs/PUBLICATION_GATE.md",
         "docs/PROVIDER_SDK.md",
         "docs/ANT_FORTUNE_BOUNDARY.md",
@@ -372,8 +373,32 @@ class DistributionResourceTests(unittest.TestCase):
             clean_environment["PYTHONNOUSERSITE"] = "1"
             venv.EnvBuilder(with_pip=True).create(builder)
             builder_python = builder / "bin" / "python"
+            uv = shutil.which("uv")
+            install_builder = (
+                [
+                    uv,
+                    "pip",
+                    "install",
+                    "--offline",
+                    "--python",
+                    str(builder_python),
+                    "build>=1.2",
+                    "setuptools>=68",
+                    "wheel",
+                ]
+                if uv is not None
+                else [
+                    str(builder_python),
+                    "-m",
+                    "pip",
+                    "install",
+                    "build>=1.2",
+                    "setuptools>=68",
+                    "wheel",
+                ]
+            )
             subprocess.run(
-                [str(builder_python), "-m", "pip", "install", "build>=1.2"],
+                install_builder,
                 check=True,
                 env=clean_environment,
                 stdout=subprocess.PIPE,

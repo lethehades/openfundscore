@@ -67,6 +67,26 @@ questions into one leaderboard.
 - Synthetic A/C/E/I, closed, merged, transformed and conflicting records only;
   no real provider data is bundled.
 
+## M4 point-in-time walk-forward slice
+
+- Historical universes retain closed, merged and transformed strategies and
+  exclude strategies that had not yet started at each decision timestamp.
+- Lifecycle, classification, benchmark, manager, fee, availability, feature and
+  provider versions obey effective, publication and knowledge timestamps.
+- Auditable callback or precomputed component scores feed deterministic
+  walk-forward folds; future outcomes are joined only after selection.
+- Explicit `revision_id`/`supersedes_revision_id` chains preserve the revision
+  known in each fold and reject missing, duplicate or branching lineage.
+- Score audits use `(strategy_id, audit_id, revision_id)`, so callback audit IDs
+  reused across strategies remain separate; callback errors and future-known
+  precomputed exclusions remain distinct fail-closed outcomes.
+- Reports include stability, Jaccard turnover, breadth, coverage, wealth,
+  first-loss-aware drawdown/recovery, peer-relative outcomes, uncertainty,
+  pairwise-complete component correlations and no-refit leave-one-component-out
+  sensitivity.
+- Strict local JSON rejects duplicate keys, non-finite values, invalid Unicode,
+  over-magnitude scalars, overlong identifiers/text, oversized or excessively
+  nested input and redacts callback failures.
 ### Ant Fortune boundary
 
 The packaged Ant Fortune boundary is fail closed: it records no authorized per-fund API,
@@ -100,6 +120,18 @@ python3 -m venv .venv
 .venv/bin/python -m openfundscore.cli validate-record \
   --type provider_record --schema-version 0.2.0 \
   --evaluation-timestamp 2026-08-21T00:00:00Z provider-record.json
+.venv/bin/python - <<'PY'
+import json
+from pathlib import Path
+from openfundscore.walk_forward_io import synthetic_fixture_document
+
+Path("/tmp/openfundscore-walk-forward.json").write_text(
+    json.dumps(synthetic_fixture_document(), allow_nan=False),
+    encoding="utf-8",
+)
+PY
+.venv/bin/openfundscore walk-forward /tmp/openfundscore-walk-forward.json \
+  > /tmp/openfundscore-walk-forward-report.json
 .venv/bin/python -m openfundscore.cli platform-boundary validate --boundary-version 0.1.0
 .venv/bin/python -m openfundscore.cli platform-boundary check platform_rating \
   --access-mode automated --use open_score --boundary-version 0.1.0
@@ -181,6 +213,7 @@ indexed logical resources plus `index.json` and the resource package `__init__.p
 - [Unified validation boundary](docs/VALIDATION.md)
 - [Public rating and redistribution gate](docs/PUBLICATION_GATE.md)
 - [Provider SDK and ingestion entitlements](docs/PROVIDER_SDK.md)
+- [Point-in-time walk-forward validation](docs/WALK_FORWARD.md)
 - [Ant Fortune public-data boundary](docs/ANT_FORTUNE_BOUNDARY.md)
 - [Mainland official frozen-snapshot provider pilot](docs/MAINLAND_OFFICIAL_SNAPSHOT.md)
 - [Official provider pilots: SEC EDGAR and World Bank](docs/OFFICIAL_PROVIDERS.md)

@@ -79,6 +79,21 @@ if TYPE_CHECKING:
         validate_strategy_mapping,
     )
     from .validation import RecordType, RecordValidationError, validate_record
+    from .walk_forward import (
+        CandidateFund,
+        FoldWindow,
+        FutureOutcome,
+        LifecycleInterval,
+        PrecomputedScore,
+        ScoreComponent,
+        ScoreResult,
+        ScoringView,
+        VersionedSnapshot,
+        WalkForwardConfig,
+        WalkForwardError,
+        WalkForwardReport,
+        run_walk_forward,
+    )
 
 
 __version__ = "0.2.0.dev0"
@@ -91,6 +106,7 @@ __all__ = (
     "BoundaryConclusion",
     "BoundaryUse",
     "BoundaryValidationError",
+    "CandidateFund",
     "CaptureDenominatorAudit",
     "CaptureDenominatorStatus",
     "CategoryMetricError",
@@ -98,7 +114,10 @@ __all__ = (
     "DimensionScore",
     "FieldDecision",
     "FixedHostHttpClient",
+    "FoldWindow",
+    "FutureOutcome",
     "HistoryStage",
+    "LifecycleInterval",
     "MainlandOfficialSnapshotAdapter",
     "ManagerEvidenceSource",
     "ManagerResearchHandoff",
@@ -114,16 +133,24 @@ __all__ = (
     "PeerAuditRecord",
     "PeerObservation",
     "PeerSetAudit",
+    "PrecomputedScore",
     "ProviderHttpError",
     "PublicationDecision",
     "PublicationGateError",
     "PublicationGateResult",
     "RecordType",
     "RecordValidationError",
+    "ScoreComponent",
+    "ScoreResult",
+    "ScoringView",
     "SecEdgarSubmissionsAdapter",
     "SnapshotValidationError",
     "StrategyMappingError",
     "UseDecision",
+    "VersionedSnapshot",
+    "WalkForwardConfig",
+    "WalkForwardError",
+    "WalkForwardReport",
     "WorldBankIndicatorsAdapter",
     "build_manager_evidence_sources",
     "canonicalize_score_evidence_ledger_for_digest",
@@ -138,6 +165,7 @@ __all__ = (
     "map_strategy_family",
     "normalize_metric",
     "recompute_manager_handoff",
+    "run_walk_forward",
     "score_category_metrics",
     "score_manager_research",
     "validate_ant_fortune_boundary",
@@ -283,4 +311,22 @@ def __getattr__(name: str) -> Any:
             "evaluate_publication_gate": evaluate_publication_gate,
         }
         return publication_exports[name]
+    if name in {
+        "CandidateFund",
+        "FoldWindow",
+        "FutureOutcome",
+        "LifecycleInterval",
+        "PrecomputedScore",
+        "ScoreComponent",
+        "ScoreResult",
+        "ScoringView",
+        "VersionedSnapshot",
+        "WalkForwardConfig",
+        "WalkForwardError",
+        "WalkForwardReport",
+        "run_walk_forward",
+    }:
+        from . import walk_forward
+
+        return getattr(walk_forward, name)
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
