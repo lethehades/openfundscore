@@ -52,6 +52,14 @@ questions into one leaderboard.
 - Synthetic A/C/E/I, closed, merged, transformed and conflicting records only;
   no real provider data is bundled.
 
+### Ant Fortune boundary
+
+The packaged Ant Fortune boundary is fail closed: it records no authorized per-fund API,
+no automated adapter, and no login or cookie access. Current legal
+permission, terms, and robots implications are uncertain and are not claimed as
+authorization. Platform ratings are external only and never enter Open Score.
+See the [Ant Fortune public-data boundary](docs/ANT_FORTUNE_BOUNDARY.md).
+
 ```bash
 python3 -m venv .venv
 .venv/bin/python -m pip install -e '.[test]'
@@ -73,6 +81,9 @@ python3 -m venv .venv
 .venv/bin/python -m openfundscore.cli validate-record \
   --type provider_record --schema-version 0.1.0 \
   --evaluation-timestamp 2026-08-21T00:00:00Z provider-record.json
+.venv/bin/python -m openfundscore.cli platform-boundary validate --boundary-version 0.1.0
+.venv/bin/python -m openfundscore.cli platform-boundary check platform_rating \
+  --access-mode automated --use open_score --boundary-version 0.1.0
 .venv/bin/python -m unittest discover -s tests -v
 ```
 
@@ -93,6 +104,7 @@ Schema and semantic validation; see [validation boundary](docs/VALIDATION.md).
 - [Unified validation boundary](docs/VALIDATION.md)
 - [Public rating and redistribution gate](docs/PUBLICATION_GATE.md)
 - [Provider SDK and ingestion entitlements](docs/PROVIDER_SDK.md)
+- [Ant Fortune public-data boundary](docs/ANT_FORTUNE_BOUNDARY.md)
 - [Fund taxonomy](docs/FUND_TAXONOMY.md)
 - [Scoring RFC](docs/SCORING_RFC.md)
 - [Manager research model](docs/MANAGER_RESEARCH.md)

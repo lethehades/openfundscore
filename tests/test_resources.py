@@ -1,15 +1,17 @@
 from __future__ import annotations
 
+# Existing nested context-manager tests intentionally keep each assertion scope explicit.
+# ruff: noqa: SIM117
 import hashlib
 import unittest
 from unittest.mock import patch
 
 from openfundscore.resources import (
+    ResolvedResource,
     ResourceError,
     ResourceInfo,
     ResourceKey,
     ResourceType,
-    ResolvedResource,
     _load_catalog,
     _parse_catalog,
     list_resources,
@@ -191,6 +193,7 @@ class ResourceCatalogTests(unittest.TestCase):
                 for resource in resources
             ],
             [
+                ("platform-boundary", "ant_fortune", "0.1.0"),
                 ("schema", "external_rating", "0.1.0"),
                 ("schema", "manager_research", "0.1.0"),
                 ("schema", "provider_contract", "0.1.0"),

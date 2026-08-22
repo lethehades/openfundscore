@@ -1,16 +1,14 @@
 from __future__ import annotations
 
 import os
-from pathlib import Path
 import shutil
 import subprocess
-import sys
 import tarfile
 import tempfile
 import unittest
 import venv
 import zipfile
-
+from pathlib import Path
 
 ROOT = Path(__file__).parents[1]
 _RESOURCE_PREFIX = "openfundscore/_resources/"
@@ -103,7 +101,7 @@ class DistributionResourceTests(unittest.TestCase):
             wheel_payloads = _wheel_resources(wheels[0])
             sdist_payloads = _sdist_resources(sdists[0])
             self.assertEqual(wheel_payloads, sdist_payloads)
-            self.assertEqual(len(wheel_payloads), 9)
+            self.assertEqual(len(wheel_payloads), 10)
 
             subprocess.run(
                 [
@@ -151,7 +149,7 @@ class DistributionResourceTests(unittest.TestCase):
                     "-c",
                     (
                         "from openfundscore.resources import list_resources,resolve_resource;"
-                        "items=list_resources();assert len(items)==7;"
+                        "items=list_resources();assert len(items)==8;"
                         "[resolve_resource(resource_type=i.key.resource_type,"
                         "name=i.key.name,version=i.key.version).load_json() for i in items];"
                         "print('sdist-wheel-ok')"

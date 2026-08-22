@@ -93,11 +93,23 @@ class InstalledWheelResourceTests(unittest.TestCase):
                     str(python),
                     "-c",
                     (
-                        "from openfundscore.resources import list_resources, resolve_resource;"
+                        "from openfundscore.resources import ResourceType,list_resources,resolve_resource;"
                         "items=list_resources();"
-                        "assert len(items)==7;"
+                        "assert len(items)==8;"
                         "[resolve_resource(resource_type=i.key.resource_type,"
                         "name=i.key.name,version=i.key.version).load_json() for i in items];"
+                        "r=resolve_resource(resource_type=ResourceType.PLATFORM_BOUNDARY,"
+                        "name='ant_fortune',version='0.1.0');"
+                        "assert r.info.key.resource_type is ResourceType.PLATFORM_BOUNDARY;"
+                        "assert len(r.info.sha256)==64 and r.read_bytes();"
+                        "from openfundscore import AccessMode,BoundaryUse,decide_ant_fortune_field,load_ant_fortune_boundary,validate_ant_fortune_boundary;"
+                        "b=load_ant_fortune_boundary(boundary_version='0.1.0');"
+                        "assert b['legal_permission_claimed'] is False;"
+                        "v=validate_ant_fortune_boundary(b,expected_version='0.1.0',resource_sha256=r.info.sha256);"
+                        "assert v.resource_sha256==r.info.sha256 and not v.automated_adapter_available;"
+                        "bd=decide_ant_fortune_field('platform_rating',access_mode=AccessMode.AUTOMATED,"
+                        "requested_uses=frozenset({BoundaryUse.OPEN_SCORE}),boundary_version='0.1.0');"
+                        "assert bd.namespace=='external_ratings' and not bd.open_score_allowed;"
                         "from openfundscore.strategy_mapping import map_strategy_family;"
                         "d=map_strategy_family('market_neutral',mapping_version='0.1.0');"
                         "assert d.peer_bucket=='market_neutral';"
@@ -157,7 +169,67 @@ class InstalledWheelResourceTests(unittest.TestCase):
                 capture_output=True,
                 text=True,
             )
-            self.assertEqual(len(json.loads(list_probe.stdout)), 7)
+            self.assertEqual(len(json.loads(list_probe.stdout)), 8)
+
+            boundary_validate_probe = subprocess.run(
+                [
+                    str(executable),
+                    "platform-boundary",
+                    "validate",
+                    "--boundary-version",
+                    "0.1.0",
+                ],
+                check=False,
+                cwd=runtime,
+                env=clean_environment,
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(
+                boundary_validate_probe.returncode,
+                0,
+                msg=(
+                    f"stdout={boundary_validate_probe.stdout}\n"
+                    f"stderr={boundary_validate_probe.stderr}"
+                ),
+            )
+            self.assertRegex(
+                boundary_validate_probe.stdout,
+                r"^valid: ant_fortune@0\.1\.0; sha256=[0-9a-f]{64}\n$",
+            )
+
+            boundary_check_probe = subprocess.run(
+                [
+                    str(executable),
+                    "platform-boundary",
+                    "check",
+                    "platform_rating",
+                    "--access-mode",
+                    "automated",
+                    "--use",
+                    "open_score",
+                    "--boundary-version",
+                    "0.1.0",
+                ],
+                check=False,
+                cwd=runtime,
+                env=clean_environment,
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(
+                boundary_check_probe.returncode,
+                0,
+                msg=(
+                    f"stdout={boundary_check_probe.stdout}\n"
+                    f"stderr={boundary_check_probe.stderr}"
+                ),
+            )
+            boundary_check = json.loads(boundary_check_probe.stdout)
+            self.assertEqual(boundary_check["namespace"], "external_ratings")
+            self.assertFalse(boundary_check["open_score_allowed"])
+            self.assertFalse(boundary_check["automated_adapter_allowed"])
+            self.assertFalse(boundary_check["affects_open_score"])
 
             strategy_map_probe = subprocess.run(
                 [

@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from enum import StrEnum
 import hashlib
-from importlib.resources import files
 import json
 import re
+from dataclasses import dataclass
+from enum import StrEnum
+from importlib.resources import files
 from typing import Any
-
 
 _RESOURCE_PACKAGE = "openfundscore._resources"
 _NAME_PATTERN = re.compile(r"[a-z][a-z0-9]*(?:[_-][a-z0-9]+)*", re.ASCII)
@@ -32,6 +31,7 @@ class ResourceType(StrEnum):
     SCHEMA = "schema"
     SCORING_CONFIG = "scoring-config"
     STRATEGY_MAPPING = "strategy-mapping"
+    PLATFORM_BOUNDARY = "platform-boundary"
 
 
 @dataclass(frozen=True, slots=True)

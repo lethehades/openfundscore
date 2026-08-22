@@ -2,6 +2,14 @@
   "format_version": 1,
   "resources": [
     {
+      "type": "platform-boundary",
+      "name": "ant_fortune",
+      "version": "0.1.0",
+      "internal_path": "platform-boundary/ant_fortune/0.1.0.json",
+      "media_type": "application/json",
+      "sha256": "31a25304e64ccea2cb5134a2b9e5b8a30546c654bef9bf785b1b470a4bf1a95c"
+    },
+    {
       "type": "schema",
       "name": "external_rating",
       "version": "0.1.0",

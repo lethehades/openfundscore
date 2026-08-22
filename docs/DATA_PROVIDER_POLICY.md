@@ -3,8 +3,11 @@
 ## Principle
 
 Providers supply observations; OpenFundScore defines metrics and weights.
-Alipay/Ant Fortune is one sales-platform adapter, not the identity system,
-methodology owner or sole source.
+Alipay/Ant Fortune is a candidate sales-platform provider boundary, not an
+implemented adapter, identity system, methodology owner or sole source. As of
+`2026-08-22T00:22:00Z`, no confirmed public per-fund API, field-level
+authorization, or automated adapter is recorded; per-fund collection remains
+`unknown_blocked`.
 
 ## Priority order
 
@@ -91,6 +94,28 @@ public display, redistribution, retention, rate limit and attribution.
 
 A public webpage is not automatically open data. Robots rules, rate limits,
 terms, copyright, database rights and account restrictions must all be checked.
+Robots is not authorization. A missing, unavailable, reset, HTML, or otherwise
+unverified robots response must remain `unverified_unavailable`; it must not be
+translated into invented `Allow` or `Disallow` rules.
+
+### Ant Fortune boundary (Issue #9)
+
+The versioned `platform-boundary / ant_fortune / 0.1.0` resource inventories
+fund/share-class identifiers and names; subscription, redemption-tier,
+sales-service, ongoing, management and custody fee candidates; purchase amount
+limits; subscription, redemption and sale availability; and external platform
+ratings. Every per-fund row independently records observation/access,
+authorization, official evidence and review time, terms, robots, rate limit,
+cache TTL, retention, derived/display/redistribution/attribution rights,
+provenance, pending evidence and re-evaluation triggers.
+
+The only verified official entries are <https://www.antfortune.com/> and
+<https://open.alipay.com/>. They establish brand/entry facts only, not per-fund
+fields or a public API. All per-fund uses are `unknown_blocked`: no ingestion,
+cache, derived work, display, redistribution, or automatic adapter. Ratings are
+fixed to `external_ratings` and cannot affect Open Score. See
+[Ant Fortune public-data boundary](ANT_FORTUNE_BOUNDARY.md). This policy is not
+legal advice.
 
 ## Security and privacy
 
