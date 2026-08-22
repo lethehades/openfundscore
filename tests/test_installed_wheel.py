@@ -52,7 +52,6 @@ class InstalledWheelResourceTests(unittest.TestCase):
                     "pip",
                     "wheel",
                     str(source),
-                    "--no-build-isolation",
                     "--no-deps",
                     "--wheel-dir",
                     str(wheelhouse),
