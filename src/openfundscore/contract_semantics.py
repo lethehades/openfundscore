@@ -99,6 +99,34 @@ def _timestamp(value: object, *, path: str) -> datetime:
 def validate_provider_contract_semantics(document: object) -> None:
     """Recheck provider rights-mode combinations independently of JSON Schema."""
     contract = _mapping(document, path="$")
+    source_present = "source_ids" in contract
+    dataset_present = "dataset_ids" in contract
+    if source_present is not dataset_present:
+        missing = "dataset_ids" if source_present else "source_ids"
+        raise ContractValidationError(
+            code="resource_scope_mismatch",
+            path=f"$.{missing}",
+            message="source and dataset scopes must be declared together",
+        )
+    for field in ("source_ids", "dataset_ids"):
+        if field not in contract:
+            continue
+        values = contract[field]
+        if (
+            type(values) is not list
+            or not values
+            or len(values) > 256
+            or any(
+                type(value) is not str or not value.strip() or len(value) > 256
+                for value in values
+            )
+            or len(set(values)) != len(values)
+        ):
+            raise ContractValidationError(
+                code="invalid_resource_scope",
+                path=f"$.{field}",
+                message="provider resource scope is invalid",
+            )
     rights = _mapping(contract.get("rights"), path="$.rights")
     mode = rights.get("mode")
     if not isinstance(mode, str) or mode not in _PROVIDER_RIGHTS:

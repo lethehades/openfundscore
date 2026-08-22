@@ -49,6 +49,10 @@ questions into one leaderboard.
   `unrated` until comparable samples and evidence are sufficient.
 - A typed Provider SDK with explicit point-in-time entitlements and fail-closed
   ingestion enforcement for rights, attribution, rate, cache and retention limits.
+- Two bounded official-source pilots: SEC EDGAR submissions metadata and World
+  Bank annual indicator observations. Both use fixed HTTPS hosts, conservative
+  local derived-only rights and offline fixture API/CLI paths; no provider data
+  is bundled and no coverage is claimed for other official sources.
 - Synthetic A/C/E/I, closed, merged, transformed and conflicting records only;
   no real provider data is bundled.
 
@@ -93,6 +97,7 @@ Schema and semantic validation; see [validation boundary](docs/VALIDATION.md).
 - [Unified validation boundary](docs/VALIDATION.md)
 - [Public rating and redistribution gate](docs/PUBLICATION_GATE.md)
 - [Provider SDK and ingestion entitlements](docs/PROVIDER_SDK.md)
+- [Official provider pilots: SEC EDGAR and World Bank](docs/OFFICIAL_PROVIDERS.md)
 - [Fund taxonomy](docs/FUND_TAXONOMY.md)
 - [Scoring RFC](docs/SCORING_RFC.md)
 - [Manager research model](docs/MANAGER_RESEARCH.md)

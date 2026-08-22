@@ -74,7 +74,7 @@ A provider declares capabilities such as:
 list_funds, get_profile, get_share_classes, get_nav_series,
 get_benchmark, get_manager_tenures, get_holdings, get_fees,
 get_purchase_status, get_disclosures, get_external_ratings,
-get_entitlements
+get_macro_series, get_entitlements
 ```
 
 `get_entitlements` must state authentication mode, caching, derived-work rights,
@@ -104,18 +104,29 @@ terms, copyright, database rights and account restrictions must all be checked.
 
 ## Point-in-time and quality
 
-Every observation follows the explicitly selected packaged resource
-`schema / provider_record / 0.1.0`. Providers must
-state whether historical retrieval is truly point-in-time. Today's manager,
+Every observation follows an explicitly selected packaged resource version.
+`provider_record / 0.1.0` is an immutable legacy compatibility contract. Each
+record producer or adapter must explicitly select the contract it emits; the
+SEC and World Bank official pilots select `schema / provider_record / 0.2.0`.
+The legacy Schema retains its canonical `$id`
+`https://openfundscore.org/schemas/provider_record.schema.json`; version `0.2.0`
+uses the distinct canonical `$id`
+`https://openfundscore.org/schemas/provider_record/0.2.0.schema.json`, so both
+versions can coexist in one JSON Schema registry without identifier collision.
+Version `0.2.0` adds the `macro_observation` entity type and the optional
+`timezone`, `period`, `frequency`, `publication_lag`, `revision`, and `vintage`
+properties without changing the published `0.1.0` Schema. Providers must state
+whether historical retrieval is truly point-in-time. Today's manager,
 classification, benchmark or availability cannot be backfilled into a past
 simulation. Missing, stale and conflicting states remain distinct.
 
 JSON Schema validation is structural and is not sufficient on its own. After
 schema validation, local ingestion must call the unified
 `openfundscore.validate_record()` boundary with record type `provider_record`,
-Schema version `0.1.0` and an explicit RFC3339 `evaluation_timestamp`. The
-boundary always runs Schema and semantics in order, is deterministic, does not
-read the clock, and never rewrites or drops a record.
+the same explicit Schema version selected by that record producer or adapter,
+and an explicit RFC3339 `evaluation_timestamp`. The boundary always runs Schema
+and semantics in order, is deterministic, does not read the clock, and never
+rewrites or drops a record.
 
 The timestamp profile is a deterministic RFC3339 subset using ASCII digits:
 uppercase `T`, uppercase `Z` or a known numeric `±HH:MM` offset (`00`–`23`
@@ -156,3 +167,47 @@ before persistence or downstream use. The boundary independently enforces
 provider identity, capability, rights mode, attribution readiness, provider-bound
 rate limits, cache TTL, display, derived-work, redistribution and retention.
 Unknown rights block ingestion. See [Provider SDK](PROVIDER_SDK.md).
+When an entitlement declares `source_ids` and `dataset_ids`, both closed sets
+are mandatory and each record must match its provider, source and dataset
+exactly; an unreviewed source cannot inherit a sibling dataset's rights. Each
+present set contains at most 256 unique, non-empty strings of at most 256
+characters; the immutable exact-built-in sets are revalidated while the typed
+entitlement is reconstructed at the authorization boundary. These scoped
+entitlements and their provider records explicitly select
+the versioned `provider_contract / 0.2.0` and `provider_record / 0.2.0`
+resources. Generic legacy entitlements without source/dataset scopes may
+continue to validate old records against immutable version `0.1.0`.
+
+Published resource versions are immutable: once released, their bytes,
+digest, selector and canonical `$id` are never edited in place. Additive or
+behavioral contract changes require a new version with a distinct versioned
+canonical `$id`; the resource index retains old and new selectors side by side.
+
+## Implemented official-source pilots
+
+Only SEC EDGAR submissions metadata and World Bank Indicators API v2 annual
+observations currently have live adapter pilots. Their fixed hosts, bounded
+requests, User-Agent rules, field mappings, chronology/revision limitations and
+conservative rights settings are documented in
+[Official Provider Pilots](OFFICIAL_PROVIDERS.md). ESMA, SFC, MAS, FRED/ALFRED
+and all other catalogue entries above remain unimplemented because no endpoint,
+field mapping, point-in-time/revision model and source-specific rights decision
+has completed the required review. A catalogue URL is not evidence of adapter
+coverage or reuse permission.
+
+The two fixed-host clients materialize no more than 64 query entries. Query keys
+and values are exact built-in strings capped independently at 1,024 characters
+and 4,096 strict UTF-8 bytes. Raw exact-string paths are capped before percent
+decoding at 8,192 characters and 8,192 strict UTF-8 bytes, decoding is limited to
+eight rounds, and the encoded request target is capped at 8,192 UTF-8 bytes.
+Allowed request-header values are non-empty visible ASCII (`0x20` through `0x7e`)
+capped at 1,024 characters, and exact built-in finite connect/read timeouts
+satisfy `0 < timeout <= 60` seconds. The default transport validates and freezes
+the exact built-in integer status before reading response headers or body. An
+injected `LocalRateLimiter` is validated and reconstructed as an independent
+instance so alias mutation cannot change adapter scheduling. SEC explicit
+evaluation timestamps are frozen in UTC before limiter or transport use;
+`reportDate` is a strict ASCII date no later than `filingDate`. SEC
+`America/New_York` tzdb lookup is lazy: resource and non-SEC CLI operations remain
+available without that zone, while SEC row parsing fails with a stable redacted
+`invalid_sec_payload` error.

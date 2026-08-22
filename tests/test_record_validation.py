@@ -253,6 +253,57 @@ class RecordValidationTests(unittest.TestCase):
         self.assertEqual("rights_mismatch", rights.exception.code)
         self.assertEqual("$.rights.redistribution_allowed", rights.exception.path)
 
+    def test_provider_contract_resource_scopes_are_closed_pairs(self) -> None:
+        api = self._api()
+        scoped = provider_contract()
+        scoped["source_ids"] = ["2"]
+        scoped["dataset_ids"] = ["World Development Indicators"]
+        self.assertIsNone(
+            api.validate_record(
+                "provider_contract",
+                scoped,
+                schema_version="0.2.0",
+            )
+        )
+        with self.assertRaises(api.RecordValidationError) as legacy:
+            api.validate_record(
+                "provider_contract",
+                scoped,
+                schema_version="0.1.0",
+            )
+        self.assertEqual(legacy.exception.stage, "schema")
+        self.assertEqual(legacy.exception.code, "schema_additionalProperties")
+
+        for field, value in (
+            ("dataset_ids", None),
+            ("source_ids", []),
+            (
+                "dataset_ids",
+                ["World Development Indicators", "World Development Indicators"],
+            ),
+            ("source_ids", [" "]),
+        ):
+            with self.subTest(field=field, value=value):
+                invalid = deepcopy(scoped)
+                if value is None:
+                    del invalid[field]
+                else:
+                    invalid[field] = value
+                with self.assertRaises(api.RecordValidationError):
+                    api.validate_record(
+                        "provider_contract",
+                        invalid,
+                        schema_version="0.2.0",
+                    )
+
+        semantics = importlib.import_module("openfundscore.contract_semantics")
+        semantic_only = provider_contract()
+        semantic_only["source_ids"] = ["2"]
+        with self.assertRaises(semantics.ContractValidationError) as raised:
+            semantics.validate_provider_contract_semantics(semantic_only)
+        self.assertEqual(raised.exception.code, "resource_scope_mismatch")
+        self.assertEqual(raised.exception.path, "$.dataset_ids")
+
     def test_score_evidence_usage_runs_duplicate_contribution_semantics(self) -> None:
         api = self._api()
         valid = score_evidence_usage()
