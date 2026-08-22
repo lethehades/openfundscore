@@ -46,11 +46,15 @@ def _non_empty(value: object, path: str) -> None:
 
 
 def _aware(value: object, path: str) -> None:
-    if (
-        not isinstance(value, datetime)
-        or value.tzinfo is None
-        or value.utcoffset() is None
-    ):
+    if not isinstance(value, datetime) or value.tzinfo is None:
+        _fail("timezone_required", path, "timestamp must include a timezone")
+    try:
+        offset = value.utcoffset()
+    except Exception:  # noqa: BLE001 -- hostile tzinfo is an input boundary.
+        offset = False
+    if offset is False:
+        _fail("invalid_timestamp", path, "timestamp could not be safely inspected")
+    if offset is None:
         _fail("timezone_required", path, "timestamp must include a timezone")
 
 
@@ -168,6 +172,12 @@ class CandidateFund:
             )
         if any(type(item) is not LifecycleInterval for item in self.lifecycle):
             _fail("invalid_type", "$.candidate.lifecycle", "lifecycle entry is invalid")
+        for item in self.lifecycle:
+            _aware(item.effective_from, "$.lifecycle.effective_from")
+            _aware(item.published_at, "$.lifecycle.published_at")
+            _aware(item.knowledge_at, "$.lifecycle.knowledge_at")
+            if item.effective_to is not None:
+                _aware(item.effective_to, "$.lifecycle.effective_to")
         ordered = tuple(
             sorted(
                 self.lifecycle,
@@ -245,6 +255,17 @@ class CandidateFund:
                     "$.candidate.lifecycle",
                     "revisions must form one complete acyclic chain",
                 )
+        economic_ranges = tuple(sorted(groups, key=lambda item: item[0]))
+        previous_end: datetime | None = economic_ranges[0][1]
+        for effective_from, effective_to in economic_ranges[1:]:
+            if previous_end is None or effective_from < previous_end:
+                _fail(
+                    "overlapping_lifecycle",
+                    "$.candidate.lifecycle",
+                    "distinct lifecycle economic intervals must not overlap",
+                )
+            if effective_to is None or effective_to > previous_end:
+                previous_end = effective_to
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -604,6 +625,19 @@ class WalkForwardConfig:
             _fail("input_too_large", "$.config.folds", "folds exceed the size limit")
         if any(type(item) is not FoldWindow for item in self.folds):
             _fail("invalid_type", "$.config.folds", "fold entry is invalid")
+        for item in self.folds:
+            for index, value in enumerate(
+                (
+                    item.train_start,
+                    item.train_end,
+                    item.validation_start,
+                    item.validation_end,
+                    item.decision_at,
+                    item.outcome_start,
+                    item.outcome_end,
+                )
+            ):
+                _aware(value, f"$.fold.timestamps[{index}]")
         if (
             isinstance(self.select_count, bool)
             or not isinstance(self.select_count, int)
@@ -1754,6 +1788,50 @@ def _validate_inputs(
     typed_snapshots = cast(tuple[VersionedSnapshot, ...], snapshots)
     typed_outcomes = cast(tuple[FutureOutcome, ...], outcomes)
     typed_scores = cast(tuple[PrecomputedScore, ...], precomputed_scores)
+    for item in typed_config.folds:
+        for index, value in enumerate(
+            (
+                item.train_start,
+                item.train_end,
+                item.validation_start,
+                item.validation_end,
+                item.decision_at,
+                item.outcome_start,
+                item.outcome_end,
+            )
+        ):
+            _aware(value, f"$.fold.timestamps[{index}]")
+    for item in typed_candidates:
+        _aware(item.inception_at, "$.candidate.inception_at")
+        for interval in item.lifecycle:
+            _aware(interval.effective_from, "$.lifecycle.effective_from")
+            _aware(interval.published_at, "$.lifecycle.published_at")
+            _aware(interval.knowledge_at, "$.lifecycle.knowledge_at")
+            if interval.effective_to is not None:
+                _aware(interval.effective_to, "$.lifecycle.effective_to")
+    for item in typed_snapshots:
+        for path, value in (
+            ("$.snapshot.as_of", item.as_of),
+            ("$.snapshot.published_at", item.published_at),
+            ("$.snapshot.knowledge_at", item.knowledge_at),
+            ("$.snapshot.effective_from", item.effective_from),
+        ):
+            _aware(value, path)
+        if item.effective_to is not None:
+            _aware(item.effective_to, "$.snapshot.effective_to")
+    for item in typed_outcomes:
+        _aware(item.window_start, "$.outcome.window_start")
+        _aware(item.window_end, "$.outcome.window_end")
+    for item in typed_scores:
+        for path, value in (
+            ("$.score.score_as_of", item.score_as_of),
+            ("$.score.published_at", item.published_at),
+            ("$.score.knowledge_at", item.knowledge_at),
+            ("$.score.effective_from", item.effective_from),
+        ):
+            _aware(value, path)
+        if item.effective_to is not None:
+            _aware(item.effective_to, "$.score.effective_to")
     nested_item_count = (
         len(typed_config.folds)
         + sum(len(item.lifecycle) for item in typed_candidates)
@@ -2022,6 +2100,12 @@ def run_walk_forward(
                         "callback must return an auditable ScoreResult or None",
                     )
                 if isinstance(value, ScoreResult):
+                    for path, timestamp in (
+                        ("$.score.score_as_of", value.score_as_of),
+                        ("$.score.published_at", value.published_at),
+                        ("$.score.knowledge_at", value.knowledge_at),
+                    ):
+                        _aware(timestamp, path)
                     if (
                         value.score_as_of > fold.decision_at
                         or value.published_at > fold.decision_at

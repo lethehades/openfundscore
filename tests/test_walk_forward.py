@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import copy
 import unittest
 from dataclasses import replace
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta, tzinfo
+from typing import cast
 
 from openfundscore.walk_forward import (
     CandidateFund,
@@ -18,13 +20,45 @@ from openfundscore.walk_forward import (
     run_walk_forward,
 )
 from openfundscore.walk_forward_io import (
+    synthetic_fixture_document,
     walk_forward_from_document,
+    walk_forward_input_document,
     walk_forward_report_document,
 )
 
 
 def dt(value: str) -> datetime:
     return datetime.fromisoformat(value)
+
+
+class HostileTimezone(tzinfo):
+    def __init__(self, exception_type: type[BaseException]) -> None:
+        self.exception_type = exception_type
+
+    def utcoffset(self, value):
+        raise self.exception_type("private-marker")
+
+    def dst(self, value):
+        return timedelta(0)
+
+    def tzname(self, value):
+        return "hostile"
+
+
+def hostile_datetime(exception_type: type[BaseException]) -> datetime:
+    return datetime(2020, 1, 1, tzinfo=HostileTimezone(exception_type))
+
+
+class HostileString(str):
+    exception_type: type[BaseException]
+
+    def __new__(cls, exception_type: type[BaseException]):
+        value = super().__new__(cls, "private-marker")
+        value.exception_type = exception_type
+        return value
+
+    def encode(self, encoding="utf-8", errors="strict"):
+        raise self.exception_type("private-marker")
 
 
 def snapshot(
@@ -153,6 +187,114 @@ class WalkForwardTests(unittest.TestCase):
             action()
         self.assertEqual(raised.exception.code, code)
         self.assertNotIn("private-marker", str(raised.exception))
+
+    def assert_timestamp_error(self, path, action) -> None:
+        with self.assertRaises(WalkForwardError) as raised:
+            action()
+        self.assertEqual(raised.exception.code, "invalid_timestamp")
+        self.assertEqual(raised.exception.path, path)
+        self.assertNotIn("private-marker", str(raised.exception))
+        self.assertIsNone(raised.exception.__cause__)
+        self.assertIsNone(raised.exception.__context__)
+
+    def test_hostile_timezone_constructor_exceptions_are_stably_redacted(self) -> None:
+        for exception_type in (RuntimeError, OverflowError, OSError, ValueError):
+            with self.subTest(exception_type=exception_type.__name__):
+                self.assert_timestamp_error(
+                    "$.lifecycle.effective_from",
+                    lambda exception_type=exception_type: LifecycleInterval(
+                        status="active",
+                        effective_from=hostile_datetime(exception_type),
+                        published_at=dt("2020-01-01T00:00:00Z"),
+                        knowledge_at=dt("2020-01-01T00:00:00Z"),
+                    ),
+                )
+
+        for exception_type in (KeyboardInterrupt, SystemExit):
+            with (
+                self.subTest(exception_type=exception_type.__name__),
+                self.assertRaises(exception_type),
+            ):
+                LifecycleInterval(
+                    status="active",
+                    effective_from=hostile_datetime(exception_type),
+                    published_at=dt("2020-01-01T00:00:00Z"),
+                    knowledge_at=dt("2020-01-01T00:00:00Z"),
+                )
+
+    def test_hostile_timezone_run_and_report_paths_are_stably_redacted(self) -> None:
+        poisoned_snapshot = required_snapshots("alpha")[0]
+        object.__setattr__(
+            poisoned_snapshot,
+            "knowledge_at",
+            hostile_datetime(RuntimeError),
+        )
+        self.assert_timestamp_error(
+            "$.snapshot.knowledge_at",
+            lambda: run_walk_forward(
+                WalkForwardConfig(folds=(fold(),), select_count=1),
+                candidates=(candidate("alpha-A", "alpha"),),
+                snapshots=(poisoned_snapshot,) + required_snapshots("alpha")[1:],
+                outcomes=(),
+                scorer=lambda view: score_result(1.0, (("total", 1.0),)),
+            ),
+        )
+
+        report = run_walk_forward(
+            WalkForwardConfig(folds=(fold(),), select_count=1),
+            candidates=(candidate("alpha-A", "alpha"),),
+            snapshots=required_snapshots("alpha"),
+            outcomes=(),
+            scorer=lambda view: score_result(1.0, (("total", 1.0),)),
+        )
+        poisoned_report = replace(
+            report,
+            folds=(
+                replace(
+                    report.folds[0],
+                    decision_at=hostile_datetime(OSError),
+                ),
+            ),
+        )
+        self.assert_timestamp_error(
+            "$report",
+            lambda: walk_forward_report_document(poisoned_report),
+        )
+
+    def test_hostile_nested_timestamps_are_redacted_by_parent_constructors(
+        self,
+    ) -> None:
+        poisoned_lifecycle = LifecycleInterval(
+            status="active",
+            effective_from=dt("2019-01-01T00:00:00Z"),
+            published_at=dt("2019-01-01T00:00:00Z"),
+            knowledge_at=dt("2019-01-01T00:00:00Z"),
+        )
+        object.__setattr__(
+            poisoned_lifecycle,
+            "effective_from",
+            hostile_datetime(RuntimeError),
+        )
+        self.assert_timestamp_error(
+            "$.lifecycle.effective_from",
+            lambda: CandidateFund(
+                share_class_id="alpha-A",
+                strategy_id="alpha",
+                inception_at=dt("2019-01-01T00:00:00Z"),
+                lifecycle=(poisoned_lifecycle,),
+            ),
+        )
+
+        poisoned_fold = fold()
+        object.__setattr__(
+            poisoned_fold,
+            "decision_at",
+            hostile_datetime(OverflowError),
+        )
+        self.assert_timestamp_error(
+            "$.fold.timestamps[4]",
+            lambda: WalkForwardConfig(folds=(poisoned_fold,), select_count=1),
+        )
 
     def test_callback_receives_only_point_in_time_data_and_share_classes_are_deduplicated(
         self,
@@ -447,14 +589,19 @@ class WalkForwardTests(unittest.TestCase):
             inception_at=dt("2019-01-01T00:00:00Z"),
             lifecycle=(
                 LifecycleInterval(
+                    revision_id="active-r1",
                     status="active",
                     effective_from=dt("2019-01-01T00:00:00Z"),
+                    effective_to=dt("2021-04-01T00:00:00Z"),
                     published_at=dt("2019-01-01T00:00:00Z"),
                     knowledge_at=dt("2019-01-01T00:00:00Z"),
                 ),
                 LifecycleInterval(
+                    revision_id="active-r2",
+                    supersedes_revision_id="active-r1",
                     status="closed",
-                    effective_from=dt("2020-12-01T00:00:00Z"),
+                    effective_from=dt("2019-01-01T00:00:00Z"),
+                    effective_to=dt("2021-04-01T00:00:00Z"),
                     published_at=dt("2021-01-02T00:00:00Z"),
                     knowledge_at=dt("2021-01-02T00:00:00Z"),
                 ),
@@ -538,6 +685,83 @@ class WalkForwardTests(unittest.TestCase):
         self.assertEqual(report.folds[0].eligible_count, 1)
         self.assertEqual(report.folds[1].retained_terminal_count, 1)
         self.assertEqual(report.folds[1].failures[0].code, "terminal_lifecycle")
+
+    def test_open_ended_lifecycle_followed_by_later_interval_is_rejected(self) -> None:
+        self.assert_walk_forward_error(
+            "overlapping_lifecycle",
+            lambda: CandidateFund(
+                share_class_id="alpha-A",
+                strategy_id="alpha",
+                inception_at=dt("2018-01-01T00:00:00Z"),
+                lifecycle=(
+                    LifecycleInterval(
+                        status="active",
+                        effective_from=dt("2018-01-01T00:00:00Z"),
+                        published_at=dt("2018-01-01T00:00:00Z"),
+                        knowledge_at=dt("2018-01-01T00:00:00Z"),
+                    ),
+                    LifecycleInterval(
+                        status="closed",
+                        effective_from=dt("2020-01-01T00:00:00Z"),
+                        published_at=dt("2020-01-01T00:00:00Z"),
+                        knowledge_at=dt("2020-01-01T00:00:00Z"),
+                    ),
+                ),
+            ),
+        )
+
+    def test_adjacent_lifecycle_intervals_are_valid_at_exact_boundary(self) -> None:
+        boundary = dt("2020-01-01T00:00:00Z")
+        fund = CandidateFund(
+            share_class_id="alpha-A",
+            strategy_id="alpha",
+            inception_at=dt("2018-01-01T00:00:00Z"),
+            lifecycle=(
+                LifecycleInterval(
+                    status="active",
+                    effective_from=dt("2018-01-01T00:00:00Z"),
+                    effective_to=boundary,
+                    published_at=dt("2018-01-01T00:00:00Z"),
+                    knowledge_at=dt("2018-01-01T00:00:00Z"),
+                ),
+                LifecycleInterval(
+                    status="closed",
+                    effective_from=boundary,
+                    published_at=boundary,
+                    knowledge_at=boundary,
+                ),
+            ),
+        )
+
+        self.assertEqual(
+            fund.lifecycle[0].effective_to, fund.lifecycle[1].effective_from
+        )
+
+    def test_same_effective_range_requires_explicit_revision_replacement(self) -> None:
+        fund = CandidateFund(
+            share_class_id="alpha-A",
+            strategy_id="alpha",
+            inception_at=dt("2018-01-01T00:00:00Z"),
+            lifecycle=(
+                LifecycleInterval(
+                    revision_id="lifecycle-r1",
+                    status="active",
+                    effective_from=dt("2018-01-01T00:00:00Z"),
+                    published_at=dt("2018-01-01T00:00:00Z"),
+                    knowledge_at=dt("2018-01-01T00:00:00Z"),
+                ),
+                LifecycleInterval(
+                    revision_id="lifecycle-r2",
+                    supersedes_revision_id="lifecycle-r1",
+                    status="closed",
+                    effective_from=dt("2018-01-01T00:00:00Z"),
+                    published_at=dt("2020-01-01T00:00:00Z"),
+                    knowledge_at=dt("2020-01-01T00:00:00Z"),
+                ),
+            ),
+        )
+
+        self.assertEqual(fund.lifecycle[1].supersedes_revision_id, "lifecycle-r1")
 
     def test_conflicting_or_unknown_required_snapshots_fail_closed(self) -> None:
         conflicting = required_snapshots("alpha") + (
@@ -1796,6 +2020,49 @@ class WalkForwardTests(unittest.TestCase):
                     code,
                     lambda document=document: walk_forward_from_document(document),
                 )
+
+    def test_shared_acyclic_json_container_matches_duplicated_canonical_output(
+        self,
+    ) -> None:
+        shared_document = synthetic_fixture_document()
+        shared_candidates = cast(list[dict[str, object]], shared_document["candidates"])
+        self.assertIsInstance(shared_candidates, list)
+        shared_lifecycle = shared_candidates[0]["lifecycle"]
+        shared_candidates[1]["lifecycle"] = shared_lifecycle
+
+        duplicated_document = copy.deepcopy(shared_document)
+        duplicated_candidates = cast(
+            list[dict[str, object]], duplicated_document["candidates"]
+        )
+        duplicated_candidates[1]["lifecycle"] = copy.deepcopy(
+            duplicated_candidates[0]["lifecycle"]
+        )
+
+        shared = walk_forward_from_document(shared_document)
+        duplicated = walk_forward_from_document(duplicated_document)
+
+        self.assertEqual(
+            walk_forward_input_document(*shared),
+            walk_forward_input_document(*duplicated),
+        )
+
+    def test_hostile_json_scalar_exceptions_are_redacted_but_base_exceptions_propagate(
+        self,
+    ) -> None:
+        with self.assertRaises(WalkForwardError) as raised:
+            walk_forward_from_document({HostileString(RuntimeError): None})
+        self.assertEqual(raised.exception.code, "invalid_unicode")
+        self.assertEqual(raised.exception.path, "$")
+        self.assertNotIn("private-marker", str(raised.exception))
+        self.assertIsNone(raised.exception.__cause__)
+        self.assertIsNone(raised.exception.__context__)
+
+        for exception_type in (KeyboardInterrupt, SystemExit):
+            with (
+                self.subTest(exception_type=exception_type.__name__),
+                self.assertRaises(exception_type),
+            ):
+                walk_forward_from_document({HostileString(exception_type): None})
 
 
 if __name__ == "__main__":

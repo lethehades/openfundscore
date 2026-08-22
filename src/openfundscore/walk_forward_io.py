@@ -63,11 +63,21 @@ def _exact_keys(document: dict[str, object], expected: set[str], path: str) -> N
 
 
 def _validate_json_structure(value: object) -> None:
-    stack: list[tuple[object, int]] = [(value, 0)]
-    seen_containers: set[int] = set()
+    active_containers: set[int] = set()
     node_count = 0
-    while stack:
-        item, depth = stack.pop()
+
+    def validate_unicode(value: str) -> None:
+        try:
+            value.encode("utf-8", errors="strict")
+        except Exception:  # noqa: BLE001 -- hostile scalar is an input boundary.
+            valid = False
+        else:
+            valid = True
+        if not valid:
+            _fail("invalid_unicode", "$", "JSON strings must be valid Unicode")
+
+    def visit(item: object, depth: int) -> None:
+        nonlocal node_count
         if depth > _MAX_JSON_DEPTH:
             _fail("json_too_deep", "$", "JSON nesting exceeds the depth limit")
         node_count += 1
@@ -75,40 +85,51 @@ def _validate_json_structure(value: object) -> None:
             _fail("json_too_wide", "$", "JSON structure exceeds the node limit")
         if type(item) is dict:
             identity = id(item)
-            if identity in seen_containers:
+            if identity in active_containers:
                 _fail("cyclic_json", "$", "JSON structure must be acyclic")
-            seen_containers.add(identity)
-            mapping = cast(dict[object, object], item)
-            if len(mapping) > _MAX_ITEMS:
-                _fail("json_too_wide", "$", "JSON container exceeds the width limit")
-            for key, child in mapping.items():
-                if not isinstance(key, str):
-                    _fail("invalid_json_value", "$", "JSON object keys must be strings")
-                try:
-                    cast(str, key).encode("utf-8", errors="strict")
-                except UnicodeEncodeError:
-                    _fail("invalid_unicode", "$", "JSON strings must be valid Unicode")
-                stack.append((child, depth + 1))
-            continue
+            active_containers.add(identity)
+            try:
+                mapping = cast(dict[object, object], item)
+                if len(mapping) > _MAX_ITEMS:
+                    _fail(
+                        "json_too_wide", "$", "JSON container exceeds the width limit"
+                    )
+                for key, child in mapping.items():
+                    if not isinstance(key, str):
+                        _fail(
+                            "invalid_json_value",
+                            "$",
+                            "JSON object keys must be strings",
+                        )
+                    validate_unicode(cast(str, key))
+                    visit(child, depth + 1)
+            finally:
+                active_containers.remove(identity)
+            return
         if type(item) is list:
             identity = id(item)
-            if identity in seen_containers:
+            if identity in active_containers:
                 _fail("cyclic_json", "$", "JSON structure must be acyclic")
-            seen_containers.add(identity)
-            sequence = cast(list[object], item)
-            if len(sequence) > _MAX_ITEMS:
-                _fail("json_too_wide", "$", "JSON container exceeds the width limit")
-            stack.extend((child, depth + 1) for child in sequence)
-            continue
-        if isinstance(item, str):
+            active_containers.add(identity)
             try:
-                item.encode("utf-8", errors="strict")
-            except UnicodeEncodeError:
-                _fail("invalid_unicode", "$", "JSON strings must be valid Unicode")
+                sequence = cast(list[object], item)
+                if len(sequence) > _MAX_ITEMS:
+                    _fail(
+                        "json_too_wide", "$", "JSON container exceeds the width limit"
+                    )
+                for child in sequence:
+                    visit(child, depth + 1)
+            finally:
+                active_containers.remove(identity)
+            return
+        if isinstance(item, str):
+            validate_unicode(item)
         elif type(item) is float and not math.isfinite(cast(float, item)):
             _fail("invalid_json_value", "$", "JSON numbers must be finite")
         elif type(item) not in {str, int, float, bool, type(None)}:
             _fail("invalid_json_value", "$", "value is not representable as JSON")
+
+    visit(value, 0)
 
 
 def _lifecycle(document: object, path: str) -> LifecycleInterval:
@@ -373,7 +394,17 @@ def walk_forward_from_document(
 
 def _jsonable(value: object) -> Any:
     if isinstance(value, datetime):
-        return value.astimezone(UTC).isoformat().replace("+00:00", "Z")
+        try:
+            encoded_timestamp = value.astimezone(UTC).isoformat().replace("+00:00", "Z")
+        except Exception:  # noqa: BLE001 -- hostile tzinfo is an input boundary.
+            encoded_timestamp = None
+        if encoded_timestamp is None:
+            _fail(
+                "invalid_timestamp",
+                "$report",
+                "timestamp could not be safely serialized",
+            )
+        return encoded_timestamp
     if is_dataclass(value) and not isinstance(value, type):
         return {
             field.name: _jsonable(getattr(value, field.name)) for field in fields(value)
