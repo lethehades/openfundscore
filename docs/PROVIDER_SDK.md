@@ -18,10 +18,7 @@ Import from `openfundscore.provider_sdk`:
 Every adapter implements:
 
 ```python
-def get_entitlements(
-    *, evaluation_timestamp: datetime
-) -> ProviderEntitlements:
-    ...
+def get_entitlements(*, evaluation_timestamp: datetime) -> ProviderEntitlements: ...
 ```
 
 The returned snapshot must use that exact timezone-aware timestamp. The caller
@@ -30,6 +27,11 @@ also passes an explicit packaged provider-record Schema version to
 fallback. `GET_ENTITLEMENTS` is the metadata lookup capability required on an
 adapter and its snapshot; it is rejected as an `IngestionRequest` data-fetch
 capability.
+
+New integrations pass `schema_version="0.2.0"`. The packaged
+`provider_record / 0.1.0` contract remains immutable and selectable for legacy
+records, but the SDK never upgrades a record or chooses a version on the caller's
+behalf.
 
 ## Enforcement order
 
@@ -65,12 +67,22 @@ characters in both typed and JSON contracts.
 Capability-to-record binding is explicit: fund listing covers fund strategies
 and share classes; profile covers fund strategies, share classes, managers,
 benchmarks, issuers and platform listings; share-class, NAV, benchmark,
-manager-tenure and holding calls cover their matching entity types; fees cover
-fund strategies and share classes; purchase status covers share classes and
-platform listings; disclosures cover canonical entities; and external ratings
-cover only the isolated `external_rating` namespace. A broad adapter capability
+manager-tenure, holding and corporate-action calls cover their matching entity
+types; fees cover fund strategies and share classes; purchase status covers share
+classes and platform listings; disclosures cover canonical entities including
+reports and corporate actions; and external ratings cover only the isolated
+`external_rating` namespace. A broad adapter capability
 therefore cannot authorize an unrelated record such as a holding fetched under
 `GET_PROFILE`.
+
+The local Mainland snapshot adapter and entitlement loader are also available
+from the package top level as `MainlandOfficialSnapshotAdapter`,
+`SnapshotValidationError`, and `load_mainland_entitlements`. Its bundle format,
+official-host restrictions, source-rights evidence, raw/PIT mapping, and
+no-network limits are documented in
+[Mainland official frozen snapshots](MAINLAND_OFFICIAL_SNAPSHOT.md).
+The adapter validates and authorises every emitted provider record against
+`provider_record / 0.2.0`.
 
 ## Rate-limit state
 

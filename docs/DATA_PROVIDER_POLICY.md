@@ -73,7 +73,7 @@ A provider declares capabilities such as:
 ```text
 list_funds, get_profile, get_share_classes, get_nav_series,
 get_benchmark, get_manager_tenures, get_holdings, get_fees,
-get_purchase_status, get_disclosures, get_external_ratings,
+get_corporate_actions, get_purchase_status, get_disclosures, get_external_ratings,
 get_entitlements
 ```
 
@@ -105,7 +105,7 @@ terms, copyright, database rights and account restrictions must all be checked.
 ## Point-in-time and quality
 
 Every observation follows the explicitly selected packaged resource
-`schema / provider_record / 0.1.0`. Providers must
+`schema / provider_record / 0.2.0`. Providers must
 state whether historical retrieval is truly point-in-time. Today's manager,
 classification, benchmark or availability cannot be backfilled into a past
 simulation. Missing, stale and conflicting states remain distinct.
@@ -113,9 +113,14 @@ simulation. Missing, stale and conflicting states remain distinct.
 JSON Schema validation is structural and is not sufficient on its own. After
 schema validation, local ingestion must call the unified
 `openfundscore.validate_record()` boundary with record type `provider_record`,
-Schema version `0.1.0` and an explicit RFC3339 `evaluation_timestamp`. The
+Schema version `0.2.0` and an explicit RFC3339 `evaluation_timestamp`. The
 boundary always runs Schema and semantics in order, is deterministic, does not
 read the clock, and never rewrites or drops a record.
+
+`provider_record / 0.1.0` remains packaged as an immutable legacy contract so
+existing records can still be validated by selecting that exact version. New
+adapters and fixtures use `0.2.0`; OpenFundScore provides no `latest` alias,
+automatic migration, or in-place replacement of the `0.1.0` resource.
 
 The timestamp profile is a deterministic RFC3339 subset using ASCII digits:
 uppercase `T`, uppercase `Z` or a known numeric `±HH:MM` offset (`00`–`23`
@@ -141,6 +146,20 @@ The semantic contract enforces:
   explicitly not-point-in-time records;
 - a non-verified quality state for records whose point-in-time status is unknown.
 
+The Mainland frozen-snapshot boundary is stricter because one local bundle also
+declares its retrieval instant: root chronology must satisfy
+`published_at <= retrieved_at <= evaluation_timestamp` and
+`as_of <= retrieved_at`; every observation must satisfy
+`as_of <= published_at <= fetched_at <= retrieved_at`. Distinct revisions are
+defined by the parsed UTC `as_of` instant, not by the raw RFC3339 offset spelling;
+equivalent `Z` and numeric-offset values share profile, conflict, and holding
+aggregate groups while the original string remains in the audit record. Each
+true revision must provide the complete item profile, and every conflicting or
+revised value is validated independently before it can be preserved.
+Corporate-action observations bind `valid_from` to their disclosed `effective_at`;
+future-effective facts remain available as `effective_status = future` rather than
+being promoted to current state.
+
 `provider_claimed` remains a separate chronology assertion and is never promoted
 to `verified` by validation. `quality_state` describes observation quality, so it
 remains a separate axis from chronology confidence. A validity interval with
@@ -156,3 +175,13 @@ before persistence or downstream use. The boundary independently enforces
 provider identity, capability, rights mode, attribution readiness, provider-bound
 rate limits, cache TTL, display, derived-work, redistribution and retention.
 Unknown rights block ingestion. See [Provider SDK](PROVIDER_SDK.md).
+
+## Mainland official frozen snapshots
+
+The Mainland pilot accepts only caller-supplied, locally frozen official
+snapshots and has no network transport or platform connector. Its closed format,
+exact-host source rules, raw-field mapping, point-in-time intervals, document
+digest binding, separately reviewed rights declaration, and known limitations
+are documented in [Mainland official frozen snapshots](MAINLAND_OFFICIAL_SNAPSHOT.md).
+Web visibility alone is not authorization, and the technical checks are not
+legal advice.

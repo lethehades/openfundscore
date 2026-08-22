@@ -11,6 +11,14 @@
     },
     {
       "type": "schema",
+      "name": "mainland_official_snapshot",
+      "version": "0.1.0",
+      "internal_path": "schema/mainland_official_snapshot/0.1.0.schema.json",
+      "media_type": "application/schema+json",
+      "sha256": "eb283a15c8b16c52611d1e883510188c389af7ea718534088058fbab42a2b96f"
+    },
+    {
+      "type": "schema",
       "name": "manager_research",
       "version": "0.1.0",
       "internal_path": "schema/manager_research/0.1.0.schema.json",
@@ -32,6 +40,14 @@
       "internal_path": "schema/provider_record/0.1.0.schema.json",
       "media_type": "application/schema+json",
       "sha256": "baf590e637dc0e0bdf01eddf9d51ccbe5e9d3c16057910a9cf7b9b58ccec65bf"
+    },
+    {
+      "type": "schema",
+      "name": "provider_record",
+      "version": "0.2.0",
+      "internal_path": "schema/provider_record/0.2.0.schema.json",
+      "media_type": "application/schema+json",
+      "sha256": "8157980e7dfe2bff512d4d73fbedf4f9b7c8f548e184697c59a9988e23e3a490"
     },
     {
       "type": "schema",

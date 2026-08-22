@@ -38,13 +38,20 @@ class CliTests(unittest.TestCase):
 
         self.assertEqual(0, exit_code)
         document = json.loads(output.getvalue())
-        self.assertEqual(len(document), 5)
+        self.assertEqual(len(document), 7)
         self.assertEqual(
             [item["name"] for item in document],
             sorted(item["name"] for item in document),
         )
         self.assertTrue(all(item["type"] == "schema" for item in document))
-        self.assertTrue(all(item["version"] == "0.1.0" for item in document))
+        self.assertEqual(
+            [
+                (item["name"], item["version"])
+                for item in document
+                if item["name"] == "provider_record"
+            ],
+            [("provider_record", "0.1.0"), ("provider_record", "0.2.0")],
+        )
 
     def test_resources_resolve_returns_logical_metadata_not_a_path(self) -> None:
         output = io.StringIO()
@@ -58,7 +65,7 @@ class CliTests(unittest.TestCase):
                     "--name",
                     "provider_record",
                     "--version",
-                    "0.1.0",
+                    "0.2.0",
                 ]
             )
 
@@ -66,18 +73,18 @@ class CliTests(unittest.TestCase):
         document = json.loads(output.getvalue())
         self.assertEqual(
             document["uri"],
-            "openfundscore://schema/provider_record/0.1.0",
+            "openfundscore://schema/provider_record/0.2.0",
         )
         self.assertEqual(document["type"], "schema")
         self.assertEqual(document["name"], "provider_record")
-        self.assertEqual(document["version"], "0.1.0")
+        self.assertEqual(document["version"], "0.2.0")
         self.assertNotIn("path", document)
 
     def test_resources_show_emits_the_exact_packaged_json_text(self) -> None:
         expected = resolve_resource(
             resource_type="schema",
             name="provider_record",
-            version="0.1.0",
+            version="0.2.0",
         ).read_text()
         output = io.StringIO()
         with redirect_stdout(output):
@@ -90,7 +97,7 @@ class CliTests(unittest.TestCase):
                     "--name",
                     "provider_record",
                     "--version",
-                    "0.1.0",
+                    "0.2.0",
                 ]
             )
 

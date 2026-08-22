@@ -218,11 +218,23 @@ def validate_provider_record_semantics(
             rights["reviewed_at"],
             path="$.rights.reviewed_at",
         )
+    rights_valid_until = None
+    if rights.get("valid_until") is not None:
+        rights_valid_until = _parse_timestamp_value(
+            rights["valid_until"],
+            path="$.rights.valid_until",
+        )
     _validate_rights(rights)
     evaluation_at = _parse_timestamp_value(
         evaluation_timestamp,
         path="$evaluation_timestamp",
     )
+    if rights_valid_until is not None and evaluation_at > rights_valid_until:
+        raise ProviderRecordValidationError(
+            code="expired_rights",
+            path="$.rights.valid_until",
+            message="provider record rights do not cover the evaluation instant",
+        )
     if published_at > fetched_at:
         raise ProviderRecordValidationError(
             code="chronology_violation",

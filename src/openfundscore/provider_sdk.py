@@ -50,6 +50,7 @@ class ProviderCapability(StrEnum):
     GET_BENCHMARK = "get_benchmark"
     GET_MANAGER_TENURES = "get_manager_tenures"
     GET_HOLDINGS = "get_holdings"
+    GET_CORPORATE_ACTIONS = "get_corporate_actions"
     GET_FEES = "get_fees"
     GET_PURCHASE_STATUS = "get_purchase_status"
     GET_DISCLOSURES = "get_disclosures"
@@ -125,6 +126,7 @@ _CAPABILITY_ENTITY_TYPES: dict[ProviderCapability, frozenset[str]] = {
     ProviderCapability.GET_BENCHMARK: frozenset({"benchmark"}),
     ProviderCapability.GET_MANAGER_TENURES: frozenset({"manager_tenure"}),
     ProviderCapability.GET_HOLDINGS: frozenset({"holding"}),
+    ProviderCapability.GET_CORPORATE_ACTIONS: frozenset({"corporate_action"}),
     ProviderCapability.GET_FEES: frozenset({"fund_strategy", "share_class"}),
     ProviderCapability.GET_PURCHASE_STATUS: frozenset(
         {"share_class", "platform_listing"}
@@ -139,6 +141,8 @@ _CAPABILITY_ENTITY_TYPES: dict[ProviderCapability, frozenset[str]] = {
             "holding",
             "issuer",
             "platform_listing",
+            "report",
+            "corporate_action",
         }
     ),
     ProviderCapability.GET_EXTERNAL_RATINGS: frozenset({"external_rating"}),
@@ -671,6 +675,20 @@ def _enforce_record_contract(
             _contract_mismatch("$.rights.reviewed_at")
         if parsed_reviewed_at != entitlements.rights_reviewed_at:
             _contract_mismatch("$.rights.reviewed_at")
+    if "valid_until" in rights:
+        try:
+            parsed_valid_until = parse_rfc3339_timestamp(
+                rights.get("valid_until"),
+                path="$.rights.valid_until",
+            )
+        except ProviderRecordValidationError:
+            _contract_mismatch("$.rights.valid_until")
+        entitlement_valid_until = entitlements.valid_until
+        if entitlement_valid_until is None or _as_utc(
+            parsed_valid_until,
+            path="$.rights.valid_until",
+        ) != _as_utc(entitlement_valid_until, path="$.valid_until"):
+            _contract_mismatch("$.rights.valid_until")
 
 
 def _deny(*, code: str, path: str, message: str) -> Never:

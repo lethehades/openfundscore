@@ -5,6 +5,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
+    from .mainland_official import (
+        MainlandOfficialSnapshotAdapter,
+        SnapshotValidationError,
+        load_mainland_entitlements,
+    )
     from .manager_research import score_manager_research
     from .publication_gate import (
         PublicationDecision,
@@ -26,14 +31,17 @@ if TYPE_CHECKING:
 __version__ = "0.2.0.dev0"
 
 __all__ = (
+    "MainlandOfficialSnapshotAdapter",
     "MappingDecision",
     "PublicationDecision",
     "PublicationGateError",
     "PublicationGateResult",
     "RecordType",
     "RecordValidationError",
+    "SnapshotValidationError",
     "StrategyMappingError",
     "evaluate_publication_gate",
+    "load_mainland_entitlements",
     "load_packaged_strategy_mapping",
     "load_strategy_mapping",
     "map_strategy_family",
@@ -44,6 +52,14 @@ __all__ = (
 
 
 def __getattr__(name: str) -> Any:
+    if name in {
+        "MainlandOfficialSnapshotAdapter",
+        "SnapshotValidationError",
+        "load_mainland_entitlements",
+    }:
+        from . import mainland_official
+
+        return getattr(mainland_official, name)
     if name == "score_manager_research":
         from .manager_research import score_manager_research
 

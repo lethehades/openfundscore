@@ -241,6 +241,7 @@ class ProviderSdkTests(unittest.TestCase):
         *,
         document: dict | None = None,
         provider: LocalProvider | None = None,
+        schema_version: str = "0.1.0",
         evaluation_timestamp: datetime = EVALUATED_AT,
         request: IngestionRequest | None = None,
         budget: RateLimitBudget | None = None,
@@ -249,7 +250,7 @@ class ProviderSdkTests(unittest.TestCase):
         return authorize_ingestion(
             selected_provider,
             document or record_for(value),
-            schema_version="0.1.0",
+            schema_version=schema_version,
             evaluation_timestamp=evaluation_timestamp,
             request=request
             or IngestionRequest(capability=ProviderCapability.GET_PROFILE),
@@ -260,6 +261,18 @@ class ProviderSdkTests(unittest.TestCase):
                 requests_used=0,
             ),
         )
+
+    def _provider_record_v2(self, value: ProviderEntitlements) -> dict:
+        document = record_for(value)
+        document["exact_identifiers"] = [
+            {
+                "scheme": "official_entity_id",
+                "value": "official:benchmark-1",
+                "jurisdiction": "CN",
+            }
+        ]
+        document["effective_status"] = "current"
+        return document
 
     def test_typed_provider_contract_authorizes_valid_local_ingestion(self) -> None:
         provider = LocalProvider()
@@ -454,6 +467,77 @@ class ProviderSdkTests(unittest.TestCase):
                 )
                 self.assertEqual(raised.exception.code, expected_code)
                 self.assertEqual(raised.exception.path, path)
+
+    def test_provider_record_v2_valid_until_must_match_entitlement_instant(
+        self,
+    ) -> None:
+        value = entitlements()
+        document = self._provider_record_v2(value)
+        marker = "PRIVATE-RIGHTS-VALIDITY-MARKER"
+        document["rights"]["valid_until"] = "2026-08-23T00:00:00Z"
+        document["value"] = marker
+
+        with self.assertRaises(IngestionDenied) as raised:
+            self._authorize(value, document=document, schema_version="0.2.0")
+
+        self.assertEqual(raised.exception.code, "record_contract_mismatch")
+        self.assertEqual(raised.exception.path, "$.rights.valid_until")
+        self.assertNotIn(marker, str(raised.exception))
+        self.assertNotIn("2026-08-23", str(raised.exception))
+        self.assertIsNone(raised.exception.__cause__)
+
+    def test_provider_record_v2_accepts_equivalent_valid_until_offset_unchanged(
+        self,
+    ) -> None:
+        value = entitlements()
+        document = self._provider_record_v2(value)
+        raw_valid_until = "2026-08-22T08:00:00+08:00"
+        document["rights"]["valid_until"] = raw_valid_until
+        snapshot = deepcopy(document)
+
+        authorization = self._authorize(
+            value,
+            document=document,
+            schema_version="0.2.0",
+        )
+
+        self.assertEqual(authorization.provider_id, value.provider_id)
+        self.assertEqual(document, snapshot)
+        self.assertEqual(document["rights"]["valid_until"], raw_valid_until)
+
+    def test_provider_record_valid_until_remains_optional_in_v1_and_v2(self) -> None:
+        value = entitlements()
+        legacy = record_for(value)
+        current = self._provider_record_v2(value)
+
+        self.assertEqual(
+            self._authorize(value, document=legacy).provider_id, "provider-1"
+        )
+        self.assertEqual(
+            self._authorize(
+                value,
+                document=current,
+                schema_version="0.2.0",
+            ).provider_id,
+            "provider-1",
+        )
+
+    def test_provider_record_v2_expired_valid_until_is_stably_redacted(self) -> None:
+        value = entitlements()
+        document = self._provider_record_v2(value)
+        marker = "PRIVATE-EXPIRED-RIGHTS-MARKER"
+        document["rights"]["valid_until"] = "2026-08-20T23:59:59.999999Z"
+        document["value"] = marker
+
+        with self.assertRaises(IngestionDenied) as raised:
+            self._authorize(value, document=document, schema_version="0.2.0")
+
+        self.assertEqual(raised.exception.code, "invalid_provider_record")
+        self.assertEqual(raised.exception.path, "$.rights.valid_until")
+        self.assertNotIn(marker, str(raised.exception))
+        self.assertNotIn("2026-08-20", str(raised.exception))
+        self.assertIsNone(raised.exception.__cause__)
+        self.assertIsNone(raised.exception.__context__)
 
     def test_provider_failures_and_malformed_entitlements_are_redacted(self) -> None:
         marker = "PRIVATE-ENTITLEMENT-SENTINEL"

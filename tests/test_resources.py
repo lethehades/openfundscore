@@ -5,11 +5,11 @@ import unittest
 from unittest.mock import patch
 
 from openfundscore.resources import (
+    ResolvedResource,
     ResourceError,
     ResourceInfo,
     ResourceKey,
     ResourceType,
-    ResolvedResource,
     _load_catalog,
     _parse_catalog,
     list_resources,
@@ -27,9 +27,11 @@ class ResourceCatalogTests(unittest.TestCase):
             def joinpath(self, name: str) -> MissingIndex:
                 return MissingIndex()
 
-        with patch("openfundscore.resources.files", return_value=MissingRoot()):
-            with self.assertRaises(ResourceError) as raised:
-                _load_catalog()
+        with (
+            patch("openfundscore.resources.files", return_value=MissingRoot()),
+            self.assertRaises(ResourceError) as raised,
+        ):
+            _load_catalog()
 
         self.assertEqual(raised.exception.code, "catalog_unavailable")
         self.assertEqual(raised.exception.path, "$catalog")
@@ -46,9 +48,11 @@ class ResourceCatalogTests(unittest.TestCase):
             def joinpath(self, name: str) -> InvalidIndex:
                 return InvalidIndex()
 
-        with patch("openfundscore.resources.files", return_value=InvalidRoot()):
-            with self.assertRaises(ResourceError) as raised:
-                _load_catalog()
+        with (
+            patch("openfundscore.resources.files", return_value=InvalidRoot()),
+            self.assertRaises(ResourceError) as raised,
+        ):
+            _load_catalog()
 
         self.assertEqual(raised.exception.code, "catalog_invalid")
         self.assertEqual(raised.exception.path, "$catalog")
@@ -79,9 +83,7 @@ class ResourceCatalogTests(unittest.TestCase):
 
     def test_catalog_rejects_unknown_top_level_fields(self) -> None:
         with self.assertRaises(ResourceError) as raised:
-            _parse_catalog(
-                {"format_version": 1, "resources": [], "unexpected": True}
-            )
+            _parse_catalog({"format_version": 1, "resources": [], "unexpected": True})
 
         self.assertEqual(raised.exception.code, "catalog_invalid")
         self.assertEqual(raised.exception.path, "$catalog")
@@ -187,14 +189,20 @@ class ResourceCatalogTests(unittest.TestCase):
 
         self.assertEqual(
             [
-                (resource.key.resource_type.value, resource.key.name, resource.key.version)
+                (
+                    resource.key.resource_type.value,
+                    resource.key.name,
+                    resource.key.version,
+                )
                 for resource in resources
             ],
             [
                 ("schema", "external_rating", "0.1.0"),
+                ("schema", "mainland_official_snapshot", "0.1.0"),
                 ("schema", "manager_research", "0.1.0"),
                 ("schema", "provider_contract", "0.1.0"),
                 ("schema", "provider_record", "0.1.0"),
+                ("schema", "provider_record", "0.2.0"),
                 ("schema", "score_evidence_usage", "0.1.0"),
                 ("scoring-config", "openfundscore-core", "0.1.0"),
                 ("strategy-mapping", "complex_alternatives", "0.1.0"),
@@ -224,9 +232,12 @@ class ResourceCatalogTests(unittest.TestCase):
     def test_catalog_filters_by_resource_type(self) -> None:
         resources = list_resources(resource_type="schema")
 
-        self.assertEqual(len(resources), 5)
+        self.assertEqual(len(resources), 7)
         self.assertTrue(
-            all(resource.key.resource_type is ResourceType.SCHEMA for resource in resources)
+            all(
+                resource.key.resource_type is ResourceType.SCHEMA
+                for resource in resources
+            )
         )
 
     def test_resolves_and_reads_versioned_scoring_config(self) -> None:
@@ -292,9 +303,11 @@ class ResourceCatalogTests(unittest.TestCase):
             name="openfundscore-core",
             version="0.1.0",
         )
-        with patch("openfundscore.resources.files", return_value=AlteredRoot()):
-            with self.assertRaises(ResourceError) as raised:
-                resource.read_bytes()
+        with (
+            patch("openfundscore.resources.files", return_value=AlteredRoot()),
+            self.assertRaises(ResourceError) as raised,
+        ):
+            resource.read_bytes()
 
         self.assertEqual(raised.exception.code, "resource_integrity")
         self.assertEqual(raised.exception.path, "$resource")
@@ -313,9 +326,11 @@ class ResourceCatalogTests(unittest.TestCase):
             name="provider_record",
             version="0.1.0",
         )
-        with patch("openfundscore.resources.files", return_value=MissingRoot()):
-            with self.assertRaises(ResourceError) as raised:
-                resource.read_bytes()
+        with (
+            patch("openfundscore.resources.files", return_value=MissingRoot()),
+            self.assertRaises(ResourceError) as raised,
+        ):
+            resource.read_bytes()
 
         self.assertEqual(raised.exception.code, "resource_unavailable")
         self.assertEqual(raised.exception.path, "$resource")
@@ -329,9 +344,11 @@ class ResourceCatalogTests(unittest.TestCase):
             name="provider_record",
             version="0.1.0",
         )
-        with patch.object(type(resource), "read_bytes", return_value=b"\xff"):
-            with self.assertRaises(ResourceError) as raised:
-                resource.read_text()
+        with (
+            patch.object(type(resource), "read_bytes", return_value=b"\xff"),
+            self.assertRaises(ResourceError) as raised,
+        ):
+            resource.read_text()
 
         self.assertEqual(raised.exception.code, "resource_format")
         self.assertEqual(raised.exception.path, "$resource")
@@ -344,9 +361,11 @@ class ResourceCatalogTests(unittest.TestCase):
             name="provider_record",
             version="0.1.0",
         )
-        with patch.object(type(resource), "read_text", return_value="{private"):
-            with self.assertRaises(ResourceError) as raised:
-                resource.load_json()
+        with (
+            patch.object(type(resource), "read_text", return_value="{private"),
+            self.assertRaises(ResourceError) as raised,
+        ):
+            resource.load_json()
 
         self.assertEqual(raised.exception.code, "resource_format")
         self.assertEqual(raised.exception.path, "$resource")
@@ -360,9 +379,11 @@ class ResourceCatalogTests(unittest.TestCase):
             name="provider_record",
             version="0.1.0",
         )
-        with patch.object(type(resource), "read_text", return_value="[]"):
-            with self.assertRaises(ResourceError) as raised:
-                resource.load_json()
+        with (
+            patch.object(type(resource), "read_text", return_value="[]"),
+            self.assertRaises(ResourceError) as raised,
+        ):
+            resource.load_json()
 
         self.assertEqual(raised.exception.code, "resource_format")
         self.assertEqual(raised.exception.path, "$resource")

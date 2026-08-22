@@ -13,8 +13,11 @@ Every call selects an exact record type and packaged Schema version:
 - `external_rating`
 - `score_evidence_usage`
 
-The initial Schema version is `0.1.0`. There is no `latest` alias, implicit
-version selection or repository-path fallback.
+The initial Schema version for each record type is `0.1.0`. The current
+`provider_record` contract is `0.2.0`; its packaged `0.1.0` predecessor remains
+available byte-for-byte for explicit legacy validation. Other record types
+currently remain at `0.1.0`. There is no `latest` alias, implicit version
+selection, automatic migration or repository-path fallback.
 
 ## Python API
 
@@ -24,7 +27,7 @@ from openfundscore import RecordType, validate_record
 validate_record(
     RecordType.PROVIDER_RECORD,
     document,
-    schema_version="0.1.0",
+    schema_version="0.2.0",
     evaluation_timestamp="2026-08-21T00:00:00Z",
 )
 ```
@@ -55,7 +58,7 @@ chains.
 ```bash
 openfundscore validate-record \
   --type provider_record \
-  --schema-version 0.1.0 \
+  --schema-version 0.2.0 \
   --evaluation-timestamp 2026-08-21T00:00:00Z \
   provider-record.json
 ```
@@ -63,7 +66,7 @@ openfundscore validate-record \
 A valid document prints one line:
 
 ```text
-valid: provider_record@0.1.0 (schema+semantics)
+valid: provider_record@0.2.0 (schema+semantics)
 ```
 
 Invalid invocations and all document, Schema or semantic failures return exit

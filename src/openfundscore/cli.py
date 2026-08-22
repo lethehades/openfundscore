@@ -9,6 +9,12 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import NoReturn
 
+from .mainland_official import (
+    MainlandOfficialSnapshotAdapter,
+    SnapshotValidationError,
+    load_mainland_entitlements,
+)
+from .provider_semantics import ProviderRecordValidationError, parse_rfc3339_timestamp
 from .resources import (
     ResourceError,
     ResourceInfo,
@@ -184,6 +190,26 @@ def _build_parser() -> argparse.ArgumentParser:
     validate_record_command.add_argument("--evaluation-timestamp")
     validate_record_command.add_argument("path", help="path to a contract JSON file")
 
+    provider = subparsers.add_parser(
+        "provider", help="run explicit offline provider operations"
+    )
+    provider_subparsers = provider.add_subparsers(
+        dest="provider_command", required=True
+    )
+    mainland_parse = provider_subparsers.add_parser(
+        "mainland-parse",
+        help="parse and authorize a local frozen Mainland official snapshot",
+    )
+    mainland_parse.add_argument("snapshot")
+    mainland_parse.add_argument("--entitlements", required=True)
+    mainland_parse.add_argument("--evaluation-timestamp", required=True)
+    mainland_parse.add_argument(
+        "--fund-company-host",
+        action="append",
+        default=[],
+        metavar="EXACT_HOST=EVIDENCE_URL",
+    )
+
     resources = subparsers.add_parser(
         "resources", help="inspect versioned package resources"
     )
@@ -224,6 +250,61 @@ def main(argv: Sequence[str] | None = None) -> int:
     """Run the OpenFundScore CLI and return a process exit code."""
     parser = _build_parser()
     args = parser.parse_args(argv)
+
+    if args.command == "provider" and args.provider_command == "mainland-parse":
+        try:
+            evaluation_timestamp = parse_rfc3339_timestamp(
+                args.evaluation_timestamp,
+                path="$evaluation_timestamp",
+            )
+            host_approvals: dict[str, str] = {}
+            for approval in args.fund_company_host:
+                if (
+                    not isinstance(approval, str)
+                    or "=" not in approval
+                    or not approval.split("=", 1)[0]
+                    or not approval.split("=", 1)[1]
+                ):
+                    raise SnapshotValidationError(
+                        code="invalid_host_approval",
+                        path="$fund_company_hosts",
+                        message="fund-company host approval is malformed",
+                    )
+                host, evidence_url = approval.split("=", 1)
+                if host in host_approvals:
+                    raise SnapshotValidationError(
+                        code="invalid_host_approval",
+                        path="$fund_company_hosts",
+                        message="fund-company host approvals must be unique",
+                    )
+                host_approvals[host] = evidence_url
+            entitlements = load_mainland_entitlements(Path(args.entitlements))
+            records = MainlandOfficialSnapshotAdapter(
+                entitlements=entitlements,
+                fund_company_hosts=host_approvals,
+            ).parse(
+                Path(args.snapshot),
+                evaluation_timestamp=evaluation_timestamp,
+            )
+        except SnapshotValidationError as exc:
+            print(f"openfundscore: error: {exc}", file=sys.stderr)
+            return 2
+        except (ProviderRecordValidationError, ValueError):
+            print(
+                "openfundscore: error: mainland_snapshot_failed at $provider: "
+                "offline provider operation failed",
+                file=sys.stderr,
+            )
+            return 2
+        print(
+            json.dumps(
+                records,
+                ensure_ascii=False,
+                sort_keys=True,
+                separators=(",", ":"),
+            )
+        )
+        return 0
 
     if args.command == "validate-record":
         try:

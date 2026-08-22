@@ -49,6 +49,9 @@ questions into one leaderboard.
   `unrated` until comparable samples and evidence are sufficient.
 - A typed Provider SDK with explicit point-in-time entitlements and fail-closed
   ingestion enforcement for rights, attribution, rate, cache and retention limits.
+- A no-network Mainland official frozen-snapshot provider pilot for regulator,
+  exchange and explicitly approved exact-host fund-company disclosures; all seven
+  disclosure classes map to separately validated and authorised provider records.
 - Synthetic A/C/E/I, closed, merged, transformed and conflicting records only;
   no real provider data is bundled.
 
@@ -71,8 +74,11 @@ python3 -m venv .venv
 .venv/bin/python -m openfundscore.cli strategy-map market_neutral \
   --mapping-version 0.1.0
 .venv/bin/python -m openfundscore.cli validate-record \
-  --type provider_record --schema-version 0.1.0 \
+  --type provider_record --schema-version 0.2.0 \
   --evaluation-timestamp 2026-08-21T00:00:00Z provider-record.json
+.venv/bin/python -m openfundscore.cli provider mainland-parse snapshot.json \
+  --entitlements reviewed-entitlements.json \
+  --evaluation-timestamp 2026-08-21T00:00:00Z
 .venv/bin/python -m unittest discover -s tests -v
 ```
 
@@ -84,6 +90,10 @@ The research-preview `validate-config` command continues to require an explicit
 configuration path and never silently switches scoring models. Contract records
 must use `validate_record()` or `validate-record`, which always run both packaged
 Schema and semantic validation; see [validation boundary](docs/VALIDATION.md).
+New provider records, including records emitted by the Mainland snapshot adapter,
+use `schema / provider_record / 0.2.0`. The packaged `0.1.0` provider-record
+Schema remains available byte-for-byte for explicit legacy validation; versions
+are never selected implicitly or rewritten in place.
 
 ## Documents
 
@@ -93,6 +103,7 @@ Schema and semantic validation; see [validation boundary](docs/VALIDATION.md).
 - [Unified validation boundary](docs/VALIDATION.md)
 - [Public rating and redistribution gate](docs/PUBLICATION_GATE.md)
 - [Provider SDK and ingestion entitlements](docs/PROVIDER_SDK.md)
+- [Mainland official frozen-snapshot provider pilot](docs/MAINLAND_OFFICIAL_SNAPSHOT.md)
 - [Fund taxonomy](docs/FUND_TAXONOMY.md)
 - [Scoring RFC](docs/SCORING_RFC.md)
 - [Manager research model](docs/MANAGER_RESEARCH.md)
