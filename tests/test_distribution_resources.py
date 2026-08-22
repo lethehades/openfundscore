@@ -5,7 +5,6 @@ import re
 import shutil
 import stat
 import subprocess
-import sys
 import tarfile
 import tempfile
 import unittest
@@ -284,17 +283,39 @@ class DistributionResourceTests(unittest.TestCase):
                     "*.egg-info",
                 ),
             )
+            builder = root / "builder"
+            venv.EnvBuilder(with_pip=True).create(builder)
+            builder_python = builder / "bin" / "python"
+            clean_environment = os.environ.copy()
+            clean_environment.pop("PYTHONPATH", None)
+            clean_environment["PYTHONNOUSERSITE"] = "1"
+            install_build = subprocess.run(
+                [str(builder_python), "-m", "pip", "install", "build>=1.2"],
+                check=False,
+                env=clean_environment,
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(
+                install_build.returncode,
+                0,
+                msg=(
+                    f"stdout={install_build.stdout}\n"
+                    f"stderr={install_build.stderr}"
+                ),
+            )
             build = subprocess.run(
                 [
-                    sys.executable,
-                    "-c",
-                    (
-                        "from setuptools.build_meta import build_sdist;"
-                        f"print(build_sdist({str(dist)!r}))"
-                    ),
+                    str(builder_python),
+                    "-m",
+                    "build",
+                    "--sdist",
+                    "--outdir",
+                    str(dist),
+                    str(source),
                 ],
                 check=False,
-                cwd=source,
+                env=clean_environment,
                 capture_output=True,
                 text=True,
             )
