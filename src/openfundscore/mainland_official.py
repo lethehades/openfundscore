@@ -1048,9 +1048,7 @@ class MainlandOfficialSnapshotAdapter:
         exact_keys: list[tuple[object, object, object]] = []
         for entry in identifiers:
             _require_schema(isinstance(entry, dict), "$.items.exact_identifiers")
-            exact_keys.append(
-                (entry["scheme"], entry["value"], entry["jurisdiction"])
-            )
+            exact_keys.append((entry["scheme"], entry["value"], entry["jurisdiction"]))
         if len(exact_keys) != len(set(exact_keys)):
             _reject(
                 code="duplicate_identifier",
@@ -1325,9 +1323,7 @@ class MainlandOfficialSnapshotAdapter:
             snapshots: dict[datetime, dict[str, list[dict[str, object]]]] = {}
             for observation in observations:
                 field = observation["field"]
-                _require_schema(
-                    isinstance(field, str), "$.items.observations.field"
-                )
+                _require_schema(isinstance(field, str), "$.items.observations.field")
                 as_of = _timestamp(observation["as_of"], "$.items.observations.as_of")
                 snapshot = snapshots.setdefault(as_of, {})
                 snapshot.setdefault(field, []).append(observation)
@@ -1459,13 +1455,9 @@ class MainlandOfficialSnapshotAdapter:
             _require_schema(isinstance(observations, list), "$.items.observations")
             snapshots: dict[object, dict[str, list[dict[str, object]]]] = {}
             for observation in observations:
-                _require_schema(
-                    isinstance(observation, dict), "$.items.observations"
-                )
+                _require_schema(isinstance(observation, dict), "$.items.observations")
                 field = observation["field"]
-                _require_schema(
-                    isinstance(field, str), "$.items.observations.field"
-                )
+                _require_schema(isinstance(field, str), "$.items.observations.field")
                 as_of = _timestamp(observation["as_of"], "$.items.observations.as_of")
                 snapshots.setdefault(as_of, {}).setdefault(field, []).append(
                     observation
@@ -1717,7 +1709,7 @@ class MainlandOfficialSnapshotAdapter:
                     validate_record(
                         "provider_record",
                         record,
-                        schema_version="0.2.0",
+                        schema_version="0.3.0",
                         evaluation_timestamp=self._rfc3339(evaluation),
                     )
                 except RecordValidationError as exc:
@@ -1734,7 +1726,7 @@ class MainlandOfficialSnapshotAdapter:
                 authorize_ingestion(
                     self,
                     record,
-                    schema_version="0.2.0",
+                    schema_version="0.3.0",
                     evaluation_timestamp=evaluation,
                     request=IngestionRequest(capability=_CAPABILITIES[item_type]),
                     rate_limit_budget=RateLimitBudget(

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Mapping
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 _RFC3339_TIMESTAMP = re.compile(
@@ -97,7 +97,17 @@ def _parse_timestamp_value(value: object, *, path: str) -> datetime:
             path=path,
             message="timestamp must include an explicit offset",
         )
-    return parsed
+    try:
+        canonical = parsed.astimezone(UTC)
+    except (OverflowError, OSError, ValueError):
+        canonical = None
+    if canonical is None:
+        raise ProviderRecordValidationError(
+            code="invalid_rfc3339",
+            path=path,
+            message="timestamp must be representable as a UTC instant",
+        ) from None
+    return canonical
 
 
 def parse_rfc3339_timestamp(value: object, *, path: str) -> datetime:

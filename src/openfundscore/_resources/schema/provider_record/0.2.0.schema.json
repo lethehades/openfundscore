@@ -11,7 +11,6 @@
     "jurisdiction",
     "entity_type",
     "entity_id",
-    "exact_identifiers",
     "field",
     "value",
     "as_of",
@@ -20,24 +19,13 @@
     "source_url",
     "point_in_time_status",
     "quality_state",
-    "rights",
-    "effective_status"
+    "rights"
   ],
   "properties": {
-    "provider_id": {
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 256
-    },
-    "provider_record_id": {
-      "type": "string",
-      "maxLength": 256
-    },
+    "provider_id": {"type": "string", "minLength": 1, "maxLength": 256},
+    "provider_record_id": {"type": "string", "maxLength": 256},
     "namespace": {
-      "enum": [
-        "canonical_observation",
-        "external_ratings"
-      ]
+      "enum": ["canonical_observation", "external_ratings"]
     },
     "source_type": {
       "enum": [
@@ -52,11 +40,7 @@
         "user_import"
       ]
     },
-    "jurisdiction": {
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 16
-    },
+    "jurisdiction": {"type": "string", "minLength": 1, "maxLength": 16},
     "entity_type": {
       "enum": [
         "fund_strategy",
@@ -67,112 +51,36 @@
         "holding",
         "issuer",
         "platform_listing",
-        "report",
-        "corporate_action",
-        "external_rating"
+        "external_rating",
+        "macro_observation"
       ]
     },
-    "entity_id": {
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 512
-    },
-    "field": {
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 256
-    },
+    "entity_id": {"type": "string", "minLength": 1, "maxLength": 512},
+    "field": {"type": "string", "minLength": 1, "maxLength": 256},
     "value": {},
-    "unit": {
-      "type": [
-        "string",
-        "null"
-      ],
-      "maxLength": 64
-    },
-    "currency": {
-      "type": [
-        "string",
-        "null"
-      ],
-      "pattern": "^[A-Z]{3}$"
-    },
-    "methodology": {
-      "type": [
-        "string",
-        "null"
-      ],
-      "maxLength": 65536
-    },
-    "as_of": {
-      "type": "string",
-      "format": "date-time",
-      "maxLength": 64
-    },
-    "published_at": {
-      "type": "string",
-      "format": "date-time",
-      "maxLength": 64
-    },
-    "fetched_at": {
-      "type": "string",
-      "format": "date-time",
-      "maxLength": 64
-    },
-    "valid_from": {
-      "type": [
-        "string",
-        "null"
-      ],
-      "format": "date-time",
-      "maxLength": 64
-    },
-    "valid_to": {
-      "type": [
-        "string",
-        "null"
-      ],
-      "format": "date-time",
-      "maxLength": 64
-    },
-    "source_url": {
-      "type": "string",
-      "format": "uri",
-      "maxLength": 2048
-    },
-    "source_document_hash": {
-      "type": [
-        "string",
-        "null"
-      ],
-      "maxLength": 256
-    },
+    "unit": {"type": ["string", "null"], "maxLength": 64},
+    "currency": {"type": ["string", "null"], "pattern": "^[A-Z]{3}$"},
+    "timezone": {"type": ["string", "null"], "minLength": 1, "maxLength": 64},
+    "period": {"type": ["string", "null"], "maxLength": 64},
+    "frequency": {"type": ["string", "null"], "maxLength": 32},
+    "publication_lag": {"type": ["string", "null"], "maxLength": 1024},
+    "revision": {"type": ["string", "null"], "maxLength": 1024},
+    "vintage": {"type": ["string", "null"], "maxLength": 256},
+    "methodology": {"type": ["string", "null"], "maxLength": 65536},
+    "as_of": {"type": "string", "format": "date-time", "maxLength": 64},
+    "published_at": {"type": "string", "format": "date-time", "maxLength": 64},
+    "fetched_at": {"type": "string", "format": "date-time", "maxLength": 64},
+    "valid_from": {"type": ["string", "null"], "format": "date-time", "maxLength": 64},
+    "valid_to": {"type": ["string", "null"], "format": "date-time", "maxLength": 64},
+    "source_url": {"type": "string", "format": "uri", "maxLength": 2048},
+    "source_document_hash": {"type": ["string", "null"], "maxLength": 256},
     "point_in_time_status": {
-      "enum": [
-        "verified",
-        "provider_claimed",
-        "reconstructed",
-        "not_point_in_time",
-        "unknown"
-      ]
+      "enum": ["verified", "provider_claimed", "reconstructed", "not_point_in_time", "unknown"]
     },
     "quality_state": {
-      "enum": [
-        "verified",
-        "unverified",
-        "stale",
-        "conflict",
-        "missing",
-        "not_applicable"
-      ]
+      "enum": ["verified", "unverified", "stale", "conflict", "missing", "not_applicable"]
     },
-    "conflict_group": {
-      "type": [
-        "string",
-        "null"
-      ],
-      "maxLength": 256
-    },
+    "conflict_group": {"type": ["string", "null"], "maxLength": 256},
     "rights": {
       "type": "object",
       "additionalProperties": false,
@@ -194,256 +102,96 @@
             "unknown_blocked"
           ]
         },
-        "terms_url": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "format": "uri",
-          "maxLength": 2048
-        },
-        "cache_allowed": {
-          "type": "boolean"
-        },
-        "derived_works_allowed": {
-          "type": "boolean"
-        },
-        "redistribution_allowed": {
-          "type": "boolean"
-        },
-        "attribution_required": {
-          "type": "boolean"
-        },
-        "public_display_allowed": {
-          "type": "boolean"
-        },
-        "retention_days": {
-          "type": [
-            "integer",
-            "null"
-          ],
-          "minimum": 0,
-          "maximum": 36500
-        },
-        "reviewed_at": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "format": "date-time",
-          "maxLength": 64
-        },
-        "valid_until": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "format": "date-time",
-          "maxLength": 64
-        }
+        "terms_url": {"type": ["string", "null"], "format": "uri", "maxLength": 2048},
+        "cache_allowed": {"type": "boolean"},
+        "derived_works_allowed": {"type": "boolean"},
+        "redistribution_allowed": {"type": "boolean"},
+        "attribution_required": {"type": "boolean"},
+        "public_display_allowed": {"type": "boolean"},
+        "retention_days": {"type": ["integer", "null"], "minimum": 0, "maximum": 36500},
+        "reviewed_at": {"type": ["string", "null"], "format": "date-time", "maxLength": 64}
       },
       "allOf": [
         {
           "if": {
-            "properties": {
-              "mode": {
-                "const": "unknown_blocked"
-              }
-            },
-            "required": [
-              "mode"
-            ]
+            "properties": {"mode": {"const": "unknown_blocked"}},
+            "required": ["mode"]
           },
           "then": {
             "properties": {
-              "cache_allowed": {
-                "const": false
-              },
-              "derived_works_allowed": {
-                "const": false
-              },
-              "redistribution_allowed": {
-                "const": false
-              },
-              "attribution_required": {
-                "const": false
-              },
-              "public_display_allowed": {
-                "const": false
-              }
+              "cache_allowed": {"const": false},
+              "derived_works_allowed": {"const": false},
+              "redistribution_allowed": {"const": false},
+              "attribution_required": {"const": false},
+              "public_display_allowed": {"const": false}
             }
           }
         },
         {
           "if": {
-            "properties": {
-              "mode": {
-                "const": "derived_only"
-              }
-            },
-            "required": [
-              "mode"
-            ]
+            "properties": {"mode": {"const": "derived_only"}},
+            "required": ["mode"]
           },
           "then": {
             "properties": {
-              "derived_works_allowed": {
-                "const": true
-              },
-              "redistribution_allowed": {
-                "const": false
-              },
-              "public_display_allowed": {
-                "const": false
-              }
+              "derived_works_allowed": {"const": true},
+              "redistribution_allowed": {"const": false},
+              "public_display_allowed": {"const": false}
             }
           }
         },
         {
           "if": {
-            "properties": {
-              "mode": {
-                "const": "display_only"
-              }
-            },
-            "required": [
-              "mode"
-            ]
+            "properties": {"mode": {"const": "display_only"}},
+            "required": ["mode"]
           },
           "then": {
             "properties": {
-              "cache_allowed": {
-                "const": false
-              },
-              "derived_works_allowed": {
-                "const": false
-              },
-              "redistribution_allowed": {
-                "const": false
-              },
-              "public_display_allowed": {
-                "const": true
-              }
+              "cache_allowed": {"const": false},
+              "derived_works_allowed": {"const": false},
+              "redistribution_allowed": {"const": false},
+              "public_display_allowed": {"const": true}
             }
           }
         },
         {
           "if": {
-            "properties": {
-              "mode": {
-                "const": "local_entitlement"
-              }
-            },
-            "required": [
-              "mode"
-            ]
+            "properties": {"mode": {"const": "local_entitlement"}},
+            "required": ["mode"]
           },
           "then": {
             "properties": {
-              "redistribution_allowed": {
-                "const": false
-              },
-              "public_display_allowed": {
-                "const": false
-              }
+              "redistribution_allowed": {"const": false},
+              "public_display_allowed": {"const": false}
             }
           }
         },
         {
           "if": {
-            "properties": {
-              "mode": {
-                "const": "open_redistributable"
-              }
-            },
-            "required": [
-              "mode"
-            ]
+            "properties": {"mode": {"const": "open_redistributable"}},
+            "required": ["mode"]
           },
           "then": {
             "properties": {
-              "redistribution_allowed": {
-                "const": true
-              }
+              "redistribution_allowed": {"const": true}
             }
           }
         }
-      ]
-    },
-    "exact_identifiers": {
-      "type": "array",
-      "minItems": 1,
-      "maxItems": 32,
-      "uniqueItems": true,
-      "items": {
-        "$ref": "#/$defs/exact_identifier"
-      }
-    },
-    "effective_status": {
-      "enum": [
-        "current",
-        "future",
-        "expired"
       ]
     }
   },
   "allOf": [
     {
       "if": {
-        "properties": {
-          "entity_type": {
-            "const": "external_rating"
-          }
-        },
-        "required": [
-          "entity_type"
-        ]
+        "properties": {"entity_type": {"const": "external_rating"}},
+        "required": ["entity_type"]
       },
       "then": {
-        "properties": {
-          "namespace": {
-            "const": "external_ratings"
-          }
-        }
+        "properties": {"namespace": {"const": "external_ratings"}}
       },
       "else": {
-        "properties": {
-          "namespace": {
-            "const": "canonical_observation"
-          }
-        }
+        "properties": {"namespace": {"const": "canonical_observation"}}
       }
     }
-  ],
-  "$defs": {
-    "exact_identifier": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "scheme",
-        "value",
-        "jurisdiction"
-      ],
-      "properties": {
-        "scheme": {
-          "enum": [
-            "cn_fund_code",
-            "csrc_registration_id",
-            "exchange_security_code",
-            "fund_company_official_id",
-            "official_document_id",
-            "official_entity_id"
-          ]
-        },
-        "value": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 512
-        },
-        "jurisdiction": {
-          "const": "CN"
-        }
-      }
-    }
-  }
+  ]
 }

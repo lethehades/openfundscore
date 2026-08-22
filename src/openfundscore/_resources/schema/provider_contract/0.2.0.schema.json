@@ -1,0 +1,213 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openfundscore.org/schemas/provider_contract/0.2.0.schema.json",
+  "title": "OpenFundScore Provider Machine Contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "provider_id",
+    "source_type",
+    "jurisdictions",
+    "authentication_mode",
+    "public_display_allowed",
+    "rate_limit",
+    "rights"
+  ],
+  "properties": {
+    "provider_id": {"type": "string", "minLength": 1, "maxLength": 256},
+    "source_type": {
+      "enum": [
+        "regulator",
+        "exchange",
+        "official_registry",
+        "fund_company_or_manager",
+        "custodian",
+        "index_or_macro_official_source",
+        "commercial_vendor",
+        "distribution_platform",
+        "user_import"
+      ]
+    },
+    "jurisdictions": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 250,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1, "maxLength": 16}
+    },
+    "source_ids": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 256,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1, "maxLength": 256, "pattern": ".*\\S.*"}
+    },
+    "dataset_ids": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 256,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1, "maxLength": 256, "pattern": ".*\\S.*"}
+    },
+    "authentication_mode": {
+      "description": "Authentication method only. Credentials and secrets are never part of this contract.",
+      "enum": ["none", "api_key", "oauth", "user_session", "local_entitlement"]
+    },
+    "public_display_allowed": {"type": "boolean"},
+    "rate_limit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["requests_per_period", "period_seconds"],
+      "properties": {
+        "requests_per_period": {"type": "integer", "minimum": 1, "maximum": 1000000000},
+        "period_seconds": {"type": "integer", "minimum": 1, "maximum": 31536000},
+        "burst": {"type": "integer", "minimum": 1, "maximum": 1000000000}
+      }
+    },
+    "rights": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "cache_allowed",
+        "derived_works_allowed",
+        "redistribution_allowed",
+        "attribution_required"
+      ],
+      "properties": {
+        "mode": {
+          "enum": [
+            "open_redistributable",
+            "derived_only",
+            "local_entitlement",
+            "display_only",
+            "unknown_blocked"
+          ]
+        },
+        "terms_url": {"type": ["string", "null"], "format": "uri", "maxLength": 2048},
+        "cache_allowed": {"type": "boolean"},
+        "derived_works_allowed": {"type": "boolean"},
+        "redistribution_allowed": {"type": "boolean"},
+        "attribution_required": {"type": "boolean"},
+        "retention_days": {"type": ["integer", "null"], "minimum": 0, "maximum": 36500},
+        "reviewed_at": {"type": ["string", "null"], "format": "date-time", "maxLength": 64}
+      }
+    }
+  },
+  "dependentRequired": {
+    "source_ids": ["dataset_ids"],
+    "dataset_ids": ["source_ids"]
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "rights": {
+            "properties": {"mode": {"const": "unknown_blocked"}},
+            "required": ["mode"]
+          }
+        },
+        "required": ["rights"]
+      },
+      "then": {
+        "properties": {
+          "public_display_allowed": {"const": false},
+          "rights": {
+            "properties": {
+              "cache_allowed": {"const": false},
+              "derived_works_allowed": {"const": false},
+              "redistribution_allowed": {"const": false},
+              "attribution_required": {"const": false}
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "rights": {
+            "properties": {"mode": {"const": "derived_only"}},
+            "required": ["mode"]
+          }
+        },
+        "required": ["rights"]
+      },
+      "then": {
+        "properties": {
+          "public_display_allowed": {"const": false},
+          "rights": {
+            "properties": {
+              "derived_works_allowed": {"const": true},
+              "redistribution_allowed": {"const": false}
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "rights": {
+            "properties": {"mode": {"const": "display_only"}},
+            "required": ["mode"]
+          }
+        },
+        "required": ["rights"]
+      },
+      "then": {
+        "properties": {
+          "public_display_allowed": {"const": true},
+          "rights": {
+            "properties": {
+              "cache_allowed": {"const": false},
+              "derived_works_allowed": {"const": false},
+              "redistribution_allowed": {"const": false}
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "rights": {
+            "properties": {"mode": {"const": "local_entitlement"}},
+            "required": ["mode"]
+          }
+        },
+        "required": ["rights"]
+      },
+      "then": {
+        "properties": {
+          "public_display_allowed": {"const": false},
+          "rights": {
+            "properties": {
+              "redistribution_allowed": {"const": false}
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "rights": {
+            "properties": {"mode": {"const": "open_redistributable"}},
+            "required": ["mode"]
+          }
+        },
+        "required": ["rights"]
+      },
+      "then": {
+        "properties": {
+          "rights": {
+            "properties": {
+              "redistribution_allowed": {"const": true}
+            }
+          }
+        }
+      }
+    }
+  ]
+}

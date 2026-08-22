@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from datetime import UTC, date
+from copy import deepcopy
+from datetime import UTC, date, datetime
 from heapq import heappop, heappush
 from typing import Any
 
@@ -11,6 +12,7 @@ from .provider_semantics import (
     ProviderRecordValidationError,
     parse_rfc3339_timestamp,
 )
+from .window_semantics import complete_months_between, subtract_months
 
 
 class EvidenceUsageValidationError(ValueError):
@@ -62,18 +64,123 @@ def _window(usage: Mapping[str, Any]) -> tuple[date, date]:
     )
 
 
-def _ledger_as_of(document: Mapping[str, Any]) -> date:
+def _timestamp(value: object, *, path: str) -> datetime:
     provider_error: ProviderRecordValidationError | None = None
     parsed = None
     try:
-        parsed = parse_rfc3339_timestamp(document.get("as_of"), path="$.as_of")
+        parsed = parse_rfc3339_timestamp(value, path=path)
     except ProviderRecordValidationError as exc:
         provider_error = exc
     if provider_error is not None or parsed is None:
         raise EvidenceUsageValidationError(
-            "$.as_of: as_of must use the OpenFundScore RFC3339 profile"
+            f"{path}: timestamp must use the OpenFundScore RFC3339 profile"
         )
-    return parsed.astimezone(UTC).date()
+    return parsed
+
+
+def canonicalize_score_evidence_ledger_for_digest(
+    document: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Deep-copy a ledger and normalize only schema-declared date-time fields.
+
+    Usage order and ISO date window fields are preserved exactly. Invalid or missing
+    RFC3339 date-time fields fail closed rather than producing an ambiguous digest.
+    """
+    try:
+        snapshot = deepcopy(document)
+    except Exception:  # noqa: BLE001 - input mappings may be untrusted
+        raise EvidenceUsageValidationError(
+            "score evidence ledger could not be safely copied for digest"
+        ) from None
+    if type(snapshot) is not dict:
+        raise EvidenceUsageValidationError("score evidence ledger must be an object")
+    usages = snapshot.get("usage")
+    if type(usages) is not list:
+        raise EvidenceUsageValidationError("$.usage: usage must be an array")
+
+    def utc_z(value: object, *, path: str) -> str:
+        return (
+            _timestamp(value, path=path)
+            .astimezone(UTC)
+            .isoformat()
+            .replace("+00:00", "Z")
+        )
+
+    snapshot["as_of"] = utc_z(snapshot.get("as_of"), path="$.as_of")
+    for index, usage in enumerate(usages):
+        if type(usage) is not dict:
+            raise EvidenceUsageValidationError(
+                f"usage[{index}]: usage item must be an object"
+            )
+        usage["observation_as_of"] = utc_z(
+            usage.get("observation_as_of"),
+            path=f"usage[{index}].observation_as_of",
+        )
+    return snapshot
+
+
+def _validate_v020_window(
+    usage: Mapping[str, Any],
+    *,
+    index: int,
+    ledger_as_of: datetime,
+    window_start: date,
+    window_end: date,
+) -> None:
+    """Apply the 0.2 knowledge-time and declared window-basis contract."""
+    required = {
+        "evidence_id",
+        "observation_as_of",
+        "window_basis",
+        "window_months",
+    }
+    if not required.issubset(usage):
+        return
+    observation_as_of = _timestamp(
+        usage["observation_as_of"],
+        path=f"usage[{index}].observation_as_of",
+    )
+    if observation_as_of > ledger_as_of:
+        raise EvidenceUsageValidationError(
+            f"usage[{index}].observation_as_of must be on or before $.as_of"
+        )
+    observation_date = observation_as_of.astimezone(UTC).date()
+    if window_end > observation_date:
+        raise EvidenceUsageValidationError(
+            f"usage[{index}].window_end must be on or before the UTC observation date"
+        )
+    window_months = usage["window_months"]
+    if type(window_months) is not int or not 0 <= window_months <= 1200:
+        raise EvidenceUsageValidationError(
+            f"usage[{index}].window_months must be a bounded non-negative integer"
+        )
+    basis = usage["window_basis"]
+    if basis == "point_in_time":
+        if (
+            window_months != 0
+            or window_start != observation_date
+            or window_end != observation_date
+        ):
+            raise EvidenceUsageValidationError(
+                f"usage[{index}] point_in_time must be a zero-month UTC observation date"
+            )
+    elif basis == "calendar_months":
+        expected_end = observation_date
+        expected_start = subtract_months(expected_end, window_months)
+        if window_end != expected_end or window_start != expected_start:
+            raise EvidenceUsageValidationError(
+                f"usage[{index}] calendar_months endpoints must equal the exact UTC "
+                "observation-date reverse-clamped window"
+            )
+    elif basis == "actual_dates":
+        if window_months != complete_months_between(window_start, window_end):
+            raise EvidenceUsageValidationError(
+                f"usage[{index}].window_months must match its actual-date endpoints"
+            )
+    else:
+        raise EvidenceUsageValidationError(
+            f"usage[{index}].window_basis is unsupported"
+        )
 
 
 def _first_cross_scope_overlap(
@@ -95,10 +202,13 @@ def _first_cross_scope_overlap(
         else:
             continue
         start, end = windows[index]
-        for identity_kind, identity_value in (
+        identities = [
             ("lineage", usage["lineage_id"]),
             ("series", usage["series_id"]),
-        ):
+        ]
+        if "evidence_id" in usage:
+            identities.append(("evidence", usage["evidence_id"]))
+        for identity_kind, identity_value in identities:
             events = groups.setdefault((identity_kind, identity_value), [])
             events.append((start, 0, index, side))
             events.append((end, 1, index, side))
@@ -134,7 +244,8 @@ def validate_score_evidence_usage(document: Mapping[str, Any]) -> None:
         raise EvidenceUsageValidationError(
             f"$.usage: usage must contain at most {MAX_USAGE_ITEMS} entries"
         )
-    as_of = _ledger_as_of(document)
+    ledger_as_of = _timestamp(document.get("as_of"), path="$.as_of")
+    as_of = ledger_as_of.astimezone(UTC).date()
     seen: dict[tuple[tuple[str, Any], ...], int] = {}
     windows: list[tuple[date, date]] = []
     for index, usage in enumerate(usages):
@@ -160,6 +271,13 @@ def validate_score_evidence_usage(document: Mapping[str, Any]) -> None:
             raise EvidenceUsageValidationError(
                 f"usage[{index}].window_end must be on or before $.as_of"
             )
+        _validate_v020_window(
+            usage,
+            index=index,
+            ledger_as_of=ledger_as_of,
+            window_start=window_start,
+            window_end=window_end,
+        )
         windows.append((window_start, window_end))
 
     collision = _first_cross_scope_overlap(usages, windows)
@@ -170,7 +288,8 @@ def validate_score_evidence_usage(document: Mapping[str, Any]) -> None:
     raise EvidenceUsageValidationError(
         "double-counted raw current_fund evidence: "
         f"usage[{left_index}] and usage[{right_index}] have an identity "
-        f"collision involving lineage_id={left['lineage_id']!r}, "
+        f"collision involving evidence_id={left.get('evidence_id')!r}, "
+        f"lineage_id={left['lineage_id']!r}, "
         f"series_id={left['series_id']!r}, "
         f"evidence_family={left['evidence_family']!r}, and overlapping windows"
     )

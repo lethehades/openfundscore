@@ -259,6 +259,26 @@ class ProviderSemanticsTests(unittest.TestCase):
         )
         self.assertEqual(record, snapshot)
 
+    def test_rights_valid_until_must_be_representable_in_utc(self) -> None:
+        for value in (
+            "0001-01-01T00:00:00+23:59",
+            "9999-12-31T23:59:59-23:59",
+        ):
+            with self.subTest(value=value):
+                record = self._record()
+                record["rights"]["valid_until"] = value
+
+                with self.assertRaises(ProviderRecordValidationError) as raised:
+                    validate_provider_record_semantics(
+                        record,
+                        evaluation_timestamp="2026-08-21T00:00:00Z",
+                    )
+
+                self.assertEqual(raised.exception.code, "invalid_rfc3339")
+                self.assertEqual(raised.exception.path, "$.rights.valid_until")
+                self.assertIsNone(raised.exception.__cause__)
+                self.assertIsNone(raised.exception.__context__)
+
     def test_non_mapping_boundaries_fail_with_domain_errors(self) -> None:
         with self.assertRaises(ProviderRecordValidationError) as root:
             validate_provider_record_semantics(

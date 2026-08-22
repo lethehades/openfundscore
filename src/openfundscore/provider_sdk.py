@@ -55,6 +55,7 @@ class ProviderCapability(StrEnum):
     GET_PURCHASE_STATUS = "get_purchase_status"
     GET_DISCLOSURES = "get_disclosures"
     GET_EXTERNAL_RATINGS = "get_external_ratings"
+    GET_MACRO_SERIES = "get_macro_series"
     GET_ENTITLEMENTS = "get_entitlements"
 
 
@@ -108,6 +109,9 @@ _MAX_CACHE_TTL_SECONDS = 365 * 24 * 60 * 60
 _MAX_RETENTION_DAYS = 36_500
 _MAX_PROVIDER_ID_LENGTH = 256
 _MAX_TERMS_URL_LENGTH = 2_048
+_MAX_ENTITLEMENT_SCOPE_ITEMS = 256
+_SCOPED_PROVIDER_SCHEMA_VERSIONS = frozenset({"0.2.0", "0.3.0"})
+_VALID_UNTIL_PROVIDER_SCHEMA_VERSION = "0.3.0"
 _UNIX_EPOCH = datetime(1970, 1, 1, tzinfo=UTC)
 _CAPABILITY_ENTITY_TYPES: dict[ProviderCapability, frozenset[str]] = {
     ProviderCapability.LIST_FUNDS: frozenset({"fund_strategy", "share_class"}),
@@ -146,6 +150,7 @@ _CAPABILITY_ENTITY_TYPES: dict[ProviderCapability, frozenset[str]] = {
         }
     ),
     ProviderCapability.GET_EXTERNAL_RATINGS: frozenset({"external_rating"}),
+    ProviderCapability.GET_MACRO_SERIES: frozenset({"macro_observation"}),
 }
 
 
@@ -281,6 +286,8 @@ class ProviderEntitlements:
     terms_url: str | None
     rights_reviewed_at: datetime | None
     rate_limit: RateLimit
+    source_ids: frozenset[str] = frozenset()
+    dataset_ids: frozenset[str] = frozenset()
 
     def __post_init__(self) -> None:
         if (
@@ -323,6 +330,27 @@ class ProviderEntitlements:
                 code="invalid_contract",
                 path="$.rate_limit",
                 message="rate limit must use the typed contract",
+            )
+        for field in ("source_ids", "dataset_ids"):
+            values = getattr(self, field)
+            if (
+                type(values) is not frozenset
+                or len(values) > _MAX_ENTITLEMENT_SCOPE_ITEMS
+                or any(
+                    type(value) is not str or not value.strip() or len(value) > 256
+                    for value in values
+                )
+            ):
+                raise ProviderContractError(
+                    code="invalid_contract",
+                    path=f"$.{field}",
+                    message="entitlement resource scope is invalid",
+                )
+        if bool(self.source_ids) is not bool(self.dataset_ids):
+            raise ProviderContractError(
+                code="invalid_contract",
+                path="$.source_ids",
+                message="source and dataset scopes must be declared together",
             )
         if not _is_aware(self.evaluated_at):
             raise ProviderContractError(
@@ -636,6 +664,8 @@ def _contract_mismatch(path: str) -> Never:
 def _enforce_record_contract(
     record: Mapping[str, object],
     entitlements: ProviderEntitlements,
+    *,
+    schema_version: str,
 ) -> None:
     for field, expected in (
         ("provider_id", entitlements.provider_id),
@@ -661,6 +691,15 @@ def _enforce_record_contract(
     for field, expected in expected_rights:
         if rights.get(field) != expected:
             _contract_mismatch(f"$.rights.{field}")
+    if entitlements.source_ids or entitlements.dataset_ids:
+        value = record.get("value")
+        source = value.get("source") if isinstance(value, Mapping) else None
+        if not isinstance(source, Mapping):
+            _contract_mismatch("$.value.source")
+        if source.get("id") not in entitlements.source_ids:
+            _contract_mismatch("$.value.source.id")
+        if source.get("dataset") not in entitlements.dataset_ids:
+            _contract_mismatch("$.value.source.dataset")
     reviewed_at = rights.get("reviewed_at")
     if entitlements.rights_reviewed_at is None:
         if reviewed_at is not None:
@@ -672,16 +711,23 @@ def _enforce_record_contract(
                 path="$.rights.reviewed_at",
             )
         except ProviderRecordValidationError:
+            parsed_reviewed_at = None
+        if parsed_reviewed_at is None:
             _contract_mismatch("$.rights.reviewed_at")
         if parsed_reviewed_at != entitlements.rights_reviewed_at:
             _contract_mismatch("$.rights.reviewed_at")
-    if "valid_until" in rights:
+    if (
+        schema_version == _VALID_UNTIL_PROVIDER_SCHEMA_VERSION
+        and rights.get("valid_until") is not None
+    ):
         try:
             parsed_valid_until = parse_rfc3339_timestamp(
                 rights.get("valid_until"),
                 path="$.rights.valid_until",
             )
         except ProviderRecordValidationError:
+            parsed_valid_until = None
+        if parsed_valid_until is None:
             _contract_mismatch("$.rights.valid_until")
         entitlement_valid_until = entitlements.valid_until
         if entitlement_valid_until is None or _as_utc(
@@ -740,6 +786,19 @@ def _validated_entitlements_copy(value: ProviderEntitlements) -> ProviderEntitle
         type(value.provider_id) is not str
         or type(value.jurisdictions) is not frozenset
         or type(value.capabilities) is not frozenset
+        or type(value.source_ids) is not frozenset
+        or type(value.dataset_ids) is not frozenset
+        or len(value.source_ids) > _MAX_ENTITLEMENT_SCOPE_ITEMS
+        or len(value.dataset_ids) > _MAX_ENTITLEMENT_SCOPE_ITEMS
+        or bool(value.source_ids) is not bool(value.dataset_ids)
+        or any(
+            type(item) is not str or not item.strip() or len(item) > 256
+            for item in value.source_ids
+        )
+        or any(
+            type(item) is not str or not item.strip() or len(item) > 256
+            for item in value.dataset_ids
+        )
         or type(value.rate_limit) is not RateLimit
         or not _is_aware(value.evaluated_at)
         or (value.valid_until is not None and not _is_aware(value.valid_until))
@@ -784,6 +843,8 @@ def _validated_entitlements_copy(value: ProviderEntitlements) -> ProviderEntitle
             )
         ),
         rate_limit=rate_limit,
+        source_ids=frozenset(value.source_ids),
+        dataset_ids=frozenset(value.dataset_ids),
     )
 
 
@@ -1046,6 +1107,14 @@ def authorize_ingestion(
         provider,
         evaluation_timestamp=evaluation_timestamp,
     )
+    if (
+        entitlements.source_ids or entitlements.dataset_ids
+    ) and schema_version not in _SCOPED_PROVIDER_SCHEMA_VERSIONS:
+        _deny(
+            code="scope_schema_version_mismatch",
+            path="$schema_version",
+            message="source-scoped entitlements require provider record schema 0.2.0 or 0.3.0",
+        )
     if provider_id != entitlements.provider_id:
         _deny(
             code="entitlement_contract_mismatch",
@@ -1083,7 +1152,11 @@ def authorize_ingestion(
             path="$.entity_type",
             message="provider capability does not authorize this record data plane",
         )
-    _enforce_record_contract(record, entitlements)
+    _enforce_record_contract(
+        record,
+        entitlements,
+        schema_version=schema_version,
+    )
     if entitlements.rights_mode is RightsMode.UNKNOWN_BLOCKED:
         _deny(
             code="rights_mode_blocked",

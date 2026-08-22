@@ -6,6 +6,7 @@ import unittest
 from copy import deepcopy
 from datetime import UTC, datetime, timedelta, timezone, tzinfo
 from typing import cast
+from unittest.mock import patch
 from zoneinfo import ZoneInfo
 
 from openfundscore import provider_sdk
@@ -241,10 +242,10 @@ class ProviderSdkTests(unittest.TestCase):
         *,
         document: dict | None = None,
         provider: LocalProvider | None = None,
-        schema_version: str = "0.1.0",
         evaluation_timestamp: datetime = EVALUATED_AT,
         request: IngestionRequest | None = None,
         budget: RateLimitBudget | None = None,
+        schema_version: str = "0.1.0",
     ):
         selected_provider = provider or LocalProvider(value)
         return authorize_ingestion(
@@ -262,7 +263,7 @@ class ProviderSdkTests(unittest.TestCase):
             ),
         )
 
-    def _provider_record_v2(self, value: ProviderEntitlements) -> dict:
+    def _provider_record_v3(self, value: ProviderEntitlements) -> dict:
         document = record_for(value)
         document["exact_identifiers"] = [
             {
@@ -376,6 +377,118 @@ class ProviderSdkTests(unittest.TestCase):
                     entitlements(**changes)
                 self.assertEqual(raised.exception.path, path)
 
+    def test_entitlement_resource_scope_is_closed_and_exact(self) -> None:
+        for changes, path in (
+            ({"source_ids": frozenset({"2"})}, "$.source_ids"),
+            (
+                {"dataset_ids": frozenset({"World Development Indicators"})},
+                "$.source_ids",
+            ),
+            (
+                {
+                    "source_ids": frozenset({" "}),
+                    "dataset_ids": frozenset({"World Development Indicators"}),
+                },
+                "$.source_ids",
+            ),
+            (
+                {
+                    "source_ids": frozenset({"2"}),
+                    "dataset_ids": frozenset({"d" * 257}),
+                },
+                "$.dataset_ids",
+            ),
+        ):
+            with (
+                self.subTest(path=path),
+                self.assertRaises(ProviderContractError) as raised,
+            ):
+                entitlements(**changes)
+            self.assertEqual(raised.exception.path, path)
+
+        scoped = entitlements(
+            source_ids=frozenset({"2"}),
+            dataset_ids=frozenset({"World Development Indicators"}),
+        )
+        document = record_for(scoped)
+        document["value"] = {
+            "source": {"id": "2", "dataset": "World Development Indicators"}
+        }
+        self._authorize(scoped, document=document, schema_version="0.2.0")
+
+        with self.assertRaises(IngestionDenied) as legacy:
+            self._authorize(scoped, document=document, schema_version="0.1.0")
+        self.assertEqual(legacy.exception.code, "scope_schema_version_mismatch")
+        self.assertEqual(legacy.exception.path, "$schema_version")
+
+        for field, replacement, path in (
+            ("id", "9999", "$.value.source.id"),
+            ("dataset", "Other Dataset", "$.value.source.dataset"),
+        ):
+            with self.subTest(record_path=path):
+                mismatched = deepcopy(document)
+                mismatched["value"]["source"][field] = replacement
+                with self.assertRaises(IngestionDenied) as denied:
+                    self._authorize(
+                        scoped,
+                        document=mismatched,
+                        schema_version="0.2.0",
+                    )
+                self.assertEqual(denied.exception.code, "record_contract_mismatch")
+                self.assertEqual(denied.exception.path, path)
+
+    def test_entitlement_scope_cardinality_matches_the_0_2_contract(self) -> None:
+        bounded = frozenset(f"scope-{index}" for index in range(256))
+        accepted = entitlements(source_ids=bounded, dataset_ids=bounded)
+        self.assertEqual(len(accepted.source_ids), 256)
+        self.assertEqual(len(accepted.dataset_ids), 256)
+        self.assertEqual(entitlements().source_ids, frozenset())
+        self.assertEqual(entitlements().dataset_ids, frozenset())
+
+        oversized = frozenset(f"scope-{index}" for index in range(257))
+        for changes, path in (
+            ({"source_ids": oversized, "dataset_ids": bounded}, "$.source_ids"),
+            ({"source_ids": bounded, "dataset_ids": oversized}, "$.dataset_ids"),
+        ):
+            with (
+                self.subTest(path=path),
+                self.assertRaises(ProviderContractError) as raised,
+            ):
+                entitlements(**changes)
+            self.assertEqual(raised.exception.path, path)
+
+    def test_entitlement_copy_rechecks_scope_cardinality_before_reconstruction(
+        self,
+    ) -> None:
+        mutated = entitlements()
+        oversized = frozenset(f"scope-{index}" for index in range(257))
+        object.__setattr__(mutated, "source_ids", oversized)
+        object.__setattr__(mutated, "dataset_ids", oversized)
+
+        with (
+            patch.object(ProviderEntitlements, "__post_init__", lambda self: None),
+            self.assertRaises(TypeError),
+        ):
+            provider_sdk._validated_entitlements_copy(mutated)
+
+    def test_mutated_or_forged_resource_scopes_fail_entitlement_lookup(self) -> None:
+        scoped = entitlements(
+            source_ids=frozenset({"2"}),
+            dataset_ids=frozenset({"World Development Indicators"}),
+        )
+        document = record_for(scoped)
+        document["value"] = {
+            "source": {"id": "2", "dataset": "World Development Indicators"}
+        }
+        object.__setattr__(
+            scoped,
+            "source_ids",
+            ForgedIterationFrozenSet({"9999"}, {"2"}),
+        )
+        with self.assertRaises(IngestionDenied) as raised:
+            self._authorize(scoped, document=document)
+        self.assertEqual(raised.exception.code, "entitlement_lookup_failed")
+
     def test_entitlement_modes_and_cache_limits_are_fail_closed(self) -> None:
         cases = (
             (
@@ -468,17 +581,17 @@ class ProviderSdkTests(unittest.TestCase):
                 self.assertEqual(raised.exception.code, expected_code)
                 self.assertEqual(raised.exception.path, path)
 
-    def test_provider_record_v2_valid_until_must_match_entitlement_instant(
+    def test_provider_record_v3_valid_until_must_match_entitlement_instant(
         self,
     ) -> None:
         value = entitlements()
-        document = self._provider_record_v2(value)
+        document = self._provider_record_v3(value)
         marker = "PRIVATE-RIGHTS-VALIDITY-MARKER"
         document["rights"]["valid_until"] = "2026-08-23T00:00:00Z"
         document["value"] = marker
 
         with self.assertRaises(IngestionDenied) as raised:
-            self._authorize(value, document=document, schema_version="0.2.0")
+            self._authorize(value, document=document, schema_version="0.3.0")
 
         self.assertEqual(raised.exception.code, "record_contract_mismatch")
         self.assertEqual(raised.exception.path, "$.rights.valid_until")
@@ -486,11 +599,11 @@ class ProviderSdkTests(unittest.TestCase):
         self.assertNotIn("2026-08-23", str(raised.exception))
         self.assertIsNone(raised.exception.__cause__)
 
-    def test_provider_record_v2_accepts_equivalent_valid_until_offset_unchanged(
+    def test_provider_record_v3_accepts_equivalent_valid_until_offset_unchanged(
         self,
     ) -> None:
         value = entitlements()
-        document = self._provider_record_v2(value)
+        document = self._provider_record_v3(value)
         raw_valid_until = "2026-08-22T08:00:00+08:00"
         document["rights"]["valid_until"] = raw_valid_until
         snapshot = deepcopy(document)
@@ -498,17 +611,20 @@ class ProviderSdkTests(unittest.TestCase):
         authorization = self._authorize(
             value,
             document=document,
-            schema_version="0.2.0",
+            schema_version="0.3.0",
         )
 
         self.assertEqual(authorization.provider_id, value.provider_id)
         self.assertEqual(document, snapshot)
         self.assertEqual(document["rights"]["valid_until"], raw_valid_until)
 
-    def test_provider_record_valid_until_remains_optional_in_v1_and_v2(self) -> None:
+    def test_provider_record_valid_until_is_absent_in_v1_v2_and_optional_in_v3(
+        self,
+    ) -> None:
         value = entitlements()
         legacy = record_for(value)
-        current = self._provider_record_v2(value)
+        current = record_for(value)
+        mainland = self._provider_record_v3(value)
 
         self.assertEqual(
             self._authorize(value, document=legacy).provider_id, "provider-1"
@@ -521,16 +637,85 @@ class ProviderSdkTests(unittest.TestCase):
             ).provider_id,
             "provider-1",
         )
+        self.assertEqual(
+            self._authorize(
+                value,
+                document=mainland,
+                schema_version="0.3.0",
+            ).provider_id,
+            "provider-1",
+        )
 
-    def test_provider_record_v2_expired_valid_until_is_stably_redacted(self) -> None:
+    def test_provider_record_v3_accepts_null_valid_until_as_no_expiry(self) -> None:
+        value = entitlements(valid_until=None)
+        document = self._provider_record_v3(value)
+        document["rights"]["valid_until"] = None
+
+        authorization = self._authorize(
+            value,
+            document=document,
+            schema_version="0.3.0",
+        )
+
+        self.assertEqual(authorization.provider_id, "provider-1")
+
+    def test_invalid_rights_timestamps_clear_internal_exception_chains(self) -> None:
+        for field in ("reviewed_at", "valid_until"):
+            with self.subTest(field=field):
+                value = entitlements()
+                document = self._provider_record_v3(value)
+                if field == "valid_until":
+                    document["rights"]["valid_until"] = "2026-08-22T00:00:00Z"
+                error = provider_sdk.ProviderRecordValidationError(
+                    code="invalid_rfc3339",
+                    path=f"$.rights.{field}",
+                    message="private parser failure",
+                )
+
+                target_path = f"$.rights.{field}"
+                reviewed_at = value.rights_reviewed_at
+
+                def parse_or_fail(
+                    _raw_value,
+                    *,
+                    path,
+                    expected_path=target_path,
+                    failure=error,
+                    fallback=reviewed_at,
+                ):
+                    if path == expected_path:
+                        raise failure
+                    return fallback
+
+                with (
+                    patch.object(
+                        provider_sdk,
+                        "parse_rfc3339_timestamp",
+                        side_effect=parse_or_fail,
+                    ),
+                    self.assertRaises(IngestionDenied) as raised,
+                ):
+                    self._authorize(
+                        value,
+                        document=document,
+                        schema_version="0.3.0",
+                    )
+
+                self.assertEqual(raised.exception.code, "record_contract_mismatch")
+                self.assertEqual(raised.exception.path, f"$.rights.{field}")
+                self.assertNotIn("private parser failure", str(raised.exception))
+                self.assertIsNone(raised.exception.__cause__)
+                self.assertIsNone(raised.exception.__context__)
+
+    def test_provider_record_v3_expired_valid_until_is_stably_redacted(self) -> None:
         value = entitlements()
-        document = self._provider_record_v2(value)
+        document = self._provider_record_v3(value)
         marker = "PRIVATE-EXPIRED-RIGHTS-MARKER"
         document["rights"]["valid_until"] = "2026-08-20T23:59:59.999999Z"
         document["value"] = marker
 
         with self.assertRaises(IngestionDenied) as raised:
-            self._authorize(value, document=document, schema_version="0.2.0")
+            self._authorize(value, document=document, schema_version="0.3.0")
 
         self.assertEqual(raised.exception.code, "invalid_provider_record")
         self.assertEqual(raised.exception.path, "$.rights.valid_until")

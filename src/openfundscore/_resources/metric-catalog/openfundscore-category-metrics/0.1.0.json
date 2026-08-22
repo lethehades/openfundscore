@@ -1,0 +1,4627 @@
+{
+  "catalog_id": "openfundscore-category-metrics",
+  "catalog_version": "0.1.0",
+  "engine_contract": {
+    "formula_version": "robust-percentile-iqr-mad/0.1.0",
+    "maximum_peer_sample": 10000,
+    "minimum_peer_sample": 5,
+    "optional_metric_denominator_policy": "fixed_no_reweighting",
+    "ranking": "empirical_midrank",
+    "raw_metric_ownership": "upstream_audited_observation",
+    "subject_in_peer_policy": "target_fund_must_not_appear_in_peers",
+    "winsorization": "iqr_1.5_then_mad_3.0_zero_dispersion_neutral"
+  },
+  "formula_semantics": {
+    "upstream_audited_raw/absolute_tracking_difference/0.1.0": {
+      "applicability": "requires_declared_benchmark",
+      "data_source": "benchmark_and_market_series",
+      "domain": "performance_return",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "rolling_period",
+        "maximum": 60,
+        "minimum": 12,
+        "unit": "months"
+      },
+      "unit": "percentage_points",
+      "value_range": {
+        "maximum": 100.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/allocation_effect/0.1.0": {
+      "applicability": "requires_declared_benchmark",
+      "data_source": "benchmark_and_market_series",
+      "domain": "performance_return",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "rolling_period",
+        "maximum": 60,
+        "minimum": 12,
+        "unit": "months"
+      },
+      "unit": "percentage_points",
+      "value_range": {
+        "maximum": 1000.0,
+        "minimum": -100.0
+      }
+    },
+    "upstream_audited_raw/allocation_process_disclosure/0.1.0": {
+      "applicability": "all_profile_funds",
+      "data_source": "regulatory_fund_disclosures",
+      "domain": "governance_control",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "point_in_time",
+        "maximum": 0,
+        "minimum": 0,
+        "unit": "instant"
+      },
+      "unit": "score_0_100",
+      "value_range": {
+        "maximum": 100.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/annualized_benchmark_excess/0.1.0": {
+      "applicability": "requires_declared_benchmark",
+      "data_source": "benchmark_and_market_series",
+      "domain": "performance_return",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "rolling_period",
+        "maximum": 60,
+        "minimum": 12,
+        "unit": "months"
+      },
+      "unit": "percentage_points",
+      "value_range": {
+        "maximum": 1000.0,
+        "minimum": -100.0
+      }
+    },
+    "upstream_audited_raw/asset_quality/0.1.0": {
+      "applicability": "all_profile_funds",
+      "data_source": "portfolio_holdings_and_lookthrough",
+      "domain": "portfolio_exposure",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "point_in_time",
+        "maximum": 0,
+        "minimum": 0,
+        "unit": "instant"
+      },
+      "unit": "score_0_100",
+      "value_range": {
+        "maximum": 100.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/asset_valuation_governance/0.1.0": {
+      "applicability": "all_profile_funds",
+      "data_source": "regulatory_fund_disclosures",
+      "domain": "governance_control",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "point_in_time",
+        "maximum": 0,
+        "minimum": 0,
+        "unit": "instant"
+      },
+      "unit": "score_0_100",
+      "value_range": {
+        "maximum": 100.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/below_investment_grade_exposure/0.1.0": {
+      "applicability": "all_profile_funds",
+      "data_source": "portfolio_holdings_and_lookthrough",
+      "domain": "portfolio_exposure",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "point_in_time",
+        "maximum": 0,
+        "minimum": 0,
+        "unit": "instant"
+      },
+      "unit": "percent",
+      "value_range": {
+        "maximum": 100.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/benchmark_coverage/0.1.0": {
+      "applicability": "requires_declared_benchmark",
+      "data_source": "portfolio_holdings_and_lookthrough",
+      "domain": "portfolio_exposure",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "point_in_time",
+        "maximum": 0,
+        "minimum": 0,
+        "unit": "instant"
+      },
+      "unit": "ratio",
+      "value_range": {
+        "maximum": 1.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/benchmark_excess/0.1.0": {
+      "applicability": "requires_declared_benchmark",
+      "data_source": "benchmark_and_market_series",
+      "domain": "performance_return",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "rolling_period",
+        "maximum": 60,
+        "minimum": 12,
+        "unit": "months"
+      },
+      "unit": "percentage_points",
+      "value_range": {
+        "maximum": 1000.0,
+        "minimum": -100.0
+      }
+    },
+    "upstream_audited_raw/benchmark_excess_return/0.1.0": {
+      "applicability": "requires_declared_benchmark",
+      "data_source": "benchmark_and_market_series",
+      "domain": "performance_return",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "rolling_period",
+        "maximum": 60,
+        "minimum": 12,
+        "unit": "months"
+      },
+      "unit": "percentage_points",
+      "value_range": {
+        "maximum": 1000.0,
+        "minimum": -100.0
+      }
+    },
+    "upstream_audited_raw/benchmark_return_gap/0.1.0": {
+      "applicability": "requires_declared_benchmark",
+      "data_source": "benchmark_and_market_series",
+      "domain": "performance_return",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "rolling_period",
+        "maximum": 60,
+        "minimum": 12,
+        "unit": "months"
+      },
+      "unit": "percentage_points",
+      "value_range": {
+        "maximum": 100.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/benchmark_yield_excess/0.1.0": {
+      "applicability": "requires_declared_benchmark",
+      "data_source": "benchmark_and_market_series",
+      "domain": "performance_return",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "rolling_period",
+        "maximum": 60,
+        "minimum": 12,
+        "unit": "months"
+      },
+      "unit": "percentage_points",
+      "value_range": {
+        "maximum": 1000.0,
+        "minimum": -100.0
+      }
+    },
+    "upstream_audited_raw/carry_efficiency/0.1.0": {
+      "applicability": "all_profile_funds",
+      "data_source": "income_distribution_and_market_data",
+      "domain": "performance_return",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "reporting_period",
+        "maximum": 12,
+        "minimum": 1,
+        "unit": "months"
+      },
+      "unit": "ratio",
+      "value_range": {
+        "maximum": 1.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/carry_roll_excess/0.1.0": {
+      "applicability": "requires_derivative_or_commodity_exposure",
+      "data_source": "benchmark_and_market_series",
+      "domain": "performance_return",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "rolling_period",
+        "maximum": 60,
+        "minimum": 12,
+        "unit": "months"
+      },
+      "unit": "percentage_points",
+      "value_range": {
+        "maximum": 1000.0,
+        "minimum": -100.0
+      }
+    },
+    "upstream_audited_raw/collateral_quality/0.1.0": {
+      "applicability": "requires_derivative_or_commodity_exposure",
+      "data_source": "custody_and_operations_records",
+      "domain": "portfolio_exposure",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "point_in_time",
+        "maximum": 0,
+        "minimum": 0,
+        "unit": "instant"
+      },
+      "unit": "score_0_100",
+      "value_range": {
+        "maximum": 100.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/concentration_deviation/0.1.0": {
+      "applicability": "requires_declared_benchmark",
+      "data_source": "portfolio_holdings_and_lookthrough",
+      "domain": "portfolio_exposure",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "point_in_time",
+        "maximum": 0,
+        "minimum": 0,
+        "unit": "instant"
+      },
+      "unit": "percentage_points",
+      "value_range": {
+        "maximum": 100.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/concentration_hhi/0.1.0": {
+      "applicability": "all_profile_funds",
+      "data_source": "portfolio_holdings_and_lookthrough",
+      "domain": "portfolio_exposure",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "point_in_time",
+        "maximum": 0,
+        "minimum": 0,
+        "unit": "instant"
+      },
+      "unit": "ratio",
+      "value_range": {
+        "maximum": 1.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/contract_concentration/0.1.0": {
+      "applicability": "requires_derivative_or_commodity_exposure",
+      "data_source": "portfolio_holdings_and_lookthrough",
+      "domain": "portfolio_exposure",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "point_in_time",
+        "maximum": 0,
+        "minimum": 0,
+        "unit": "instant"
+      },
+      "unit": "percent",
+      "value_range": {
+        "maximum": 100.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/country_weight_deviation/0.1.0": {
+      "applicability": "requires_declared_benchmark",
+      "data_source": "portfolio_holdings_and_lookthrough",
+      "domain": "portfolio_exposure",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "point_in_time",
+        "maximum": 0,
+        "minimum": 0,
+        "unit": "instant"
+      },
+      "unit": "percentage_points",
+      "value_range": {
+        "maximum": 100.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/credit_concentration/0.1.0": {
+      "applicability": "all_profile_funds",
+      "data_source": "portfolio_holdings_and_lookthrough",
+      "domain": "portfolio_exposure",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "point_in_time",
+        "maximum": 0,
+        "minimum": 0,
+        "unit": "instant"
+      },
+      "unit": "percent",
+      "value_range": {
+        "maximum": 100.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/credit_drawdown/0.1.0": {
+      "applicability": "all_profile_funds",
+      "data_source": "fund_nav_and_market_series",
+      "domain": "downside_risk",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "rolling_period",
+        "maximum": 120,
+        "minimum": 12,
+        "unit": "months"
+      },
+      "unit": "percent",
+      "value_range": {
+        "maximum": 100.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/credit_event_disclosure/0.1.0": {
+      "applicability": "all_profile_funds",
+      "data_source": "regulatory_fund_disclosures",
+      "domain": "governance_control",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "point_in_time",
+        "maximum": 0,
+        "minimum": 0,
+        "unit": "instant"
+      },
+      "unit": "score_0_100",
+      "value_range": {
+        "maximum": 100.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/credit_valuation_controls/0.1.0": {
+      "applicability": "all_profile_funds",
+      "data_source": "regulatory_fund_disclosures",
+      "domain": "governance_control",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "point_in_time",
+        "maximum": 0,
+        "minimum": 0,
+        "unit": "instant"
+      },
+      "unit": "score_0_100",
+      "value_range": {
+        "maximum": 100.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/cross_border_custody_controls/0.1.0": {
+      "applicability": "requires_cross_border_or_currency_exposure",
+      "data_source": "custody_and_operations_records",
+      "domain": "governance_control",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "point_in_time",
+        "maximum": 0,
+        "minimum": 0,
+        "unit": "instant"
+      },
+      "unit": "score_0_100",
+      "value_range": {
+        "maximum": 100.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/cross_border_disclosure/0.1.0": {
+      "applicability": "requires_cross_border_or_currency_exposure",
+      "data_source": "regulatory_fund_disclosures",
+      "domain": "governance_control",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "point_in_time",
+        "maximum": 0,
+        "minimum": 0,
+        "unit": "instant"
+      },
+      "unit": "score_0_100",
+      "value_range": {
+        "maximum": 100.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/currency_adjusted_excess/0.1.0": {
+      "applicability": "requires_cross_border_or_currency_exposure",
+      "data_source": "benchmark_and_market_series",
+      "domain": "performance_return",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "rolling_period",
+        "maximum": 60,
+        "minimum": 12,
+        "unit": "months"
+      },
+      "unit": "percentage_points",
+      "value_range": {
+        "maximum": 1000.0,
+        "minimum": -100.0
+      }
+    },
+    "upstream_audited_raw/currency_adjusted_tracking_gap/0.1.0": {
+      "applicability": "requires_cross_border_or_currency_exposure",
+      "data_source": "benchmark_and_market_series",
+      "domain": "performance_return",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "rolling_period",
+        "maximum": 60,
+        "minimum": 12,
+        "unit": "months"
+      },
+      "unit": "percentage_points",
+      "value_range": {
+        "maximum": 100.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/currency_concentration/0.1.0": {
+      "applicability": "requires_cross_border_or_currency_exposure",
+      "data_source": "portfolio_holdings_and_lookthrough",
+      "domain": "portfolio_exposure",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "point_in_time",
+        "maximum": 0,
+        "minimum": 0,
+        "unit": "instant"
+      },
+      "unit": "percent",
+      "value_range": {
+        "maximum": 100.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/currency_downside_capture/0.1.0": {
+      "applicability": "requires_cross_border_or_currency_exposure",
+      "data_source": "benchmark_and_market_series",
+      "domain": "downside_risk",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "rolling_period",
+        "maximum": 60,
+        "minimum": 12,
+        "unit": "months"
+      },
+      "unit": "ratio",
+      "value_range": {
+        "maximum": 5.0,
+        "minimum": -5.0
+      }
+    },
+    "upstream_audited_raw/currency_stress_loss/0.1.0": {
+      "applicability": "requires_cross_border_or_currency_exposure",
+      "data_source": "benchmark_and_market_series",
+      "domain": "downside_risk",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "rolling_period",
+        "maximum": 60,
+        "minimum": 12,
+        "unit": "months"
+      },
+      "unit": "percent",
+      "value_range": {
+        "maximum": 100.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/custody_or_collateral_controls/0.1.0": {
+      "applicability": "requires_derivative_or_commodity_exposure",
+      "data_source": "custody_and_operations_records",
+      "domain": "governance_control",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "point_in_time",
+        "maximum": 0,
+        "minimum": 0,
+        "unit": "instant"
+      },
+      "unit": "score_0_100",
+      "value_range": {
+        "maximum": 100.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/disclosure_timeliness/0.1.0": {
+      "applicability": "all_profile_funds",
+      "data_source": "regulatory_fund_disclosures",
+      "domain": "governance_control",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "reporting_period",
+        "maximum": 12,
+        "minimum": 1,
+        "unit": "months"
+      },
+      "unit": "score_0_100",
+      "value_range": {
+        "maximum": 100.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/distribution_growth/0.1.0": {
+      "applicability": "requires_income_distributing_assets",
+      "data_source": "income_distribution_and_market_data",
+      "domain": "performance_return",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "rolling_period",
+        "maximum": 60,
+        "minimum": 12,
+        "unit": "months"
+      },
+      "unit": "percentage_points",
+      "value_range": {
+        "maximum": 1000.0,
+        "minimum": -100.0
+      }
+    },
+    "upstream_audited_raw/distribution_stability/0.1.0": {
+      "applicability": "requires_income_distributing_assets",
+      "data_source": "income_distribution_and_market_data",
+      "domain": "consistency_stability",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "rolling_period",
+        "maximum": 60,
+        "minimum": 12,
+        "unit": "months"
+      },
+      "unit": "ratio",
+      "value_range": {
+        "maximum": 1.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/distribution_stress_loss/0.1.0": {
+      "applicability": "requires_income_distributing_assets",
+      "data_source": "income_distribution_and_market_data",
+      "domain": "downside_risk",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "rolling_period",
+        "maximum": 60,
+        "minimum": 12,
+        "unit": "months"
+      },
+      "unit": "percent",
+      "value_range": {
+        "maximum": 100.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/downside_capture/0.1.0": {
+      "applicability": "requires_declared_benchmark",
+      "data_source": "benchmark_and_market_series",
+      "domain": "downside_risk",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "rolling_period",
+        "maximum": 60,
+        "minimum": 12,
+        "unit": "months"
+      },
+      "unit": "ratio",
+      "value_range": {
+        "maximum": 5.0,
+        "minimum": -5.0
+      }
+    },
+    "upstream_audited_raw/duration_mandate_fit/0.1.0": {
+      "applicability": "all_profile_funds",
+      "data_source": "portfolio_holdings_and_lookthrough",
+      "domain": "portfolio_exposure",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "point_in_time",
+        "maximum": 0,
+        "minimum": 0,
+        "unit": "instant"
+      },
+      "unit": "ratio",
+      "value_range": {
+        "maximum": 1.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/expected_shortfall/0.1.0": {
+      "applicability": "all_profile_funds",
+      "data_source": "fund_nav_and_market_series",
+      "domain": "downside_risk",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "rolling_period",
+        "maximum": 60,
+        "minimum": 12,
+        "unit": "months"
+      },
+      "unit": "percent",
+      "value_range": {
+        "maximum": 100.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/factor_residual_alpha/0.1.0": {
+      "applicability": "requires_declared_benchmark",
+      "data_source": "benchmark_and_market_series",
+      "domain": "performance_return",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "rolling_period",
+        "maximum": 60,
+        "minimum": 12,
+        "unit": "months"
+      },
+      "unit": "percentage_points",
+      "value_range": {
+        "maximum": 1000.0,
+        "minimum": -100.0
+      }
+    },
+    "upstream_audited_raw/futures_stress_loss/0.1.0": {
+      "applicability": "requires_derivative_or_commodity_exposure",
+      "data_source": "benchmark_and_market_series",
+      "domain": "downside_risk",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "rolling_period",
+        "maximum": 60,
+        "minimum": 12,
+        "unit": "months"
+      },
+      "unit": "percent",
+      "value_range": {
+        "maximum": 100.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/fx_hedge_stability/0.1.0": {
+      "applicability": "requires_cross_border_or_currency_exposure",
+      "data_source": "fee_and_execution_records",
+      "domain": "consistency_stability",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "rolling_period",
+        "maximum": 60,
+        "minimum": 12,
+        "unit": "months"
+      },
+      "unit": "ratio",
+      "value_range": {
+        "maximum": 1.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/fx_implementation_cost/0.1.0": {
+      "applicability": "requires_cross_border_or_currency_exposure",
+      "data_source": "fee_and_execution_records",
+      "domain": "implementation_cost",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "reporting_period",
+        "maximum": 12,
+        "minimum": 1,
+        "unit": "months"
+      },
+      "unit": "basis_points",
+      "value_range": {
+        "maximum": 5000.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/fx_tracking_error/0.1.0": {
+      "applicability": "requires_cross_border_or_currency_exposure",
+      "data_source": "benchmark_and_market_series",
+      "domain": "implementation_cost",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "rolling_period",
+        "maximum": 60,
+        "minimum": 12,
+        "unit": "months"
+      },
+      "unit": "percentage_points",
+      "value_range": {
+        "maximum": 100.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/global_regime_persistence/0.1.0": {
+      "applicability": "requires_cross_border_or_currency_exposure",
+      "data_source": "fund_nav_and_market_series",
+      "domain": "consistency_stability",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "rolling_period",
+        "maximum": 60,
+        "minimum": 12,
+        "unit": "months"
+      },
+      "unit": "ratio",
+      "value_range": {
+        "maximum": 1.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/high_quality_liquid_assets/0.1.0": {
+      "applicability": "all_profile_funds",
+      "data_source": "portfolio_holdings_and_lookthrough",
+      "domain": "portfolio_exposure",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "point_in_time",
+        "maximum": 0,
+        "minimum": 0,
+        "unit": "instant"
+      },
+      "unit": "percent",
+      "value_range": {
+        "maximum": 100.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/index_method_disclosure/0.1.0": {
+      "applicability": "requires_declared_benchmark",
+      "data_source": "regulatory_fund_disclosures",
+      "domain": "governance_control",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "point_in_time",
+        "maximum": 0,
+        "minimum": 0,
+        "unit": "instant"
+      },
+      "unit": "score_0_100",
+      "value_range": {
+        "maximum": 100.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/lifecycle_regime_persistence/0.1.0": {
+      "applicability": "all_profile_funds",
+      "data_source": "fund_nav_and_market_series",
+      "domain": "consistency_stability",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "rolling_period",
+        "maximum": 60,
+        "minimum": 12,
+        "unit": "months"
+      },
+      "unit": "ratio",
+      "value_range": {
+        "maximum": 1.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/liquidity_cost/0.1.0": {
+      "applicability": "all_profile_funds",
+      "data_source": "fee_and_execution_records",
+      "domain": "implementation_cost",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "reporting_period",
+        "maximum": 12,
+        "minimum": 1,
+        "unit": "months"
+      },
+      "unit": "basis_points",
+      "value_range": {
+        "maximum": 5000.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/liquidity_governance_quality/0.1.0": {
+      "applicability": "all_profile_funds",
+      "data_source": "regulatory_fund_disclosures",
+      "domain": "governance_control",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "point_in_time",
+        "maximum": 0,
+        "minimum": 0,
+        "unit": "instant"
+      },
+      "unit": "score_0_100",
+      "value_range": {
+        "maximum": 100.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/liquidity_regime_persistence/0.1.0": {
+      "applicability": "all_profile_funds",
+      "data_source": "fund_nav_and_market_series",
+      "domain": "consistency_stability",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "rolling_period",
+        "maximum": 60,
+        "minimum": 12,
+        "unit": "months"
+      },
+      "unit": "ratio",
+      "value_range": {
+        "maximum": 1.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/liquidity_stress_loss/0.1.0": {
+      "applicability": "all_profile_funds",
+      "data_source": "fund_nav_and_market_series",
+      "domain": "downside_risk",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "rolling_period",
+        "maximum": 60,
+        "minimum": 12,
+        "unit": "months"
+      },
+      "unit": "percent",
+      "value_range": {
+        "maximum": 100.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/lookthrough_concentration/0.1.0": {
+      "applicability": "requires_lookthrough_portfolio",
+      "data_source": "portfolio_holdings_and_lookthrough",
+      "domain": "portfolio_exposure",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "point_in_time",
+        "maximum": 0,
+        "minimum": 0,
+        "unit": "instant"
+      },
+      "unit": "percent",
+      "value_range": {
+        "maximum": 100.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/lookthrough_total_cost/0.1.0": {
+      "applicability": "requires_lookthrough_portfolio",
+      "data_source": "fee_and_execution_records",
+      "domain": "implementation_cost",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "reporting_period",
+        "maximum": 12,
+        "minimum": 12,
+        "unit": "months"
+      },
+      "unit": "basis_points",
+      "value_range": {
+        "maximum": 2000.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/mandate_active_share/0.1.0": {
+      "applicability": "requires_declared_benchmark",
+      "data_source": "portfolio_holdings_and_lookthrough",
+      "domain": "portfolio_exposure",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "point_in_time",
+        "maximum": 0,
+        "minimum": 0,
+        "unit": "instant"
+      },
+      "unit": "ratio",
+      "value_range": {
+        "maximum": 1.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/mandate_country_fit/0.1.0": {
+      "applicability": "requires_cross_border_or_currency_exposure",
+      "data_source": "portfolio_holdings_and_lookthrough",
+      "domain": "portfolio_exposure",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "point_in_time",
+        "maximum": 0,
+        "minimum": 0,
+        "unit": "instant"
+      },
+      "unit": "ratio",
+      "value_range": {
+        "maximum": 1.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/market_liquidity_cost/0.1.0": {
+      "applicability": "all_profile_funds",
+      "data_source": "fee_and_execution_records",
+      "domain": "implementation_cost",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "reporting_period",
+        "maximum": 12,
+        "minimum": 1,
+        "unit": "months"
+      },
+      "unit": "basis_points",
+      "value_range": {
+        "maximum": 5000.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/maximum_drawdown/0.1.0": {
+      "applicability": "all_profile_funds",
+      "data_source": "fund_nav_and_market_series",
+      "domain": "downside_risk",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "rolling_period",
+        "maximum": 120,
+        "minimum": 12,
+        "unit": "months"
+      },
+      "unit": "percent",
+      "value_range": {
+        "maximum": 100.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/negative_return_days/0.1.0": {
+      "applicability": "all_profile_funds",
+      "data_source": "fund_nav_and_market_series",
+      "domain": "downside_risk",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "rolling_period",
+        "maximum": 12,
+        "minimum": 1,
+        "unit": "months"
+      },
+      "unit": "count",
+      "value_range": {
+        "maximum": 366.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/occupancy_persistence/0.1.0": {
+      "applicability": "requires_income_distributing_assets",
+      "data_source": "income_distribution_and_market_data",
+      "domain": "consistency_stability",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "rolling_period",
+        "maximum": 60,
+        "minimum": 12,
+        "unit": "months"
+      },
+      "unit": "ratio",
+      "value_range": {
+        "maximum": 1.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/ongoing_charge/0.1.0": {
+      "applicability": "all_profile_funds",
+      "data_source": "fee_and_execution_records",
+      "domain": "implementation_cost",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "reporting_period",
+        "maximum": 12,
+        "minimum": 12,
+        "unit": "months"
+      },
+      "unit": "basis_points",
+      "value_range": {
+        "maximum": 1000.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/policy_benchmark_excess/0.1.0": {
+      "applicability": "requires_declared_benchmark",
+      "data_source": "benchmark_and_market_series",
+      "domain": "performance_return",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "rolling_period",
+        "maximum": 60,
+        "minimum": 12,
+        "unit": "months"
+      },
+      "unit": "percentage_points",
+      "value_range": {
+        "maximum": 1000.0,
+        "minimum": -100.0
+      }
+    },
+    "upstream_audited_raw/rate_credit_regime_persistence/0.1.0": {
+      "applicability": "all_profile_funds",
+      "data_source": "fund_nav_and_market_series",
+      "domain": "consistency_stability",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "rolling_period",
+        "maximum": 60,
+        "minimum": 12,
+        "unit": "months"
+      },
+      "unit": "ratio",
+      "value_range": {
+        "maximum": 1.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/rate_regime_persistence/0.1.0": {
+      "applicability": "all_profile_funds",
+      "data_source": "fund_nav_and_market_series",
+      "domain": "consistency_stability",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "rolling_period",
+        "maximum": 60,
+        "minimum": 12,
+        "unit": "months"
+      },
+      "unit": "ratio",
+      "value_range": {
+        "maximum": 1.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/recovery_months/0.1.0": {
+      "applicability": "all_profile_funds",
+      "data_source": "fund_nav_and_market_series",
+      "domain": "downside_risk",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "cumulative_period",
+        "maximum": 1200,
+        "minimum": 0,
+        "unit": "months"
+      },
+      "unit": "months",
+      "value_range": {
+        "maximum": 1200.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/redemption_liquidity_buffer/0.1.0": {
+      "applicability": "all_profile_funds",
+      "data_source": "portfolio_holdings_and_lookthrough",
+      "domain": "implementation_cost",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "point_in_time",
+        "maximum": 0,
+        "minimum": 0,
+        "unit": "instant"
+      },
+      "unit": "ratio",
+      "value_range": {
+        "maximum": 1.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/regime_persistence/0.1.0": {
+      "applicability": "all_profile_funds",
+      "data_source": "fund_nav_and_market_series",
+      "domain": "consistency_stability",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "rolling_period",
+        "maximum": 60,
+        "minimum": 12,
+        "unit": "months"
+      },
+      "unit": "ratio",
+      "value_range": {
+        "maximum": 1.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/related_party_controls/0.1.0": {
+      "applicability": "all_profile_funds",
+      "data_source": "regulatory_fund_disclosures",
+      "domain": "governance_control",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "point_in_time",
+        "maximum": 0,
+        "minimum": 0,
+        "unit": "instant"
+      },
+      "unit": "score_0_100",
+      "value_range": {
+        "maximum": 100.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/replication_method_stability/0.1.0": {
+      "applicability": "requires_declared_benchmark",
+      "data_source": "regulatory_fund_disclosures",
+      "domain": "consistency_stability",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "rolling_period",
+        "maximum": 60,
+        "minimum": 12,
+        "unit": "months"
+      },
+      "unit": "ratio",
+      "value_range": {
+        "maximum": 1.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/roll_implementation_cost/0.1.0": {
+      "applicability": "requires_derivative_or_commodity_exposure",
+      "data_source": "fee_and_execution_records",
+      "domain": "implementation_cost",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "reporting_period",
+        "maximum": 12,
+        "minimum": 1,
+        "unit": "months"
+      },
+      "unit": "basis_points",
+      "value_range": {
+        "maximum": 5000.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/roll_regime_persistence/0.1.0": {
+      "applicability": "requires_derivative_or_commodity_exposure",
+      "data_source": "benchmark_and_market_series",
+      "domain": "consistency_stability",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "rolling_period",
+        "maximum": 60,
+        "minimum": 12,
+        "unit": "months"
+      },
+      "unit": "ratio",
+      "value_range": {
+        "maximum": 1.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/roll_yield_efficiency/0.1.0": {
+      "applicability": "requires_derivative_or_commodity_exposure",
+      "data_source": "benchmark_and_market_series",
+      "domain": "performance_return",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "rolling_period",
+        "maximum": 60,
+        "minimum": 12,
+        "unit": "months"
+      },
+      "unit": "ratio",
+      "value_range": {
+        "maximum": 1.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/rolling_excess_hit_rate/0.1.0": {
+      "applicability": "requires_declared_benchmark",
+      "data_source": "benchmark_and_market_series",
+      "domain": "consistency_stability",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "rolling_period",
+        "maximum": 60,
+        "minimum": 12,
+        "unit": "months"
+      },
+      "unit": "ratio",
+      "value_range": {
+        "maximum": 1.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/rolling_goal_hit_rate/0.1.0": {
+      "applicability": "all_profile_funds",
+      "data_source": "fund_nav_and_market_series",
+      "domain": "consistency_stability",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "rolling_period",
+        "maximum": 60,
+        "minimum": 12,
+        "unit": "months"
+      },
+      "unit": "ratio",
+      "value_range": {
+        "maximum": 1.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/rolling_positive_excess/0.1.0": {
+      "applicability": "requires_declared_benchmark",
+      "data_source": "benchmark_and_market_series",
+      "domain": "consistency_stability",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "rolling_period",
+        "maximum": 60,
+        "minimum": 12,
+        "unit": "months"
+      },
+      "unit": "ratio",
+      "value_range": {
+        "maximum": 1.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/rolling_tracking_stability/0.1.0": {
+      "applicability": "requires_declared_benchmark",
+      "data_source": "benchmark_and_market_series",
+      "domain": "consistency_stability",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "rolling_period",
+        "maximum": 60,
+        "minimum": 12,
+        "unit": "months"
+      },
+      "unit": "ratio",
+      "value_range": {
+        "maximum": 1.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/rolling_yield_rank_stability/0.1.0": {
+      "applicability": "requires_income_distributing_assets",
+      "data_source": "income_distribution_and_market_data",
+      "domain": "consistency_stability",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "rolling_period",
+        "maximum": 60,
+        "minimum": 12,
+        "unit": "months"
+      },
+      "unit": "ratio",
+      "value_range": {
+        "maximum": 1.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/securities_lending_controls/0.1.0": {
+      "applicability": "requires_securities_lending_program",
+      "data_source": "custody_and_operations_records",
+      "domain": "governance_control",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "point_in_time",
+        "maximum": 0,
+        "minimum": 0,
+        "unit": "instant"
+      },
+      "unit": "score_0_100",
+      "value_range": {
+        "maximum": 100.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/settlement_delay/0.1.0": {
+      "applicability": "all_profile_funds",
+      "data_source": "custody_and_operations_records",
+      "domain": "implementation_cost",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "reporting_period",
+        "maximum": 12,
+        "minimum": 1,
+        "unit": "months"
+      },
+      "unit": "days",
+      "value_range": {
+        "maximum": 365.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/seven_day_yield_stability/0.1.0": {
+      "applicability": "requires_income_distributing_assets",
+      "data_source": "income_distribution_and_market_data",
+      "domain": "performance_return",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "rolling_period",
+        "maximum": 12,
+        "minimum": 1,
+        "unit": "months"
+      },
+      "unit": "ratio",
+      "value_range": {
+        "maximum": 1.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/shadow_nav_disclosure/0.1.0": {
+      "applicability": "all_profile_funds",
+      "data_source": "regulatory_fund_disclosures",
+      "domain": "governance_control",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "point_in_time",
+        "maximum": 0,
+        "minimum": 0,
+        "unit": "instant"
+      },
+      "unit": "score_0_100",
+      "value_range": {
+        "maximum": 100.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/spot_tracking_gap/0.1.0": {
+      "applicability": "requires_derivative_or_commodity_exposure",
+      "data_source": "benchmark_and_market_series",
+      "domain": "performance_return",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "rolling_period",
+        "maximum": 60,
+        "minimum": 12,
+        "unit": "months"
+      },
+      "unit": "percentage_points",
+      "value_range": {
+        "maximum": 100.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/tenant_concentration/0.1.0": {
+      "applicability": "requires_income_distributing_assets",
+      "data_source": "portfolio_holdings_and_lookthrough",
+      "domain": "portfolio_exposure",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "point_in_time",
+        "maximum": 0,
+        "minimum": 0,
+        "unit": "instant"
+      },
+      "unit": "percent",
+      "value_range": {
+        "maximum": 100.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/total_expense/0.1.0": {
+      "applicability": "all_profile_funds",
+      "data_source": "fee_and_execution_records",
+      "domain": "implementation_cost",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "reporting_period",
+        "maximum": 12,
+        "minimum": 12,
+        "unit": "months"
+      },
+      "unit": "basis_points",
+      "value_range": {
+        "maximum": 1000.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/total_return_excess/0.1.0": {
+      "applicability": "requires_declared_benchmark",
+      "data_source": "benchmark_and_market_series",
+      "domain": "performance_return",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "rolling_period",
+        "maximum": 60,
+        "minimum": 12,
+        "unit": "months"
+      },
+      "unit": "percentage_points",
+      "value_range": {
+        "maximum": 1000.0,
+        "minimum": -100.0
+      }
+    },
+    "upstream_audited_raw/tracking_error/0.1.0": {
+      "applicability": "requires_declared_benchmark",
+      "data_source": "benchmark_and_market_series",
+      "domain": "implementation_cost",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "rolling_period",
+        "maximum": 60,
+        "minimum": 12,
+        "unit": "months"
+      },
+      "unit": "percentage_points",
+      "value_range": {
+        "maximum": 100.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/underlying_diversification/0.1.0": {
+      "applicability": "requires_lookthrough_portfolio",
+      "data_source": "portfolio_holdings_and_lookthrough",
+      "domain": "portfolio_exposure",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "point_in_time",
+        "maximum": 0,
+        "minimum": 0,
+        "unit": "instant"
+      },
+      "unit": "ratio",
+      "value_range": {
+        "maximum": 1.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/underlying_due_diligence/0.1.0": {
+      "applicability": "requires_lookthrough_portfolio",
+      "data_source": "regulatory_fund_disclosures",
+      "domain": "governance_control",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "point_in_time",
+        "maximum": 0,
+        "minimum": 0,
+        "unit": "instant"
+      },
+      "unit": "score_0_100",
+      "value_range": {
+        "maximum": 100.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/underlying_liquidity_cost/0.1.0": {
+      "applicability": "requires_lookthrough_portfolio",
+      "data_source": "fee_and_execution_records",
+      "domain": "implementation_cost",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "reporting_period",
+        "maximum": 12,
+        "minimum": 1,
+        "unit": "months"
+      },
+      "unit": "basis_points",
+      "value_range": {
+        "maximum": 5000.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/valuation_control_quality/0.1.0": {
+      "applicability": "all_profile_funds",
+      "data_source": "regulatory_fund_disclosures",
+      "domain": "governance_control",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "point_in_time",
+        "maximum": 0,
+        "minimum": 0,
+        "unit": "instant"
+      },
+      "unit": "score_0_100",
+      "value_range": {
+        "maximum": 100.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/valuation_cutoff_controls/0.1.0": {
+      "applicability": "all_profile_funds",
+      "data_source": "regulatory_fund_disclosures",
+      "domain": "governance_control",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "point_in_time",
+        "maximum": 0,
+        "minimum": 0,
+        "unit": "instant"
+      },
+      "unit": "score_0_100",
+      "value_range": {
+        "maximum": 100.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/valuation_method_disclosure/0.1.0": {
+      "applicability": "all_profile_funds",
+      "data_source": "regulatory_fund_disclosures",
+      "domain": "governance_control",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "point_in_time",
+        "maximum": 0,
+        "minimum": 0,
+        "unit": "instant"
+      },
+      "unit": "score_0_100",
+      "value_range": {
+        "maximum": 100.0,
+        "minimum": 0.0
+      }
+    },
+    "upstream_audited_raw/weighted_average_maturity/0.1.0": {
+      "applicability": "all_profile_funds",
+      "data_source": "portfolio_holdings_and_lookthrough",
+      "domain": "portfolio_exposure",
+      "formula_owner": "upstream_audited_provider",
+      "observation_window": {
+        "kind": "point_in_time",
+        "maximum": 0,
+        "minimum": 0,
+        "unit": "instant"
+      },
+      "unit": "days",
+      "value_range": {
+        "maximum": 180.0,
+        "minimum": 0.0
+      }
+    }
+  },
+  "profiles": {
+    "active_equity_mixed": {
+      "dimensions": {
+        "consistency": [
+          {
+            "applicability": "requires_declared_benchmark",
+            "core": true,
+            "data_source": "benchmark_and_market_series",
+            "direction": "higher_is_better",
+            "domain": "consistency_stability",
+            "evidence_family": "active_equity_mixed.consistency.rolling_excess_hit_rate",
+            "formula": "upstream_audited_raw/rolling_excess_hit_rate/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "rolling_excess_hit_rate",
+            "observation_window": {
+              "kind": "rolling_period",
+              "maximum": 60,
+              "minimum": 12,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "ratio",
+            "value_range": {
+              "maximum": 1.0,
+              "minimum": 0.0
+            },
+            "weight": 60
+          },
+          {
+            "applicability": "all_profile_funds",
+            "core": true,
+            "data_source": "fund_nav_and_market_series",
+            "direction": "higher_is_better",
+            "domain": "consistency_stability",
+            "evidence_family": "active_equity_mixed.consistency.regime_persistence",
+            "formula": "upstream_audited_raw/regime_persistence/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "regime_persistence",
+            "observation_window": {
+              "kind": "rolling_period",
+              "maximum": 60,
+              "minimum": 12,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "ratio",
+            "value_range": {
+              "maximum": 1.0,
+              "minimum": 0.0
+            },
+            "weight": 40
+          }
+        ],
+        "downside_risk": [
+          {
+            "applicability": "all_profile_funds",
+            "core": true,
+            "data_source": "fund_nav_and_market_series",
+            "direction": "lower_is_better",
+            "domain": "downside_risk",
+            "evidence_family": "active_equity_mixed.downside_risk.maximum_drawdown",
+            "formula": "upstream_audited_raw/maximum_drawdown/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "maximum_drawdown",
+            "observation_window": {
+              "kind": "rolling_period",
+              "maximum": 120,
+              "minimum": 12,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "percent",
+            "value_range": {
+              "maximum": 100.0,
+              "minimum": 0.0
+            },
+            "weight": 60
+          },
+          {
+            "applicability": "requires_declared_benchmark",
+            "core": true,
+            "data_source": "benchmark_and_market_series",
+            "direction": "lower_is_better",
+            "domain": "downside_risk",
+            "evidence_family": "active_equity_mixed.downside_risk.downside_capture",
+            "formula": "upstream_audited_raw/downside_capture/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "downside_capture",
+            "observation_window": {
+              "kind": "rolling_period",
+              "maximum": 60,
+              "minimum": 12,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "ratio",
+            "value_range": {
+              "maximum": 5.0,
+              "minimum": -5.0
+            },
+            "weight": 40
+          }
+        ],
+        "governance_operations": [
+          {
+            "applicability": "all_profile_funds",
+            "core": true,
+            "data_source": "regulatory_fund_disclosures",
+            "direction": "higher_is_better",
+            "domain": "governance_control",
+            "evidence_family": "active_equity_mixed.governance_operations.disclosure_timeliness",
+            "formula": "upstream_audited_raw/disclosure_timeliness/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "disclosure_timeliness",
+            "observation_window": {
+              "kind": "reporting_period",
+              "maximum": 12,
+              "minimum": 1,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "score_0_100",
+            "value_range": {
+              "maximum": 100.0,
+              "minimum": 0.0
+            },
+            "weight": 60
+          },
+          {
+            "applicability": "all_profile_funds",
+            "core": true,
+            "data_source": "regulatory_fund_disclosures",
+            "direction": "higher_is_better",
+            "domain": "governance_control",
+            "evidence_family": "active_equity_mixed.governance_operations.valuation_control_quality",
+            "formula": "upstream_audited_raw/valuation_control_quality/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "valuation_control_quality",
+            "observation_window": {
+              "kind": "point_in_time",
+              "maximum": 0,
+              "minimum": 0,
+              "unit": "instant"
+            },
+            "provenance_required": true,
+            "unit": "score_0_100",
+            "value_range": {
+              "maximum": 100.0,
+              "minimum": 0.0
+            },
+            "weight": 40
+          }
+        ],
+        "implementation_efficiency": [
+          {
+            "applicability": "all_profile_funds",
+            "core": true,
+            "data_source": "fee_and_execution_records",
+            "direction": "lower_is_better",
+            "domain": "implementation_cost",
+            "evidence_family": "active_equity_mixed.implementation_efficiency.ongoing_charge",
+            "formula": "upstream_audited_raw/ongoing_charge/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "ongoing_charge",
+            "observation_window": {
+              "kind": "reporting_period",
+              "maximum": 12,
+              "minimum": 12,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "basis_points",
+            "value_range": {
+              "maximum": 1000.0,
+              "minimum": 0.0
+            },
+            "weight": 60
+          },
+          {
+            "applicability": "all_profile_funds",
+            "core": true,
+            "data_source": "fee_and_execution_records",
+            "direction": "lower_is_better",
+            "domain": "implementation_cost",
+            "evidence_family": "active_equity_mixed.implementation_efficiency.liquidity_cost",
+            "formula": "upstream_audited_raw/liquidity_cost/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "liquidity_cost",
+            "observation_window": {
+              "kind": "reporting_period",
+              "maximum": 12,
+              "minimum": 1,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "basis_points",
+            "value_range": {
+              "maximum": 5000.0,
+              "minimum": 0.0
+            },
+            "weight": 40
+          }
+        ],
+        "performance_evidence": [
+          {
+            "applicability": "requires_declared_benchmark",
+            "core": true,
+            "data_source": "benchmark_and_market_series",
+            "direction": "higher_is_better",
+            "domain": "performance_return",
+            "evidence_family": "active_equity_mixed.performance_evidence.annualized_benchmark_excess",
+            "formula": "upstream_audited_raw/annualized_benchmark_excess/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "annualized_benchmark_excess",
+            "observation_window": {
+              "kind": "rolling_period",
+              "maximum": 60,
+              "minimum": 12,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "percentage_points",
+            "value_range": {
+              "maximum": 1000.0,
+              "minimum": -100.0
+            },
+            "weight": 60
+          },
+          {
+            "applicability": "requires_declared_benchmark",
+            "core": true,
+            "data_source": "benchmark_and_market_series",
+            "direction": "higher_is_better",
+            "domain": "performance_return",
+            "evidence_family": "active_equity_mixed.performance_evidence.factor_residual_alpha",
+            "formula": "upstream_audited_raw/factor_residual_alpha/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "factor_residual_alpha",
+            "observation_window": {
+              "kind": "rolling_period",
+              "maximum": 60,
+              "minimum": 12,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "percentage_points",
+            "value_range": {
+              "maximum": 1000.0,
+              "minimum": -100.0
+            },
+            "weight": 40
+          }
+        ],
+        "portfolio_structure": [
+          {
+            "applicability": "requires_declared_benchmark",
+            "core": true,
+            "data_source": "portfolio_holdings_and_lookthrough",
+            "direction": "higher_is_better",
+            "domain": "portfolio_exposure",
+            "evidence_family": "active_equity_mixed.portfolio_structure.mandate_active_share",
+            "formula": "upstream_audited_raw/mandate_active_share/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "mandate_active_share",
+            "observation_window": {
+              "kind": "point_in_time",
+              "maximum": 0,
+              "minimum": 0,
+              "unit": "instant"
+            },
+            "provenance_required": true,
+            "unit": "ratio",
+            "value_range": {
+              "maximum": 1.0,
+              "minimum": 0.0
+            },
+            "weight": 60
+          },
+          {
+            "applicability": "all_profile_funds",
+            "core": true,
+            "data_source": "portfolio_holdings_and_lookthrough",
+            "direction": "lower_is_better",
+            "domain": "portfolio_exposure",
+            "evidence_family": "active_equity_mixed.portfolio_structure.concentration_hhi",
+            "formula": "upstream_audited_raw/concentration_hhi/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "concentration_hhi",
+            "observation_window": {
+              "kind": "point_in_time",
+              "maximum": 0,
+              "minimum": 0,
+              "unit": "instant"
+            },
+            "provenance_required": true,
+            "unit": "ratio",
+            "value_range": {
+              "maximum": 1.0,
+              "minimum": 0.0
+            },
+            "weight": 40
+          }
+        ]
+      }
+    },
+    "bond": {
+      "dimensions": {
+        "consistency": [
+          {
+            "applicability": "requires_declared_benchmark",
+            "core": true,
+            "data_source": "benchmark_and_market_series",
+            "direction": "higher_is_better",
+            "domain": "consistency_stability",
+            "evidence_family": "bond.consistency.rolling_excess_hit_rate",
+            "formula": "upstream_audited_raw/rolling_excess_hit_rate/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "rolling_excess_hit_rate",
+            "observation_window": {
+              "kind": "rolling_period",
+              "maximum": 60,
+              "minimum": 12,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "ratio",
+            "value_range": {
+              "maximum": 1.0,
+              "minimum": 0.0
+            },
+            "weight": 60
+          },
+          {
+            "applicability": "all_profile_funds",
+            "core": true,
+            "data_source": "fund_nav_and_market_series",
+            "direction": "higher_is_better",
+            "domain": "consistency_stability",
+            "evidence_family": "bond.consistency.rate_regime_persistence",
+            "formula": "upstream_audited_raw/rate_regime_persistence/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "rate_regime_persistence",
+            "observation_window": {
+              "kind": "rolling_period",
+              "maximum": 60,
+              "minimum": 12,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "ratio",
+            "value_range": {
+              "maximum": 1.0,
+              "minimum": 0.0
+            },
+            "weight": 40
+          }
+        ],
+        "downside_risk": [
+          {
+            "applicability": "all_profile_funds",
+            "core": true,
+            "data_source": "fund_nav_and_market_series",
+            "direction": "lower_is_better",
+            "domain": "downside_risk",
+            "evidence_family": "bond.downside_risk.expected_shortfall",
+            "formula": "upstream_audited_raw/expected_shortfall/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "expected_shortfall",
+            "observation_window": {
+              "kind": "rolling_period",
+              "maximum": 60,
+              "minimum": 12,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "percent",
+            "value_range": {
+              "maximum": 100.0,
+              "minimum": 0.0
+            },
+            "weight": 60
+          },
+          {
+            "applicability": "all_profile_funds",
+            "core": true,
+            "data_source": "fund_nav_and_market_series",
+            "direction": "lower_is_better",
+            "domain": "downside_risk",
+            "evidence_family": "bond.downside_risk.recovery_months",
+            "formula": "upstream_audited_raw/recovery_months/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "recovery_months",
+            "observation_window": {
+              "kind": "cumulative_period",
+              "maximum": 1200,
+              "minimum": 0,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "months",
+            "value_range": {
+              "maximum": 1200.0,
+              "minimum": 0.0
+            },
+            "weight": 40
+          }
+        ],
+        "governance_operations": [
+          {
+            "applicability": "all_profile_funds",
+            "core": true,
+            "data_source": "regulatory_fund_disclosures",
+            "direction": "higher_is_better",
+            "domain": "governance_control",
+            "evidence_family": "bond.governance_operations.credit_event_disclosure",
+            "formula": "upstream_audited_raw/credit_event_disclosure/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "credit_event_disclosure",
+            "observation_window": {
+              "kind": "point_in_time",
+              "maximum": 0,
+              "minimum": 0,
+              "unit": "instant"
+            },
+            "provenance_required": true,
+            "unit": "score_0_100",
+            "value_range": {
+              "maximum": 100.0,
+              "minimum": 0.0
+            },
+            "weight": 60
+          },
+          {
+            "applicability": "all_profile_funds",
+            "core": true,
+            "data_source": "regulatory_fund_disclosures",
+            "direction": "higher_is_better",
+            "domain": "governance_control",
+            "evidence_family": "bond.governance_operations.valuation_control_quality",
+            "formula": "upstream_audited_raw/valuation_control_quality/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "valuation_control_quality",
+            "observation_window": {
+              "kind": "point_in_time",
+              "maximum": 0,
+              "minimum": 0,
+              "unit": "instant"
+            },
+            "provenance_required": true,
+            "unit": "score_0_100",
+            "value_range": {
+              "maximum": 100.0,
+              "minimum": 0.0
+            },
+            "weight": 40
+          }
+        ],
+        "implementation_efficiency": [
+          {
+            "applicability": "all_profile_funds",
+            "core": true,
+            "data_source": "fee_and_execution_records",
+            "direction": "lower_is_better",
+            "domain": "implementation_cost",
+            "evidence_family": "bond.implementation_efficiency.ongoing_charge",
+            "formula": "upstream_audited_raw/ongoing_charge/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "ongoing_charge",
+            "observation_window": {
+              "kind": "reporting_period",
+              "maximum": 12,
+              "minimum": 12,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "basis_points",
+            "value_range": {
+              "maximum": 1000.0,
+              "minimum": 0.0
+            },
+            "weight": 60
+          },
+          {
+            "applicability": "all_profile_funds",
+            "core": true,
+            "data_source": "fee_and_execution_records",
+            "direction": "lower_is_better",
+            "domain": "implementation_cost",
+            "evidence_family": "bond.implementation_efficiency.liquidity_cost",
+            "formula": "upstream_audited_raw/liquidity_cost/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "liquidity_cost",
+            "observation_window": {
+              "kind": "reporting_period",
+              "maximum": 12,
+              "minimum": 1,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "basis_points",
+            "value_range": {
+              "maximum": 5000.0,
+              "minimum": 0.0
+            },
+            "weight": 40
+          }
+        ],
+        "performance_evidence": [
+          {
+            "applicability": "requires_declared_benchmark",
+            "core": true,
+            "data_source": "benchmark_and_market_series",
+            "direction": "higher_is_better",
+            "domain": "performance_return",
+            "evidence_family": "bond.performance_evidence.benchmark_excess_return",
+            "formula": "upstream_audited_raw/benchmark_excess_return/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "benchmark_excess_return",
+            "observation_window": {
+              "kind": "rolling_period",
+              "maximum": 60,
+              "minimum": 12,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "percentage_points",
+            "value_range": {
+              "maximum": 1000.0,
+              "minimum": -100.0
+            },
+            "weight": 60
+          },
+          {
+            "applicability": "all_profile_funds",
+            "core": true,
+            "data_source": "income_distribution_and_market_data",
+            "direction": "higher_is_better",
+            "domain": "performance_return",
+            "evidence_family": "bond.performance_evidence.carry_efficiency",
+            "formula": "upstream_audited_raw/carry_efficiency/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "carry_efficiency",
+            "observation_window": {
+              "kind": "reporting_period",
+              "maximum": 12,
+              "minimum": 1,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "ratio",
+            "value_range": {
+              "maximum": 1.0,
+              "minimum": 0.0
+            },
+            "weight": 40
+          }
+        ],
+        "portfolio_structure": [
+          {
+            "applicability": "all_profile_funds",
+            "core": true,
+            "data_source": "portfolio_holdings_and_lookthrough",
+            "direction": "higher_is_better",
+            "domain": "portfolio_exposure",
+            "evidence_family": "bond.portfolio_structure.duration_mandate_fit",
+            "formula": "upstream_audited_raw/duration_mandate_fit/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "duration_mandate_fit",
+            "observation_window": {
+              "kind": "point_in_time",
+              "maximum": 0,
+              "minimum": 0,
+              "unit": "instant"
+            },
+            "provenance_required": true,
+            "unit": "ratio",
+            "value_range": {
+              "maximum": 1.0,
+              "minimum": 0.0
+            },
+            "weight": 60
+          },
+          {
+            "applicability": "all_profile_funds",
+            "core": true,
+            "data_source": "portfolio_holdings_and_lookthrough",
+            "direction": "lower_is_better",
+            "domain": "portfolio_exposure",
+            "evidence_family": "bond.portfolio_structure.credit_concentration",
+            "formula": "upstream_audited_raw/credit_concentration/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "credit_concentration",
+            "observation_window": {
+              "kind": "point_in_time",
+              "maximum": 0,
+              "minimum": 0,
+              "unit": "instant"
+            },
+            "provenance_required": true,
+            "unit": "percent",
+            "value_range": {
+              "maximum": 100.0,
+              "minimum": 0.0
+            },
+            "weight": 40
+          }
+        ]
+      }
+    },
+    "fixed_income_plus": {
+      "dimensions": {
+        "consistency": [
+          {
+            "applicability": "requires_declared_benchmark",
+            "core": true,
+            "data_source": "benchmark_and_market_series",
+            "direction": "higher_is_better",
+            "domain": "consistency_stability",
+            "evidence_family": "fixed_income_plus.consistency.rolling_positive_excess",
+            "formula": "upstream_audited_raw/rolling_positive_excess/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "rolling_positive_excess",
+            "observation_window": {
+              "kind": "rolling_period",
+              "maximum": 60,
+              "minimum": 12,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "ratio",
+            "value_range": {
+              "maximum": 1.0,
+              "minimum": 0.0
+            },
+            "weight": 60
+          },
+          {
+            "applicability": "all_profile_funds",
+            "core": true,
+            "data_source": "fund_nav_and_market_series",
+            "direction": "higher_is_better",
+            "domain": "consistency_stability",
+            "evidence_family": "fixed_income_plus.consistency.rate_credit_regime_persistence",
+            "formula": "upstream_audited_raw/rate_credit_regime_persistence/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "rate_credit_regime_persistence",
+            "observation_window": {
+              "kind": "rolling_period",
+              "maximum": 60,
+              "minimum": 12,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "ratio",
+            "value_range": {
+              "maximum": 1.0,
+              "minimum": 0.0
+            },
+            "weight": 40
+          }
+        ],
+        "downside_risk": [
+          {
+            "applicability": "all_profile_funds",
+            "core": true,
+            "data_source": "fund_nav_and_market_series",
+            "direction": "lower_is_better",
+            "domain": "downside_risk",
+            "evidence_family": "fixed_income_plus.downside_risk.expected_shortfall",
+            "formula": "upstream_audited_raw/expected_shortfall/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "expected_shortfall",
+            "observation_window": {
+              "kind": "rolling_period",
+              "maximum": 60,
+              "minimum": 12,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "percent",
+            "value_range": {
+              "maximum": 100.0,
+              "minimum": 0.0
+            },
+            "weight": 60
+          },
+          {
+            "applicability": "all_profile_funds",
+            "core": true,
+            "data_source": "fund_nav_and_market_series",
+            "direction": "lower_is_better",
+            "domain": "downside_risk",
+            "evidence_family": "fixed_income_plus.downside_risk.credit_drawdown",
+            "formula": "upstream_audited_raw/credit_drawdown/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "credit_drawdown",
+            "observation_window": {
+              "kind": "rolling_period",
+              "maximum": 120,
+              "minimum": 12,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "percent",
+            "value_range": {
+              "maximum": 100.0,
+              "minimum": 0.0
+            },
+            "weight": 40
+          }
+        ],
+        "governance_operations": [
+          {
+            "applicability": "all_profile_funds",
+            "core": true,
+            "data_source": "regulatory_fund_disclosures",
+            "direction": "higher_is_better",
+            "domain": "governance_control",
+            "evidence_family": "fixed_income_plus.governance_operations.credit_valuation_controls",
+            "formula": "upstream_audited_raw/credit_valuation_controls/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "credit_valuation_controls",
+            "observation_window": {
+              "kind": "point_in_time",
+              "maximum": 0,
+              "minimum": 0,
+              "unit": "instant"
+            },
+            "provenance_required": true,
+            "unit": "score_0_100",
+            "value_range": {
+              "maximum": 100.0,
+              "minimum": 0.0
+            },
+            "weight": 60
+          },
+          {
+            "applicability": "all_profile_funds",
+            "core": true,
+            "data_source": "regulatory_fund_disclosures",
+            "direction": "higher_is_better",
+            "domain": "governance_control",
+            "evidence_family": "fixed_income_plus.governance_operations.disclosure_timeliness",
+            "formula": "upstream_audited_raw/disclosure_timeliness/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "disclosure_timeliness",
+            "observation_window": {
+              "kind": "reporting_period",
+              "maximum": 12,
+              "minimum": 1,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "score_0_100",
+            "value_range": {
+              "maximum": 100.0,
+              "minimum": 0.0
+            },
+            "weight": 40
+          }
+        ],
+        "implementation_efficiency": [
+          {
+            "applicability": "all_profile_funds",
+            "core": true,
+            "data_source": "fee_and_execution_records",
+            "direction": "lower_is_better",
+            "domain": "implementation_cost",
+            "evidence_family": "fixed_income_plus.implementation_efficiency.ongoing_charge",
+            "formula": "upstream_audited_raw/ongoing_charge/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "ongoing_charge",
+            "observation_window": {
+              "kind": "reporting_period",
+              "maximum": 12,
+              "minimum": 12,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "basis_points",
+            "value_range": {
+              "maximum": 1000.0,
+              "minimum": 0.0
+            },
+            "weight": 60
+          },
+          {
+            "applicability": "all_profile_funds",
+            "core": true,
+            "data_source": "portfolio_holdings_and_lookthrough",
+            "direction": "higher_is_better",
+            "domain": "implementation_cost",
+            "evidence_family": "fixed_income_plus.implementation_efficiency.redemption_liquidity_buffer",
+            "formula": "upstream_audited_raw/redemption_liquidity_buffer/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "redemption_liquidity_buffer",
+            "observation_window": {
+              "kind": "point_in_time",
+              "maximum": 0,
+              "minimum": 0,
+              "unit": "instant"
+            },
+            "provenance_required": true,
+            "unit": "ratio",
+            "value_range": {
+              "maximum": 1.0,
+              "minimum": 0.0
+            },
+            "weight": 40
+          }
+        ],
+        "performance_evidence": [
+          {
+            "applicability": "requires_derivative_or_commodity_exposure",
+            "core": true,
+            "data_source": "benchmark_and_market_series",
+            "direction": "higher_is_better",
+            "domain": "performance_return",
+            "evidence_family": "fixed_income_plus.performance_evidence.carry_roll_excess",
+            "formula": "upstream_audited_raw/carry_roll_excess/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "carry_roll_excess",
+            "observation_window": {
+              "kind": "rolling_period",
+              "maximum": 60,
+              "minimum": 12,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "percentage_points",
+            "value_range": {
+              "maximum": 1000.0,
+              "minimum": -100.0
+            },
+            "weight": 60
+          },
+          {
+            "applicability": "requires_declared_benchmark",
+            "core": true,
+            "data_source": "benchmark_and_market_series",
+            "direction": "higher_is_better",
+            "domain": "performance_return",
+            "evidence_family": "fixed_income_plus.performance_evidence.benchmark_excess",
+            "formula": "upstream_audited_raw/benchmark_excess/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "benchmark_excess",
+            "observation_window": {
+              "kind": "rolling_period",
+              "maximum": 60,
+              "minimum": 12,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "percentage_points",
+            "value_range": {
+              "maximum": 1000.0,
+              "minimum": -100.0
+            },
+            "weight": 40
+          }
+        ],
+        "portfolio_structure": [
+          {
+            "applicability": "all_profile_funds",
+            "core": true,
+            "data_source": "portfolio_holdings_and_lookthrough",
+            "direction": "higher_is_better",
+            "domain": "portfolio_exposure",
+            "evidence_family": "fixed_income_plus.portfolio_structure.duration_mandate_fit",
+            "formula": "upstream_audited_raw/duration_mandate_fit/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "duration_mandate_fit",
+            "observation_window": {
+              "kind": "point_in_time",
+              "maximum": 0,
+              "minimum": 0,
+              "unit": "instant"
+            },
+            "provenance_required": true,
+            "unit": "ratio",
+            "value_range": {
+              "maximum": 1.0,
+              "minimum": 0.0
+            },
+            "weight": 60
+          },
+          {
+            "applicability": "all_profile_funds",
+            "core": true,
+            "data_source": "portfolio_holdings_and_lookthrough",
+            "direction": "lower_is_better",
+            "domain": "portfolio_exposure",
+            "evidence_family": "fixed_income_plus.portfolio_structure.below_investment_grade_exposure",
+            "formula": "upstream_audited_raw/below_investment_grade_exposure/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "below_investment_grade_exposure",
+            "observation_window": {
+              "kind": "point_in_time",
+              "maximum": 0,
+              "minimum": 0,
+              "unit": "instant"
+            },
+            "provenance_required": true,
+            "unit": "percent",
+            "value_range": {
+              "maximum": 100.0,
+              "minimum": 0.0
+            },
+            "weight": 40
+          }
+        ]
+      }
+    },
+    "fof_pension": {
+      "dimensions": {
+        "consistency": [
+          {
+            "applicability": "all_profile_funds",
+            "core": true,
+            "data_source": "fund_nav_and_market_series",
+            "direction": "higher_is_better",
+            "domain": "consistency_stability",
+            "evidence_family": "fof_pension.consistency.rolling_goal_hit_rate",
+            "formula": "upstream_audited_raw/rolling_goal_hit_rate/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "rolling_goal_hit_rate",
+            "observation_window": {
+              "kind": "rolling_period",
+              "maximum": 60,
+              "minimum": 12,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "ratio",
+            "value_range": {
+              "maximum": 1.0,
+              "minimum": 0.0
+            },
+            "weight": 60
+          },
+          {
+            "applicability": "all_profile_funds",
+            "core": true,
+            "data_source": "fund_nav_and_market_series",
+            "direction": "higher_is_better",
+            "domain": "consistency_stability",
+            "evidence_family": "fof_pension.consistency.lifecycle_regime_persistence",
+            "formula": "upstream_audited_raw/lifecycle_regime_persistence/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "lifecycle_regime_persistence",
+            "observation_window": {
+              "kind": "rolling_period",
+              "maximum": 60,
+              "minimum": 12,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "ratio",
+            "value_range": {
+              "maximum": 1.0,
+              "minimum": 0.0
+            },
+            "weight": 40
+          }
+        ],
+        "downside_risk": [
+          {
+            "applicability": "all_profile_funds",
+            "core": true,
+            "data_source": "fund_nav_and_market_series",
+            "direction": "lower_is_better",
+            "domain": "downside_risk",
+            "evidence_family": "fof_pension.downside_risk.maximum_drawdown",
+            "formula": "upstream_audited_raw/maximum_drawdown/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "maximum_drawdown",
+            "observation_window": {
+              "kind": "rolling_period",
+              "maximum": 120,
+              "minimum": 12,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "percent",
+            "value_range": {
+              "maximum": 100.0,
+              "minimum": 0.0
+            },
+            "weight": 60
+          },
+          {
+            "applicability": "all_profile_funds",
+            "core": true,
+            "data_source": "fund_nav_and_market_series",
+            "direction": "lower_is_better",
+            "domain": "downside_risk",
+            "evidence_family": "fof_pension.downside_risk.recovery_months",
+            "formula": "upstream_audited_raw/recovery_months/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "recovery_months",
+            "observation_window": {
+              "kind": "cumulative_period",
+              "maximum": 1200,
+              "minimum": 0,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "months",
+            "value_range": {
+              "maximum": 1200.0,
+              "minimum": 0.0
+            },
+            "weight": 40
+          }
+        ],
+        "governance_operations": [
+          {
+            "applicability": "requires_lookthrough_portfolio",
+            "core": true,
+            "data_source": "regulatory_fund_disclosures",
+            "direction": "higher_is_better",
+            "domain": "governance_control",
+            "evidence_family": "fof_pension.governance_operations.underlying_due_diligence",
+            "formula": "upstream_audited_raw/underlying_due_diligence/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "underlying_due_diligence",
+            "observation_window": {
+              "kind": "point_in_time",
+              "maximum": 0,
+              "minimum": 0,
+              "unit": "instant"
+            },
+            "provenance_required": true,
+            "unit": "score_0_100",
+            "value_range": {
+              "maximum": 100.0,
+              "minimum": 0.0
+            },
+            "weight": 60
+          },
+          {
+            "applicability": "all_profile_funds",
+            "core": true,
+            "data_source": "regulatory_fund_disclosures",
+            "direction": "higher_is_better",
+            "domain": "governance_control",
+            "evidence_family": "fof_pension.governance_operations.allocation_process_disclosure",
+            "formula": "upstream_audited_raw/allocation_process_disclosure/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "allocation_process_disclosure",
+            "observation_window": {
+              "kind": "point_in_time",
+              "maximum": 0,
+              "minimum": 0,
+              "unit": "instant"
+            },
+            "provenance_required": true,
+            "unit": "score_0_100",
+            "value_range": {
+              "maximum": 100.0,
+              "minimum": 0.0
+            },
+            "weight": 40
+          }
+        ],
+        "implementation_efficiency": [
+          {
+            "applicability": "requires_lookthrough_portfolio",
+            "core": true,
+            "data_source": "fee_and_execution_records",
+            "direction": "lower_is_better",
+            "domain": "implementation_cost",
+            "evidence_family": "fof_pension.implementation_efficiency.lookthrough_total_cost",
+            "formula": "upstream_audited_raw/lookthrough_total_cost/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "lookthrough_total_cost",
+            "observation_window": {
+              "kind": "reporting_period",
+              "maximum": 12,
+              "minimum": 12,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "basis_points",
+            "value_range": {
+              "maximum": 2000.0,
+              "minimum": 0.0
+            },
+            "weight": 60
+          },
+          {
+            "applicability": "requires_lookthrough_portfolio",
+            "core": true,
+            "data_source": "fee_and_execution_records",
+            "direction": "lower_is_better",
+            "domain": "implementation_cost",
+            "evidence_family": "fof_pension.implementation_efficiency.underlying_liquidity_cost",
+            "formula": "upstream_audited_raw/underlying_liquidity_cost/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "underlying_liquidity_cost",
+            "observation_window": {
+              "kind": "reporting_period",
+              "maximum": 12,
+              "minimum": 1,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "basis_points",
+            "value_range": {
+              "maximum": 5000.0,
+              "minimum": 0.0
+            },
+            "weight": 40
+          }
+        ],
+        "performance_evidence": [
+          {
+            "applicability": "requires_declared_benchmark",
+            "core": true,
+            "data_source": "benchmark_and_market_series",
+            "direction": "higher_is_better",
+            "domain": "performance_return",
+            "evidence_family": "fof_pension.performance_evidence.policy_benchmark_excess",
+            "formula": "upstream_audited_raw/policy_benchmark_excess/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "policy_benchmark_excess",
+            "observation_window": {
+              "kind": "rolling_period",
+              "maximum": 60,
+              "minimum": 12,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "percentage_points",
+            "value_range": {
+              "maximum": 1000.0,
+              "minimum": -100.0
+            },
+            "weight": 60
+          },
+          {
+            "applicability": "requires_declared_benchmark",
+            "core": true,
+            "data_source": "benchmark_and_market_series",
+            "direction": "higher_is_better",
+            "domain": "performance_return",
+            "evidence_family": "fof_pension.performance_evidence.allocation_effect",
+            "formula": "upstream_audited_raw/allocation_effect/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "allocation_effect",
+            "observation_window": {
+              "kind": "rolling_period",
+              "maximum": 60,
+              "minimum": 12,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "percentage_points",
+            "value_range": {
+              "maximum": 1000.0,
+              "minimum": -100.0
+            },
+            "weight": 40
+          }
+        ],
+        "portfolio_structure": [
+          {
+            "applicability": "requires_lookthrough_portfolio",
+            "core": true,
+            "data_source": "portfolio_holdings_and_lookthrough",
+            "direction": "higher_is_better",
+            "domain": "portfolio_exposure",
+            "evidence_family": "fof_pension.portfolio_structure.underlying_diversification",
+            "formula": "upstream_audited_raw/underlying_diversification/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "underlying_diversification",
+            "observation_window": {
+              "kind": "point_in_time",
+              "maximum": 0,
+              "minimum": 0,
+              "unit": "instant"
+            },
+            "provenance_required": true,
+            "unit": "ratio",
+            "value_range": {
+              "maximum": 1.0,
+              "minimum": 0.0
+            },
+            "weight": 60
+          },
+          {
+            "applicability": "requires_lookthrough_portfolio",
+            "core": true,
+            "data_source": "portfolio_holdings_and_lookthrough",
+            "direction": "lower_is_better",
+            "domain": "portfolio_exposure",
+            "evidence_family": "fof_pension.portfolio_structure.lookthrough_concentration",
+            "formula": "upstream_audited_raw/lookthrough_concentration/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "lookthrough_concentration",
+            "observation_window": {
+              "kind": "point_in_time",
+              "maximum": 0,
+              "minimum": 0,
+              "unit": "instant"
+            },
+            "provenance_required": true,
+            "unit": "percent",
+            "value_range": {
+              "maximum": 100.0,
+              "minimum": 0.0
+            },
+            "weight": 40
+          }
+        ]
+      }
+    },
+    "gold_commodity": {
+      "dimensions": {
+        "consistency": [
+          {
+            "applicability": "requires_declared_benchmark",
+            "core": true,
+            "data_source": "benchmark_and_market_series",
+            "direction": "higher_is_better",
+            "domain": "consistency_stability",
+            "evidence_family": "gold_commodity.consistency.rolling_tracking_stability",
+            "formula": "upstream_audited_raw/rolling_tracking_stability/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "rolling_tracking_stability",
+            "observation_window": {
+              "kind": "rolling_period",
+              "maximum": 60,
+              "minimum": 12,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "ratio",
+            "value_range": {
+              "maximum": 1.0,
+              "minimum": 0.0
+            },
+            "weight": 60
+          },
+          {
+            "applicability": "requires_derivative_or_commodity_exposure",
+            "core": true,
+            "data_source": "benchmark_and_market_series",
+            "direction": "higher_is_better",
+            "domain": "consistency_stability",
+            "evidence_family": "gold_commodity.consistency.roll_regime_persistence",
+            "formula": "upstream_audited_raw/roll_regime_persistence/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "roll_regime_persistence",
+            "observation_window": {
+              "kind": "rolling_period",
+              "maximum": 60,
+              "minimum": 12,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "ratio",
+            "value_range": {
+              "maximum": 1.0,
+              "minimum": 0.0
+            },
+            "weight": 40
+          }
+        ],
+        "downside_risk": [
+          {
+            "applicability": "all_profile_funds",
+            "core": true,
+            "data_source": "fund_nav_and_market_series",
+            "direction": "lower_is_better",
+            "domain": "downside_risk",
+            "evidence_family": "gold_commodity.downside_risk.maximum_drawdown",
+            "formula": "upstream_audited_raw/maximum_drawdown/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "maximum_drawdown",
+            "observation_window": {
+              "kind": "rolling_period",
+              "maximum": 120,
+              "minimum": 12,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "percent",
+            "value_range": {
+              "maximum": 100.0,
+              "minimum": 0.0
+            },
+            "weight": 60
+          },
+          {
+            "applicability": "requires_derivative_or_commodity_exposure",
+            "core": true,
+            "data_source": "benchmark_and_market_series",
+            "direction": "lower_is_better",
+            "domain": "downside_risk",
+            "evidence_family": "gold_commodity.downside_risk.futures_stress_loss",
+            "formula": "upstream_audited_raw/futures_stress_loss/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "futures_stress_loss",
+            "observation_window": {
+              "kind": "rolling_period",
+              "maximum": 60,
+              "minimum": 12,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "percent",
+            "value_range": {
+              "maximum": 100.0,
+              "minimum": 0.0
+            },
+            "weight": 40
+          }
+        ],
+        "governance_operations": [
+          {
+            "applicability": "requires_derivative_or_commodity_exposure",
+            "core": true,
+            "data_source": "custody_and_operations_records",
+            "direction": "higher_is_better",
+            "domain": "governance_control",
+            "evidence_family": "gold_commodity.governance_operations.custody_or_collateral_controls",
+            "formula": "upstream_audited_raw/custody_or_collateral_controls/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "custody_or_collateral_controls",
+            "observation_window": {
+              "kind": "point_in_time",
+              "maximum": 0,
+              "minimum": 0,
+              "unit": "instant"
+            },
+            "provenance_required": true,
+            "unit": "score_0_100",
+            "value_range": {
+              "maximum": 100.0,
+              "minimum": 0.0
+            },
+            "weight": 60
+          },
+          {
+            "applicability": "all_profile_funds",
+            "core": true,
+            "data_source": "regulatory_fund_disclosures",
+            "direction": "higher_is_better",
+            "domain": "governance_control",
+            "evidence_family": "gold_commodity.governance_operations.valuation_method_disclosure",
+            "formula": "upstream_audited_raw/valuation_method_disclosure/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "valuation_method_disclosure",
+            "observation_window": {
+              "kind": "point_in_time",
+              "maximum": 0,
+              "minimum": 0,
+              "unit": "instant"
+            },
+            "provenance_required": true,
+            "unit": "score_0_100",
+            "value_range": {
+              "maximum": 100.0,
+              "minimum": 0.0
+            },
+            "weight": 40
+          }
+        ],
+        "implementation_efficiency": [
+          {
+            "applicability": "all_profile_funds",
+            "core": true,
+            "data_source": "fee_and_execution_records",
+            "direction": "lower_is_better",
+            "domain": "implementation_cost",
+            "evidence_family": "gold_commodity.implementation_efficiency.total_expense",
+            "formula": "upstream_audited_raw/total_expense/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "total_expense",
+            "observation_window": {
+              "kind": "reporting_period",
+              "maximum": 12,
+              "minimum": 12,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "basis_points",
+            "value_range": {
+              "maximum": 1000.0,
+              "minimum": 0.0
+            },
+            "weight": 60
+          },
+          {
+            "applicability": "requires_derivative_or_commodity_exposure",
+            "core": true,
+            "data_source": "fee_and_execution_records",
+            "direction": "lower_is_better",
+            "domain": "implementation_cost",
+            "evidence_family": "gold_commodity.implementation_efficiency.roll_implementation_cost",
+            "formula": "upstream_audited_raw/roll_implementation_cost/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "roll_implementation_cost",
+            "observation_window": {
+              "kind": "reporting_period",
+              "maximum": 12,
+              "minimum": 1,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "basis_points",
+            "value_range": {
+              "maximum": 5000.0,
+              "minimum": 0.0
+            },
+            "weight": 40
+          }
+        ],
+        "performance_evidence": [
+          {
+            "applicability": "requires_derivative_or_commodity_exposure",
+            "core": true,
+            "data_source": "benchmark_and_market_series",
+            "direction": "lower_is_better",
+            "domain": "performance_return",
+            "evidence_family": "gold_commodity.performance_evidence.spot_tracking_gap",
+            "formula": "upstream_audited_raw/spot_tracking_gap/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "spot_tracking_gap",
+            "observation_window": {
+              "kind": "rolling_period",
+              "maximum": 60,
+              "minimum": 12,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "percentage_points",
+            "value_range": {
+              "maximum": 100.0,
+              "minimum": 0.0
+            },
+            "weight": 60
+          },
+          {
+            "applicability": "requires_derivative_or_commodity_exposure",
+            "core": true,
+            "data_source": "benchmark_and_market_series",
+            "direction": "higher_is_better",
+            "domain": "performance_return",
+            "evidence_family": "gold_commodity.performance_evidence.roll_yield_efficiency",
+            "formula": "upstream_audited_raw/roll_yield_efficiency/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "roll_yield_efficiency",
+            "observation_window": {
+              "kind": "rolling_period",
+              "maximum": 60,
+              "minimum": 12,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "ratio",
+            "value_range": {
+              "maximum": 1.0,
+              "minimum": 0.0
+            },
+            "weight": 40
+          }
+        ],
+        "portfolio_structure": [
+          {
+            "applicability": "requires_derivative_or_commodity_exposure",
+            "core": true,
+            "data_source": "custody_and_operations_records",
+            "direction": "higher_is_better",
+            "domain": "portfolio_exposure",
+            "evidence_family": "gold_commodity.portfolio_structure.collateral_quality",
+            "formula": "upstream_audited_raw/collateral_quality/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "collateral_quality",
+            "observation_window": {
+              "kind": "point_in_time",
+              "maximum": 0,
+              "minimum": 0,
+              "unit": "instant"
+            },
+            "provenance_required": true,
+            "unit": "score_0_100",
+            "value_range": {
+              "maximum": 100.0,
+              "minimum": 0.0
+            },
+            "weight": 60
+          },
+          {
+            "applicability": "requires_derivative_or_commodity_exposure",
+            "core": true,
+            "data_source": "portfolio_holdings_and_lookthrough",
+            "direction": "lower_is_better",
+            "domain": "portfolio_exposure",
+            "evidence_family": "gold_commodity.portfolio_structure.contract_concentration",
+            "formula": "upstream_audited_raw/contract_concentration/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "contract_concentration",
+            "observation_window": {
+              "kind": "point_in_time",
+              "maximum": 0,
+              "minimum": 0,
+              "unit": "instant"
+            },
+            "provenance_required": true,
+            "unit": "percent",
+            "value_range": {
+              "maximum": 100.0,
+              "minimum": 0.0
+            },
+            "weight": 40
+          }
+        ]
+      }
+    },
+    "index_etf": {
+      "dimensions": {
+        "consistency": [
+          {
+            "applicability": "requires_declared_benchmark",
+            "core": true,
+            "data_source": "benchmark_and_market_series",
+            "direction": "higher_is_better",
+            "domain": "consistency_stability",
+            "evidence_family": "index_etf.consistency.rolling_tracking_stability",
+            "formula": "upstream_audited_raw/rolling_tracking_stability/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "rolling_tracking_stability",
+            "observation_window": {
+              "kind": "rolling_period",
+              "maximum": 60,
+              "minimum": 12,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "ratio",
+            "value_range": {
+              "maximum": 1.0,
+              "minimum": 0.0
+            },
+            "weight": 60
+          },
+          {
+            "applicability": "requires_declared_benchmark",
+            "core": true,
+            "data_source": "regulatory_fund_disclosures",
+            "direction": "higher_is_better",
+            "domain": "consistency_stability",
+            "evidence_family": "index_etf.consistency.replication_method_stability",
+            "formula": "upstream_audited_raw/replication_method_stability/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "replication_method_stability",
+            "observation_window": {
+              "kind": "rolling_period",
+              "maximum": 60,
+              "minimum": 12,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "ratio",
+            "value_range": {
+              "maximum": 1.0,
+              "minimum": 0.0
+            },
+            "weight": 40
+          }
+        ],
+        "downside_risk": [
+          {
+            "applicability": "all_profile_funds",
+            "core": true,
+            "data_source": "fund_nav_and_market_series",
+            "direction": "lower_is_better",
+            "domain": "downside_risk",
+            "evidence_family": "index_etf.downside_risk.maximum_drawdown",
+            "formula": "upstream_audited_raw/maximum_drawdown/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "maximum_drawdown",
+            "observation_window": {
+              "kind": "rolling_period",
+              "maximum": 120,
+              "minimum": 12,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "percent",
+            "value_range": {
+              "maximum": 100.0,
+              "minimum": 0.0
+            },
+            "weight": 60
+          },
+          {
+            "applicability": "requires_declared_benchmark",
+            "core": true,
+            "data_source": "benchmark_and_market_series",
+            "direction": "lower_is_better",
+            "domain": "downside_risk",
+            "evidence_family": "index_etf.downside_risk.downside_capture",
+            "formula": "upstream_audited_raw/downside_capture/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "downside_capture",
+            "observation_window": {
+              "kind": "rolling_period",
+              "maximum": 60,
+              "minimum": 12,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "ratio",
+            "value_range": {
+              "maximum": 5.0,
+              "minimum": -5.0
+            },
+            "weight": 40
+          }
+        ],
+        "governance_operations": [
+          {
+            "applicability": "requires_declared_benchmark",
+            "core": true,
+            "data_source": "regulatory_fund_disclosures",
+            "direction": "higher_is_better",
+            "domain": "governance_control",
+            "evidence_family": "index_etf.governance_operations.index_method_disclosure",
+            "formula": "upstream_audited_raw/index_method_disclosure/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "index_method_disclosure",
+            "observation_window": {
+              "kind": "point_in_time",
+              "maximum": 0,
+              "minimum": 0,
+              "unit": "instant"
+            },
+            "provenance_required": true,
+            "unit": "score_0_100",
+            "value_range": {
+              "maximum": 100.0,
+              "minimum": 0.0
+            },
+            "weight": 60
+          },
+          {
+            "applicability": "requires_securities_lending_program",
+            "core": true,
+            "data_source": "custody_and_operations_records",
+            "direction": "higher_is_better",
+            "domain": "governance_control",
+            "evidence_family": "index_etf.governance_operations.securities_lending_controls",
+            "formula": "upstream_audited_raw/securities_lending_controls/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "securities_lending_controls",
+            "observation_window": {
+              "kind": "point_in_time",
+              "maximum": 0,
+              "minimum": 0,
+              "unit": "instant"
+            },
+            "provenance_required": true,
+            "unit": "score_0_100",
+            "value_range": {
+              "maximum": 100.0,
+              "minimum": 0.0
+            },
+            "weight": 40
+          }
+        ],
+        "implementation_efficiency": [
+          {
+            "applicability": "all_profile_funds",
+            "core": true,
+            "data_source": "fee_and_execution_records",
+            "direction": "lower_is_better",
+            "domain": "implementation_cost",
+            "evidence_family": "index_etf.implementation_efficiency.total_expense",
+            "formula": "upstream_audited_raw/total_expense/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "total_expense",
+            "observation_window": {
+              "kind": "reporting_period",
+              "maximum": 12,
+              "minimum": 12,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "basis_points",
+            "value_range": {
+              "maximum": 1000.0,
+              "minimum": 0.0
+            },
+            "weight": 60
+          },
+          {
+            "applicability": "requires_declared_benchmark",
+            "core": true,
+            "data_source": "benchmark_and_market_series",
+            "direction": "lower_is_better",
+            "domain": "implementation_cost",
+            "evidence_family": "index_etf.implementation_efficiency.tracking_error",
+            "formula": "upstream_audited_raw/tracking_error/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "tracking_error",
+            "observation_window": {
+              "kind": "rolling_period",
+              "maximum": 60,
+              "minimum": 12,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "percentage_points",
+            "value_range": {
+              "maximum": 100.0,
+              "minimum": 0.0
+            },
+            "weight": 40
+          }
+        ],
+        "performance_evidence": [
+          {
+            "applicability": "requires_declared_benchmark",
+            "core": true,
+            "data_source": "benchmark_and_market_series",
+            "direction": "lower_is_better",
+            "domain": "performance_return",
+            "evidence_family": "index_etf.performance_evidence.absolute_tracking_difference",
+            "formula": "upstream_audited_raw/absolute_tracking_difference/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "absolute_tracking_difference",
+            "observation_window": {
+              "kind": "rolling_period",
+              "maximum": 60,
+              "minimum": 12,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "percentage_points",
+            "value_range": {
+              "maximum": 100.0,
+              "minimum": 0.0
+            },
+            "weight": 60
+          },
+          {
+            "applicability": "requires_declared_benchmark",
+            "core": true,
+            "data_source": "benchmark_and_market_series",
+            "direction": "lower_is_better",
+            "domain": "performance_return",
+            "evidence_family": "index_etf.performance_evidence.benchmark_return_gap",
+            "formula": "upstream_audited_raw/benchmark_return_gap/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "benchmark_return_gap",
+            "observation_window": {
+              "kind": "rolling_period",
+              "maximum": 60,
+              "minimum": 12,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "percentage_points",
+            "value_range": {
+              "maximum": 100.0,
+              "minimum": 0.0
+            },
+            "weight": 40
+          }
+        ],
+        "portfolio_structure": [
+          {
+            "applicability": "requires_declared_benchmark",
+            "core": true,
+            "data_source": "portfolio_holdings_and_lookthrough",
+            "direction": "higher_is_better",
+            "domain": "portfolio_exposure",
+            "evidence_family": "index_etf.portfolio_structure.benchmark_coverage",
+            "formula": "upstream_audited_raw/benchmark_coverage/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "benchmark_coverage",
+            "observation_window": {
+              "kind": "point_in_time",
+              "maximum": 0,
+              "minimum": 0,
+              "unit": "instant"
+            },
+            "provenance_required": true,
+            "unit": "ratio",
+            "value_range": {
+              "maximum": 1.0,
+              "minimum": 0.0
+            },
+            "weight": 60
+          },
+          {
+            "applicability": "requires_declared_benchmark",
+            "core": true,
+            "data_source": "portfolio_holdings_and_lookthrough",
+            "direction": "lower_is_better",
+            "domain": "portfolio_exposure",
+            "evidence_family": "index_etf.portfolio_structure.concentration_deviation",
+            "formula": "upstream_audited_raw/concentration_deviation/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "concentration_deviation",
+            "observation_window": {
+              "kind": "point_in_time",
+              "maximum": 0,
+              "minimum": 0,
+              "unit": "instant"
+            },
+            "provenance_required": true,
+            "unit": "percentage_points",
+            "value_range": {
+              "maximum": 100.0,
+              "minimum": 0.0
+            },
+            "weight": 40
+          }
+        ]
+      }
+    },
+    "money_market": {
+      "dimensions": {
+        "consistency": [
+          {
+            "applicability": "requires_income_distributing_assets",
+            "core": true,
+            "data_source": "income_distribution_and_market_data",
+            "direction": "higher_is_better",
+            "domain": "consistency_stability",
+            "evidence_family": "money_market.consistency.rolling_yield_rank_stability",
+            "formula": "upstream_audited_raw/rolling_yield_rank_stability/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "rolling_yield_rank_stability",
+            "observation_window": {
+              "kind": "rolling_period",
+              "maximum": 60,
+              "minimum": 12,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "ratio",
+            "value_range": {
+              "maximum": 1.0,
+              "minimum": 0.0
+            },
+            "weight": 60
+          },
+          {
+            "applicability": "all_profile_funds",
+            "core": true,
+            "data_source": "fund_nav_and_market_series",
+            "direction": "higher_is_better",
+            "domain": "consistency_stability",
+            "evidence_family": "money_market.consistency.liquidity_regime_persistence",
+            "formula": "upstream_audited_raw/liquidity_regime_persistence/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "liquidity_regime_persistence",
+            "observation_window": {
+              "kind": "rolling_period",
+              "maximum": 60,
+              "minimum": 12,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "ratio",
+            "value_range": {
+              "maximum": 1.0,
+              "minimum": 0.0
+            },
+            "weight": 40
+          }
+        ],
+        "downside_risk": [
+          {
+            "applicability": "all_profile_funds",
+            "core": true,
+            "data_source": "fund_nav_and_market_series",
+            "direction": "lower_is_better",
+            "domain": "downside_risk",
+            "evidence_family": "money_market.downside_risk.negative_return_days",
+            "formula": "upstream_audited_raw/negative_return_days/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "negative_return_days",
+            "observation_window": {
+              "kind": "rolling_period",
+              "maximum": 12,
+              "minimum": 1,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "count",
+            "value_range": {
+              "maximum": 366.0,
+              "minimum": 0.0
+            },
+            "weight": 60
+          },
+          {
+            "applicability": "all_profile_funds",
+            "core": true,
+            "data_source": "fund_nav_and_market_series",
+            "direction": "lower_is_better",
+            "domain": "downside_risk",
+            "evidence_family": "money_market.downside_risk.liquidity_stress_loss",
+            "formula": "upstream_audited_raw/liquidity_stress_loss/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "liquidity_stress_loss",
+            "observation_window": {
+              "kind": "rolling_period",
+              "maximum": 60,
+              "minimum": 12,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "percent",
+            "value_range": {
+              "maximum": 100.0,
+              "minimum": 0.0
+            },
+            "weight": 40
+          }
+        ],
+        "governance_operations": [
+          {
+            "applicability": "all_profile_funds",
+            "core": true,
+            "data_source": "regulatory_fund_disclosures",
+            "direction": "higher_is_better",
+            "domain": "governance_control",
+            "evidence_family": "money_market.governance_operations.shadow_nav_disclosure",
+            "formula": "upstream_audited_raw/shadow_nav_disclosure/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "shadow_nav_disclosure",
+            "observation_window": {
+              "kind": "point_in_time",
+              "maximum": 0,
+              "minimum": 0,
+              "unit": "instant"
+            },
+            "provenance_required": true,
+            "unit": "score_0_100",
+            "value_range": {
+              "maximum": 100.0,
+              "minimum": 0.0
+            },
+            "weight": 60
+          },
+          {
+            "applicability": "all_profile_funds",
+            "core": true,
+            "data_source": "regulatory_fund_disclosures",
+            "direction": "higher_is_better",
+            "domain": "governance_control",
+            "evidence_family": "money_market.governance_operations.liquidity_governance_quality",
+            "formula": "upstream_audited_raw/liquidity_governance_quality/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "liquidity_governance_quality",
+            "observation_window": {
+              "kind": "point_in_time",
+              "maximum": 0,
+              "minimum": 0,
+              "unit": "instant"
+            },
+            "provenance_required": true,
+            "unit": "score_0_100",
+            "value_range": {
+              "maximum": 100.0,
+              "minimum": 0.0
+            },
+            "weight": 40
+          }
+        ],
+        "implementation_efficiency": [
+          {
+            "applicability": "all_profile_funds",
+            "core": true,
+            "data_source": "fee_and_execution_records",
+            "direction": "lower_is_better",
+            "domain": "implementation_cost",
+            "evidence_family": "money_market.implementation_efficiency.ongoing_charge",
+            "formula": "upstream_audited_raw/ongoing_charge/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "ongoing_charge",
+            "observation_window": {
+              "kind": "reporting_period",
+              "maximum": 12,
+              "minimum": 12,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "basis_points",
+            "value_range": {
+              "maximum": 1000.0,
+              "minimum": 0.0
+            },
+            "weight": 60
+          },
+          {
+            "applicability": "all_profile_funds",
+            "core": true,
+            "data_source": "custody_and_operations_records",
+            "direction": "lower_is_better",
+            "domain": "implementation_cost",
+            "evidence_family": "money_market.implementation_efficiency.settlement_delay",
+            "formula": "upstream_audited_raw/settlement_delay/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "settlement_delay",
+            "observation_window": {
+              "kind": "reporting_period",
+              "maximum": 12,
+              "minimum": 1,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "days",
+            "value_range": {
+              "maximum": 365.0,
+              "minimum": 0.0
+            },
+            "weight": 40
+          }
+        ],
+        "performance_evidence": [
+          {
+            "applicability": "requires_declared_benchmark",
+            "core": true,
+            "data_source": "benchmark_and_market_series",
+            "direction": "higher_is_better",
+            "domain": "performance_return",
+            "evidence_family": "money_market.performance_evidence.benchmark_yield_excess",
+            "formula": "upstream_audited_raw/benchmark_yield_excess/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "benchmark_yield_excess",
+            "observation_window": {
+              "kind": "rolling_period",
+              "maximum": 60,
+              "minimum": 12,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "percentage_points",
+            "value_range": {
+              "maximum": 1000.0,
+              "minimum": -100.0
+            },
+            "weight": 60
+          },
+          {
+            "applicability": "requires_income_distributing_assets",
+            "core": true,
+            "data_source": "income_distribution_and_market_data",
+            "direction": "higher_is_better",
+            "domain": "performance_return",
+            "evidence_family": "money_market.performance_evidence.seven_day_yield_stability",
+            "formula": "upstream_audited_raw/seven_day_yield_stability/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "seven_day_yield_stability",
+            "observation_window": {
+              "kind": "rolling_period",
+              "maximum": 12,
+              "minimum": 1,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "ratio",
+            "value_range": {
+              "maximum": 1.0,
+              "minimum": 0.0
+            },
+            "weight": 40
+          }
+        ],
+        "portfolio_structure": [
+          {
+            "applicability": "all_profile_funds",
+            "core": true,
+            "data_source": "portfolio_holdings_and_lookthrough",
+            "direction": "higher_is_better",
+            "domain": "portfolio_exposure",
+            "evidence_family": "money_market.portfolio_structure.high_quality_liquid_assets",
+            "formula": "upstream_audited_raw/high_quality_liquid_assets/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "high_quality_liquid_assets",
+            "observation_window": {
+              "kind": "point_in_time",
+              "maximum": 0,
+              "minimum": 0,
+              "unit": "instant"
+            },
+            "provenance_required": true,
+            "unit": "percent",
+            "value_range": {
+              "maximum": 100.0,
+              "minimum": 0.0
+            },
+            "weight": 60
+          },
+          {
+            "applicability": "all_profile_funds",
+            "core": true,
+            "data_source": "portfolio_holdings_and_lookthrough",
+            "direction": "lower_is_better",
+            "domain": "portfolio_exposure",
+            "evidence_family": "money_market.portfolio_structure.weighted_average_maturity",
+            "formula": "upstream_audited_raw/weighted_average_maturity/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "weighted_average_maturity",
+            "observation_window": {
+              "kind": "point_in_time",
+              "maximum": 0,
+              "minimum": 0,
+              "unit": "instant"
+            },
+            "provenance_required": true,
+            "unit": "days",
+            "value_range": {
+              "maximum": 180.0,
+              "minimum": 0.0
+            },
+            "weight": 40
+          }
+        ]
+      }
+    },
+    "public_reit": {
+      "dimensions": {
+        "consistency": [
+          {
+            "applicability": "requires_income_distributing_assets",
+            "core": true,
+            "data_source": "income_distribution_and_market_data",
+            "direction": "higher_is_better",
+            "domain": "consistency_stability",
+            "evidence_family": "public_reit.consistency.occupancy_persistence",
+            "formula": "upstream_audited_raw/occupancy_persistence/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "occupancy_persistence",
+            "observation_window": {
+              "kind": "rolling_period",
+              "maximum": 60,
+              "minimum": 12,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "ratio",
+            "value_range": {
+              "maximum": 1.0,
+              "minimum": 0.0
+            },
+            "weight": 60
+          },
+          {
+            "applicability": "requires_income_distributing_assets",
+            "core": true,
+            "data_source": "income_distribution_and_market_data",
+            "direction": "higher_is_better",
+            "domain": "consistency_stability",
+            "evidence_family": "public_reit.consistency.distribution_stability",
+            "formula": "upstream_audited_raw/distribution_stability/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "distribution_stability",
+            "observation_window": {
+              "kind": "rolling_period",
+              "maximum": 60,
+              "minimum": 12,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "ratio",
+            "value_range": {
+              "maximum": 1.0,
+              "minimum": 0.0
+            },
+            "weight": 40
+          }
+        ],
+        "downside_risk": [
+          {
+            "applicability": "all_profile_funds",
+            "core": true,
+            "data_source": "fund_nav_and_market_series",
+            "direction": "lower_is_better",
+            "domain": "downside_risk",
+            "evidence_family": "public_reit.downside_risk.maximum_drawdown",
+            "formula": "upstream_audited_raw/maximum_drawdown/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "maximum_drawdown",
+            "observation_window": {
+              "kind": "rolling_period",
+              "maximum": 120,
+              "minimum": 12,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "percent",
+            "value_range": {
+              "maximum": 100.0,
+              "minimum": 0.0
+            },
+            "weight": 60
+          },
+          {
+            "applicability": "requires_income_distributing_assets",
+            "core": true,
+            "data_source": "income_distribution_and_market_data",
+            "direction": "lower_is_better",
+            "domain": "downside_risk",
+            "evidence_family": "public_reit.downside_risk.distribution_stress_loss",
+            "formula": "upstream_audited_raw/distribution_stress_loss/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "distribution_stress_loss",
+            "observation_window": {
+              "kind": "rolling_period",
+              "maximum": 60,
+              "minimum": 12,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "percent",
+            "value_range": {
+              "maximum": 100.0,
+              "minimum": 0.0
+            },
+            "weight": 40
+          }
+        ],
+        "governance_operations": [
+          {
+            "applicability": "all_profile_funds",
+            "core": true,
+            "data_source": "regulatory_fund_disclosures",
+            "direction": "higher_is_better",
+            "domain": "governance_control",
+            "evidence_family": "public_reit.governance_operations.related_party_controls",
+            "formula": "upstream_audited_raw/related_party_controls/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "related_party_controls",
+            "observation_window": {
+              "kind": "point_in_time",
+              "maximum": 0,
+              "minimum": 0,
+              "unit": "instant"
+            },
+            "provenance_required": true,
+            "unit": "score_0_100",
+            "value_range": {
+              "maximum": 100.0,
+              "minimum": 0.0
+            },
+            "weight": 60
+          },
+          {
+            "applicability": "all_profile_funds",
+            "core": true,
+            "data_source": "regulatory_fund_disclosures",
+            "direction": "higher_is_better",
+            "domain": "governance_control",
+            "evidence_family": "public_reit.governance_operations.asset_valuation_governance",
+            "formula": "upstream_audited_raw/asset_valuation_governance/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "asset_valuation_governance",
+            "observation_window": {
+              "kind": "point_in_time",
+              "maximum": 0,
+              "minimum": 0,
+              "unit": "instant"
+            },
+            "provenance_required": true,
+            "unit": "score_0_100",
+            "value_range": {
+              "maximum": 100.0,
+              "minimum": 0.0
+            },
+            "weight": 40
+          }
+        ],
+        "implementation_efficiency": [
+          {
+            "applicability": "all_profile_funds",
+            "core": true,
+            "data_source": "fee_and_execution_records",
+            "direction": "lower_is_better",
+            "domain": "implementation_cost",
+            "evidence_family": "public_reit.implementation_efficiency.ongoing_charge",
+            "formula": "upstream_audited_raw/ongoing_charge/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "ongoing_charge",
+            "observation_window": {
+              "kind": "reporting_period",
+              "maximum": 12,
+              "minimum": 12,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "basis_points",
+            "value_range": {
+              "maximum": 1000.0,
+              "minimum": 0.0
+            },
+            "weight": 60
+          },
+          {
+            "applicability": "all_profile_funds",
+            "core": true,
+            "data_source": "fee_and_execution_records",
+            "direction": "lower_is_better",
+            "domain": "implementation_cost",
+            "evidence_family": "public_reit.implementation_efficiency.market_liquidity_cost",
+            "formula": "upstream_audited_raw/market_liquidity_cost/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "market_liquidity_cost",
+            "observation_window": {
+              "kind": "reporting_period",
+              "maximum": 12,
+              "minimum": 1,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "basis_points",
+            "value_range": {
+              "maximum": 5000.0,
+              "minimum": 0.0
+            },
+            "weight": 40
+          }
+        ],
+        "performance_evidence": [
+          {
+            "applicability": "requires_declared_benchmark",
+            "core": true,
+            "data_source": "benchmark_and_market_series",
+            "direction": "higher_is_better",
+            "domain": "performance_return",
+            "evidence_family": "public_reit.performance_evidence.total_return_excess",
+            "formula": "upstream_audited_raw/total_return_excess/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "total_return_excess",
+            "observation_window": {
+              "kind": "rolling_period",
+              "maximum": 60,
+              "minimum": 12,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "percentage_points",
+            "value_range": {
+              "maximum": 1000.0,
+              "minimum": -100.0
+            },
+            "weight": 60
+          },
+          {
+            "applicability": "requires_income_distributing_assets",
+            "core": true,
+            "data_source": "income_distribution_and_market_data",
+            "direction": "higher_is_better",
+            "domain": "performance_return",
+            "evidence_family": "public_reit.performance_evidence.distribution_growth",
+            "formula": "upstream_audited_raw/distribution_growth/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "distribution_growth",
+            "observation_window": {
+              "kind": "rolling_period",
+              "maximum": 60,
+              "minimum": 12,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "percentage_points",
+            "value_range": {
+              "maximum": 1000.0,
+              "minimum": -100.0
+            },
+            "weight": 40
+          }
+        ],
+        "portfolio_structure": [
+          {
+            "applicability": "all_profile_funds",
+            "core": true,
+            "data_source": "portfolio_holdings_and_lookthrough",
+            "direction": "higher_is_better",
+            "domain": "portfolio_exposure",
+            "evidence_family": "public_reit.portfolio_structure.asset_quality",
+            "formula": "upstream_audited_raw/asset_quality/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "asset_quality",
+            "observation_window": {
+              "kind": "point_in_time",
+              "maximum": 0,
+              "minimum": 0,
+              "unit": "instant"
+            },
+            "provenance_required": true,
+            "unit": "score_0_100",
+            "value_range": {
+              "maximum": 100.0,
+              "minimum": 0.0
+            },
+            "weight": 60
+          },
+          {
+            "applicability": "requires_income_distributing_assets",
+            "core": true,
+            "data_source": "portfolio_holdings_and_lookthrough",
+            "direction": "lower_is_better",
+            "domain": "portfolio_exposure",
+            "evidence_family": "public_reit.portfolio_structure.tenant_concentration",
+            "formula": "upstream_audited_raw/tenant_concentration/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "tenant_concentration",
+            "observation_window": {
+              "kind": "point_in_time",
+              "maximum": 0,
+              "minimum": 0,
+              "unit": "instant"
+            },
+            "provenance_required": true,
+            "unit": "percent",
+            "value_range": {
+              "maximum": 100.0,
+              "minimum": 0.0
+            },
+            "weight": 40
+          }
+        ]
+      }
+    },
+    "qdii_active": {
+      "dimensions": {
+        "consistency": [
+          {
+            "applicability": "requires_declared_benchmark",
+            "core": true,
+            "data_source": "benchmark_and_market_series",
+            "direction": "higher_is_better",
+            "domain": "consistency_stability",
+            "evidence_family": "qdii_active.consistency.rolling_excess_hit_rate",
+            "formula": "upstream_audited_raw/rolling_excess_hit_rate/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "rolling_excess_hit_rate",
+            "observation_window": {
+              "kind": "rolling_period",
+              "maximum": 60,
+              "minimum": 12,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "ratio",
+            "value_range": {
+              "maximum": 1.0,
+              "minimum": 0.0
+            },
+            "weight": 60
+          },
+          {
+            "applicability": "requires_cross_border_or_currency_exposure",
+            "core": true,
+            "data_source": "fund_nav_and_market_series",
+            "direction": "higher_is_better",
+            "domain": "consistency_stability",
+            "evidence_family": "qdii_active.consistency.global_regime_persistence",
+            "formula": "upstream_audited_raw/global_regime_persistence/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "global_regime_persistence",
+            "observation_window": {
+              "kind": "rolling_period",
+              "maximum": 60,
+              "minimum": 12,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "ratio",
+            "value_range": {
+              "maximum": 1.0,
+              "minimum": 0.0
+            },
+            "weight": 40
+          }
+        ],
+        "downside_risk": [
+          {
+            "applicability": "all_profile_funds",
+            "core": true,
+            "data_source": "fund_nav_and_market_series",
+            "direction": "lower_is_better",
+            "domain": "downside_risk",
+            "evidence_family": "qdii_active.downside_risk.maximum_drawdown",
+            "formula": "upstream_audited_raw/maximum_drawdown/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "maximum_drawdown",
+            "observation_window": {
+              "kind": "rolling_period",
+              "maximum": 120,
+              "minimum": 12,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "percent",
+            "value_range": {
+              "maximum": 100.0,
+              "minimum": 0.0
+            },
+            "weight": 60
+          },
+          {
+            "applicability": "requires_cross_border_or_currency_exposure",
+            "core": true,
+            "data_source": "benchmark_and_market_series",
+            "direction": "lower_is_better",
+            "domain": "downside_risk",
+            "evidence_family": "qdii_active.downside_risk.currency_stress_loss",
+            "formula": "upstream_audited_raw/currency_stress_loss/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "currency_stress_loss",
+            "observation_window": {
+              "kind": "rolling_period",
+              "maximum": 60,
+              "minimum": 12,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "percent",
+            "value_range": {
+              "maximum": 100.0,
+              "minimum": 0.0
+            },
+            "weight": 40
+          }
+        ],
+        "governance_operations": [
+          {
+            "applicability": "requires_cross_border_or_currency_exposure",
+            "core": true,
+            "data_source": "regulatory_fund_disclosures",
+            "direction": "higher_is_better",
+            "domain": "governance_control",
+            "evidence_family": "qdii_active.governance_operations.cross_border_disclosure",
+            "formula": "upstream_audited_raw/cross_border_disclosure/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "cross_border_disclosure",
+            "observation_window": {
+              "kind": "point_in_time",
+              "maximum": 0,
+              "minimum": 0,
+              "unit": "instant"
+            },
+            "provenance_required": true,
+            "unit": "score_0_100",
+            "value_range": {
+              "maximum": 100.0,
+              "minimum": 0.0
+            },
+            "weight": 60
+          },
+          {
+            "applicability": "all_profile_funds",
+            "core": true,
+            "data_source": "regulatory_fund_disclosures",
+            "direction": "higher_is_better",
+            "domain": "governance_control",
+            "evidence_family": "qdii_active.governance_operations.valuation_cutoff_controls",
+            "formula": "upstream_audited_raw/valuation_cutoff_controls/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "valuation_cutoff_controls",
+            "observation_window": {
+              "kind": "point_in_time",
+              "maximum": 0,
+              "minimum": 0,
+              "unit": "instant"
+            },
+            "provenance_required": true,
+            "unit": "score_0_100",
+            "value_range": {
+              "maximum": 100.0,
+              "minimum": 0.0
+            },
+            "weight": 40
+          }
+        ],
+        "implementation_efficiency": [
+          {
+            "applicability": "all_profile_funds",
+            "core": true,
+            "data_source": "fee_and_execution_records",
+            "direction": "lower_is_better",
+            "domain": "implementation_cost",
+            "evidence_family": "qdii_active.implementation_efficiency.ongoing_charge",
+            "formula": "upstream_audited_raw/ongoing_charge/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "ongoing_charge",
+            "observation_window": {
+              "kind": "reporting_period",
+              "maximum": 12,
+              "minimum": 12,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "basis_points",
+            "value_range": {
+              "maximum": 1000.0,
+              "minimum": 0.0
+            },
+            "weight": 60
+          },
+          {
+            "applicability": "requires_cross_border_or_currency_exposure",
+            "core": true,
+            "data_source": "fee_and_execution_records",
+            "direction": "lower_is_better",
+            "domain": "implementation_cost",
+            "evidence_family": "qdii_active.implementation_efficiency.fx_implementation_cost",
+            "formula": "upstream_audited_raw/fx_implementation_cost/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "fx_implementation_cost",
+            "observation_window": {
+              "kind": "reporting_period",
+              "maximum": 12,
+              "minimum": 1,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "basis_points",
+            "value_range": {
+              "maximum": 5000.0,
+              "minimum": 0.0
+            },
+            "weight": 40
+          }
+        ],
+        "performance_evidence": [
+          {
+            "applicability": "requires_cross_border_or_currency_exposure",
+            "core": true,
+            "data_source": "benchmark_and_market_series",
+            "direction": "higher_is_better",
+            "domain": "performance_return",
+            "evidence_family": "qdii_active.performance_evidence.currency_adjusted_excess",
+            "formula": "upstream_audited_raw/currency_adjusted_excess/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "currency_adjusted_excess",
+            "observation_window": {
+              "kind": "rolling_period",
+              "maximum": 60,
+              "minimum": 12,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "percentage_points",
+            "value_range": {
+              "maximum": 1000.0,
+              "minimum": -100.0
+            },
+            "weight": 60
+          },
+          {
+            "applicability": "requires_declared_benchmark",
+            "core": true,
+            "data_source": "benchmark_and_market_series",
+            "direction": "higher_is_better",
+            "domain": "performance_return",
+            "evidence_family": "qdii_active.performance_evidence.factor_residual_alpha",
+            "formula": "upstream_audited_raw/factor_residual_alpha/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "factor_residual_alpha",
+            "observation_window": {
+              "kind": "rolling_period",
+              "maximum": 60,
+              "minimum": 12,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "percentage_points",
+            "value_range": {
+              "maximum": 1000.0,
+              "minimum": -100.0
+            },
+            "weight": 40
+          }
+        ],
+        "portfolio_structure": [
+          {
+            "applicability": "requires_cross_border_or_currency_exposure",
+            "core": true,
+            "data_source": "portfolio_holdings_and_lookthrough",
+            "direction": "higher_is_better",
+            "domain": "portfolio_exposure",
+            "evidence_family": "qdii_active.portfolio_structure.mandate_country_fit",
+            "formula": "upstream_audited_raw/mandate_country_fit/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "mandate_country_fit",
+            "observation_window": {
+              "kind": "point_in_time",
+              "maximum": 0,
+              "minimum": 0,
+              "unit": "instant"
+            },
+            "provenance_required": true,
+            "unit": "ratio",
+            "value_range": {
+              "maximum": 1.0,
+              "minimum": 0.0
+            },
+            "weight": 60
+          },
+          {
+            "applicability": "requires_cross_border_or_currency_exposure",
+            "core": true,
+            "data_source": "portfolio_holdings_and_lookthrough",
+            "direction": "lower_is_better",
+            "domain": "portfolio_exposure",
+            "evidence_family": "qdii_active.portfolio_structure.currency_concentration",
+            "formula": "upstream_audited_raw/currency_concentration/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "currency_concentration",
+            "observation_window": {
+              "kind": "point_in_time",
+              "maximum": 0,
+              "minimum": 0,
+              "unit": "instant"
+            },
+            "provenance_required": true,
+            "unit": "percent",
+            "value_range": {
+              "maximum": 100.0,
+              "minimum": 0.0
+            },
+            "weight": 40
+          }
+        ]
+      }
+    },
+    "qdii_index": {
+      "dimensions": {
+        "consistency": [
+          {
+            "applicability": "requires_declared_benchmark",
+            "core": true,
+            "data_source": "benchmark_and_market_series",
+            "direction": "higher_is_better",
+            "domain": "consistency_stability",
+            "evidence_family": "qdii_index.consistency.rolling_tracking_stability",
+            "formula": "upstream_audited_raw/rolling_tracking_stability/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "rolling_tracking_stability",
+            "observation_window": {
+              "kind": "rolling_period",
+              "maximum": 60,
+              "minimum": 12,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "ratio",
+            "value_range": {
+              "maximum": 1.0,
+              "minimum": 0.0
+            },
+            "weight": 60
+          },
+          {
+            "applicability": "requires_cross_border_or_currency_exposure",
+            "core": true,
+            "data_source": "fee_and_execution_records",
+            "direction": "higher_is_better",
+            "domain": "consistency_stability",
+            "evidence_family": "qdii_index.consistency.fx_hedge_stability",
+            "formula": "upstream_audited_raw/fx_hedge_stability/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "fx_hedge_stability",
+            "observation_window": {
+              "kind": "rolling_period",
+              "maximum": 60,
+              "minimum": 12,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "ratio",
+            "value_range": {
+              "maximum": 1.0,
+              "minimum": 0.0
+            },
+            "weight": 40
+          }
+        ],
+        "downside_risk": [
+          {
+            "applicability": "all_profile_funds",
+            "core": true,
+            "data_source": "fund_nav_and_market_series",
+            "direction": "lower_is_better",
+            "domain": "downside_risk",
+            "evidence_family": "qdii_index.downside_risk.maximum_drawdown",
+            "formula": "upstream_audited_raw/maximum_drawdown/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "maximum_drawdown",
+            "observation_window": {
+              "kind": "rolling_period",
+              "maximum": 120,
+              "minimum": 12,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "percent",
+            "value_range": {
+              "maximum": 100.0,
+              "minimum": 0.0
+            },
+            "weight": 60
+          },
+          {
+            "applicability": "requires_cross_border_or_currency_exposure",
+            "core": true,
+            "data_source": "benchmark_and_market_series",
+            "direction": "lower_is_better",
+            "domain": "downside_risk",
+            "evidence_family": "qdii_index.downside_risk.currency_downside_capture",
+            "formula": "upstream_audited_raw/currency_downside_capture/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "currency_downside_capture",
+            "observation_window": {
+              "kind": "rolling_period",
+              "maximum": 60,
+              "minimum": 12,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "ratio",
+            "value_range": {
+              "maximum": 5.0,
+              "minimum": -5.0
+            },
+            "weight": 40
+          }
+        ],
+        "governance_operations": [
+          {
+            "applicability": "requires_declared_benchmark",
+            "core": true,
+            "data_source": "regulatory_fund_disclosures",
+            "direction": "higher_is_better",
+            "domain": "governance_control",
+            "evidence_family": "qdii_index.governance_operations.index_method_disclosure",
+            "formula": "upstream_audited_raw/index_method_disclosure/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "index_method_disclosure",
+            "observation_window": {
+              "kind": "point_in_time",
+              "maximum": 0,
+              "minimum": 0,
+              "unit": "instant"
+            },
+            "provenance_required": true,
+            "unit": "score_0_100",
+            "value_range": {
+              "maximum": 100.0,
+              "minimum": 0.0
+            },
+            "weight": 60
+          },
+          {
+            "applicability": "requires_cross_border_or_currency_exposure",
+            "core": true,
+            "data_source": "custody_and_operations_records",
+            "direction": "higher_is_better",
+            "domain": "governance_control",
+            "evidence_family": "qdii_index.governance_operations.cross_border_custody_controls",
+            "formula": "upstream_audited_raw/cross_border_custody_controls/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "cross_border_custody_controls",
+            "observation_window": {
+              "kind": "point_in_time",
+              "maximum": 0,
+              "minimum": 0,
+              "unit": "instant"
+            },
+            "provenance_required": true,
+            "unit": "score_0_100",
+            "value_range": {
+              "maximum": 100.0,
+              "minimum": 0.0
+            },
+            "weight": 40
+          }
+        ],
+        "implementation_efficiency": [
+          {
+            "applicability": "all_profile_funds",
+            "core": true,
+            "data_source": "fee_and_execution_records",
+            "direction": "lower_is_better",
+            "domain": "implementation_cost",
+            "evidence_family": "qdii_index.implementation_efficiency.total_expense",
+            "formula": "upstream_audited_raw/total_expense/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "total_expense",
+            "observation_window": {
+              "kind": "reporting_period",
+              "maximum": 12,
+              "minimum": 12,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "basis_points",
+            "value_range": {
+              "maximum": 1000.0,
+              "minimum": 0.0
+            },
+            "weight": 60
+          },
+          {
+            "applicability": "requires_cross_border_or_currency_exposure",
+            "core": true,
+            "data_source": "benchmark_and_market_series",
+            "direction": "lower_is_better",
+            "domain": "implementation_cost",
+            "evidence_family": "qdii_index.implementation_efficiency.fx_tracking_error",
+            "formula": "upstream_audited_raw/fx_tracking_error/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "fx_tracking_error",
+            "observation_window": {
+              "kind": "rolling_period",
+              "maximum": 60,
+              "minimum": 12,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "percentage_points",
+            "value_range": {
+              "maximum": 100.0,
+              "minimum": 0.0
+            },
+            "weight": 40
+          }
+        ],
+        "performance_evidence": [
+          {
+            "applicability": "requires_cross_border_or_currency_exposure",
+            "core": true,
+            "data_source": "benchmark_and_market_series",
+            "direction": "lower_is_better",
+            "domain": "performance_return",
+            "evidence_family": "qdii_index.performance_evidence.currency_adjusted_tracking_gap",
+            "formula": "upstream_audited_raw/currency_adjusted_tracking_gap/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "currency_adjusted_tracking_gap",
+            "observation_window": {
+              "kind": "rolling_period",
+              "maximum": 60,
+              "minimum": 12,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "percentage_points",
+            "value_range": {
+              "maximum": 100.0,
+              "minimum": 0.0
+            },
+            "weight": 60
+          },
+          {
+            "applicability": "requires_declared_benchmark",
+            "core": true,
+            "data_source": "benchmark_and_market_series",
+            "direction": "lower_is_better",
+            "domain": "performance_return",
+            "evidence_family": "qdii_index.performance_evidence.benchmark_return_gap",
+            "formula": "upstream_audited_raw/benchmark_return_gap/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "benchmark_return_gap",
+            "observation_window": {
+              "kind": "rolling_period",
+              "maximum": 60,
+              "minimum": 12,
+              "unit": "months"
+            },
+            "provenance_required": true,
+            "unit": "percentage_points",
+            "value_range": {
+              "maximum": 100.0,
+              "minimum": 0.0
+            },
+            "weight": 40
+          }
+        ],
+        "portfolio_structure": [
+          {
+            "applicability": "requires_declared_benchmark",
+            "core": true,
+            "data_source": "portfolio_holdings_and_lookthrough",
+            "direction": "higher_is_better",
+            "domain": "portfolio_exposure",
+            "evidence_family": "qdii_index.portfolio_structure.benchmark_coverage",
+            "formula": "upstream_audited_raw/benchmark_coverage/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "benchmark_coverage",
+            "observation_window": {
+              "kind": "point_in_time",
+              "maximum": 0,
+              "minimum": 0,
+              "unit": "instant"
+            },
+            "provenance_required": true,
+            "unit": "ratio",
+            "value_range": {
+              "maximum": 1.0,
+              "minimum": 0.0
+            },
+            "weight": 60
+          },
+          {
+            "applicability": "requires_declared_benchmark",
+            "core": true,
+            "data_source": "portfolio_holdings_and_lookthrough",
+            "direction": "lower_is_better",
+            "domain": "portfolio_exposure",
+            "evidence_family": "qdii_index.portfolio_structure.country_weight_deviation",
+            "formula": "upstream_audited_raw/country_weight_deviation/0.1.0",
+            "formula_owner": "upstream_audited_provider",
+            "id": "country_weight_deviation",
+            "observation_window": {
+              "kind": "point_in_time",
+              "maximum": 0,
+              "minimum": 0,
+              "unit": "instant"
+            },
+            "provenance_required": true,
+            "unit": "percentage_points",
+            "value_range": {
+              "maximum": 100.0,
+              "minimum": 0.0
+            },
+            "weight": 40
+          }
+        ]
+      }
+    }
+  },
+  "scoring_config": {
+    "name": "openfundscore-core",
+    "version": "0.1.0"
+  },
+  "status": "research-preview"
+}

@@ -461,14 +461,21 @@ class MainlandOfficialSnapshotTests(unittest.TestCase):
         legacy = resolve_resource(
             resource_type="schema", name="provider_record", version="0.1.0"
         )
-        current = resolve_resource(
+        published = resolve_resource(
             resource_type="schema", name="provider_record", version="0.2.0"
+        )
+        current = resolve_resource(
+            resource_type="schema", name="provider_record", version="0.3.0"
         )
         self.assertEqual(
             hashlib.sha256(legacy.read_bytes()).hexdigest(),
             "baf590e637dc0e0bdf01eddf9d51ccbe5e9d3c16057910a9cf7b9b58ccec65bf",
         )
-        self.assertNotEqual(legacy.read_bytes(), current.read_bytes())
+        self.assertEqual(
+            hashlib.sha256(published.read_bytes()).hexdigest(),
+            "36a25071c7622a6252a51c559c3adae49855a3b2e1bf954ce62c5a8b71c47f5f",
+        )
+        self.assertNotEqual(published.read_bytes(), current.read_bytes())
         current_schema = current.load_json()
         self.assertIn("exact_identifiers", current_schema["required"])
         self.assertIn(
@@ -496,7 +503,7 @@ class MainlandOfficialSnapshotTests(unittest.TestCase):
             validate_record(
                 "provider_record",
                 record,
-                schema_version="0.2.0",
+                schema_version="0.3.0",
                 evaluation_timestamp="2026-08-21T00:00:00Z",
             )
 
@@ -542,7 +549,9 @@ class MainlandOfficialSnapshotTests(unittest.TestCase):
             )
         )
 
-    def test_exact_identifier_binds_full_canonical_identity_in_api_and_cli(self) -> None:
+    def test_exact_identifier_binds_full_canonical_identity_in_api_and_cli(
+        self,
+    ) -> None:
         import io
         from contextlib import redirect_stderr, redirect_stdout
 

@@ -27,10 +27,10 @@ openfundscore://schema/mainland_official_snapshot/0.1.0
 ```
 
 That version identifies the frozen **input bundle**. The adapter's output uses
-the current `openfundscore://schema/provider_record/0.2.0` contract. The distinct
+the current `openfundscore://schema/provider_record/0.3.0` contract. The distinct
 packaged `provider_record / 0.1.0` resource remains byte-for-byte available for
 explicit legacy validation and is never mutated, aliased to, or silently chosen
-instead of `0.2.0`.
+instead of `0.3.0`.
 
 The root object is closed (`additionalProperties: false`) and requires:
 
@@ -71,7 +71,7 @@ currency, unit, source_url, source_document_hash,
 point_in_time_status, methodology, quality_state, conflict_group
 ```
 
-The adapter emits one `provider_record@0.2.0` per observation. A daily NAV series
+The adapter emits one `provider_record@0.3.0` per observation. A daily NAV series
 is therefore a sequence of small records, not one opaque array value.
 
 ## Item mapping
@@ -161,7 +161,7 @@ providers. Rights booleans, mode, URLs, and retention days must match exactly.
 `Z`, `+08:00`, and `-05:00` spellings match. A syntactically valid RFC3339 value
 that cannot be represented after UTC normalization fails closed as
 `invalid_timestamp`. Every emitted Mainland
-`provider_record@0.2.0` preserves the bundle's original `reviewed_at` and
+`provider_record@0.3.0` preserves the bundle's original `reviewed_at` and
 `valid_until` strings independently; an equivalent entitlement spelling is not
 substituted into the audit record.
 
