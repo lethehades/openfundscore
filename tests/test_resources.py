@@ -202,11 +202,13 @@ class ResourceCatalogTests(unittest.TestCase):
                 ("metric-catalog", "openfundscore-category-metrics", "0.1.0"),
                 ("peer-admission", "category-profile-buckets", "0.1.0"),
                 ("schema", "external_rating", "0.1.0"),
+                ("schema", "mainland_official_snapshot", "0.1.0"),
                 ("schema", "manager_research", "0.1.0"),
                 ("schema", "provider_contract", "0.1.0"),
                 ("schema", "provider_contract", "0.2.0"),
                 ("schema", "provider_record", "0.1.0"),
                 ("schema", "provider_record", "0.2.0"),
+                ("schema", "provider_record", "0.3.0"),
                 ("schema", "score_evidence_usage", "0.1.0"),
                 ("schema", "score_evidence_usage", "0.2.0"),
                 ("scoring-config", "openfundscore-core", "0.1.0"),
@@ -237,7 +239,7 @@ class ResourceCatalogTests(unittest.TestCase):
     def test_catalog_filters_by_resource_type(self) -> None:
         resources = list_resources(resource_type="schema")
 
-        self.assertEqual(len(resources), 8)
+        self.assertEqual(len(resources), 10)
         self.assertTrue(
             all(
                 resource.key.resource_type is ResourceType.SCHEMA

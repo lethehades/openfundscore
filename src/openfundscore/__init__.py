@@ -26,6 +26,11 @@ if TYPE_CHECKING:
         score_category_metrics,
     )
     from .evidence_usage import canonicalize_score_evidence_ledger_for_digest
+    from .mainland_official import (
+        MainlandOfficialSnapshotAdapter,
+        SnapshotValidationError,
+        load_mainland_entitlements,
+    )
     from .manager_research import (
         MANAGER_COMPONENT_SOURCE_MANIFEST,
         ManagerEvidenceSource,
@@ -78,6 +83,7 @@ __all__ = (
     "DimensionScore",
     "FixedHostHttpClient",
     "HistoryStage",
+    "MainlandOfficialSnapshotAdapter",
     "ManagerEvidenceSource",
     "ManagerResearchHandoff",
     "ManagerResearchValidationError",
@@ -99,12 +105,14 @@ __all__ = (
     "RecordType",
     "RecordValidationError",
     "SecEdgarSubmissionsAdapter",
+    "SnapshotValidationError",
     "StrategyMappingError",
     "WorldBankIndicatorsAdapter",
     "build_manager_evidence_sources",
     "canonicalize_score_evidence_ledger_for_digest",
     "derive_manager_evidence_sources",
     "evaluate_publication_gate",
+    "load_mainland_entitlements",
     "load_metric_catalog",
     "load_packaged_strategy_mapping",
     "load_strategy_mapping",
@@ -118,6 +126,12 @@ __all__ = (
     "validate_strategy_mapping",
 )
 
+
+_MAINLAND_EXPORTS = {
+    "MainlandOfficialSnapshotAdapter",
+    "SnapshotValidationError",
+    "load_mainland_entitlements",
+}
 
 _CATEGORY_EXPORTS = {
     "ApplicabilityContext",
@@ -169,6 +183,10 @@ _MANAGER_EXPORTS = {
 
 
 def __getattr__(name: str) -> Any:
+    if name in _MAINLAND_EXPORTS:
+        from . import mainland_official
+
+        return getattr(mainland_official, name)
     if name in _CATEGORY_EXPORTS:
         from . import category_metrics
 

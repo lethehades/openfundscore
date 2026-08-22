@@ -19,11 +19,13 @@ _EXPECTED_RESOURCE_SELECTORS = frozenset(
         ("metric-catalog", "openfundscore-category-metrics", "0.1.0"),
         ("peer-admission", "category-profile-buckets", "0.1.0"),
         ("schema", "external_rating", "0.1.0"),
+        ("schema", "mainland_official_snapshot", "0.1.0"),
         ("schema", "manager_research", "0.1.0"),
         ("schema", "provider_contract", "0.1.0"),
         ("schema", "provider_contract", "0.2.0"),
         ("schema", "provider_record", "0.1.0"),
         ("schema", "provider_record", "0.2.0"),
+        ("schema", "provider_record", "0.3.0"),
         ("schema", "score_evidence_usage", "0.1.0"),
         ("schema", "score_evidence_usage", "0.2.0"),
         ("scoring-config", "openfundscore-core", "0.1.0"),
@@ -38,11 +40,13 @@ _EXPECTED_RESOURCE_PAYLOADS = frozenset(
         "metric-catalog/openfundscore-category-metrics/0.1.0.json",
         "peer-admission/category-profile-buckets/0.1.0.json",
         "schema/external_rating/0.1.0.schema.json",
+        "schema/mainland_official_snapshot/0.1.0.schema.json",
         "schema/manager_research/0.1.0.schema.json",
         "schema/provider_contract/0.1.0.schema.json",
         "schema/provider_contract/0.2.0.schema.json",
         "schema/provider_record/0.1.0.schema.json",
         "schema/provider_record/0.2.0.schema.json",
+        "schema/provider_record/0.3.0.schema.json",
         "schema/score_evidence_usage/0.1.0.schema.json",
         "schema/score_evidence_usage/0.2.0.schema.json",
         "scoring-config/openfundscore-core/0.1.0.json",
@@ -60,6 +64,7 @@ _README_DOCUMENT_LINKS = frozenset(
         "docs/PUBLICATION_GATE.md",
         "docs/PROVIDER_SDK.md",
         "docs/OFFICIAL_PROVIDERS.md",
+        "docs/MAINLAND_OFFICIAL_SNAPSHOT.md",
         "docs/FUND_TAXONOMY.md",
         "docs/SCORING_RFC.md",
         "docs/MANAGER_RESEARCH.md",
@@ -359,11 +364,11 @@ class DistributionResourceTests(unittest.TestCase):
                 ),
             )
 
-            venv.EnvBuilder(with_pip=True).create(builder)
-            builder_python = builder / "bin" / "python"
             clean_environment = os.environ.copy()
             clean_environment.pop("PYTHONPATH", None)
             clean_environment["PYTHONNOUSERSITE"] = "1"
+            venv.EnvBuilder(with_pip=True).create(builder)
+            builder_python = builder / "bin" / "python"
             subprocess.run(
                 [str(builder_python), "-m", "pip", "install", "build>=1.2"],
                 check=True,
@@ -399,7 +404,7 @@ class DistributionResourceTests(unittest.TestCase):
             wheel_payloads = _wheel_resources(wheels[0])
             sdist_payloads = _sdist_resources(sdists[0])
             self.assertEqual(wheel_payloads, sdist_payloads)
-            # __init__.py + index.json + all twelve indexed logical resources.
+            # __init__.py + index.json + all fourteen indexed logical resources.
             self.assertEqual(frozenset(wheel_payloads), _EXPECTED_RESOURCE_PAYLOADS)
 
             subprocess.run(

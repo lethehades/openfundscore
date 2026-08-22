@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta
+from typing import Any
 
 from .canonical import (
     Benchmark,
@@ -101,9 +102,7 @@ def synthetic_canonical_records(*, fetched_at: datetime) -> tuple[CanonicalEntit
             fund_strategy_id=alpha.fund_strategy_id,
             canonical_name=f"Synthetic Alpha Fund {code}",
             class_code=code,
-            identifiers=(
-                ExternalIdentifier("synthetic_share", f"ALPHA-{code}", "CN"),
-            ),
+            identifiers=(ExternalIdentifier("synthetic_share", f"ALPHA-{code}", "CN"),),
             dealing_currency="CNY",
             distribution_policy="accumulating",
             investor_type="institutional" if code == "I" else "retail",
@@ -373,3 +372,237 @@ def synthetic_canonical_records(*, fetched_at: datetime) -> tuple[CanonicalEntit
             "Synthetic transformation notice",
         ),
     )
+
+
+def synthetic_mainland_snapshot_bundle() -> dict[str, Any]:
+    """Return a fresh, deterministic, wholly synthetic official-snapshot fixture."""
+    source = "https://www.csrc.gov.cn/synthetic/disclosure.json"
+    terms = "https://www.csrc.gov.cn/synthetic/terms"
+    document_hash = "sha256:" + "a" * 64
+
+    def observation(
+        observation_id: str,
+        field: str,
+        raw_value: object,
+        *,
+        as_of: str = "2026-08-15T00:00:00Z",
+        unit: str | None = None,
+        currency: str | None = None,
+        quality_state: str = "verified",
+        conflict_group: str | None = None,
+    ) -> dict[str, object]:
+        return {
+            "observation_id": observation_id,
+            "field": field,
+            "raw_value": raw_value,
+            "as_of": as_of,
+            "published_at": "2026-08-16T00:00:00Z",
+            "fetched_at": "2026-08-17T00:00:00Z",
+            "valid_from": as_of,
+            "valid_to": None,
+            "currency": currency,
+            "unit": unit,
+            "source_url": source,
+            "source_document_hash": document_hash,
+            "point_in_time_status": "verified",
+            "methodology": None,
+            "quality_state": quality_state,
+            "conflict_group": conflict_group,
+        }
+
+    def item(
+        item_id: str,
+        item_type: str,
+        entity_type: str,
+        entity_id: str,
+        observations: list[dict[str, object]],
+    ) -> dict[str, object]:
+        return {
+            "item_id": item_id,
+            "item_type": item_type,
+            "entity_type": entity_type,
+            "entity_id": entity_id,
+            "exact_identifiers": [
+                {
+                    "scheme": "official_entity_id",
+                    "value": entity_id,
+                    "jurisdiction": "CN",
+                }
+            ],
+            "observations": observations,
+        }
+
+    def action(
+        item_id: str,
+        action_type: str,
+        before_id: str,
+        after_id: str | None,
+    ) -> dict[str, object]:
+        return item(
+            item_id,
+            "corporate_action",
+            "corporate_action",
+            item_id,
+            [
+                observation(f"{item_id}-type", "action_type", action_type),
+                observation(
+                    f"{item_id}-effective",
+                    "effective_at",
+                    "2026-08-15T00:00:00Z",
+                ),
+                observation(f"{item_id}-before", "before_id", before_id),
+                observation(f"{item_id}-after", "after_id", after_id),
+            ],
+        )
+
+    return {
+        "schema_version": "0.1.0",
+        "provider_id": "mainland-official-pilot",
+        "snapshot_id": "synthetic-mainland-snapshot-2026-08-17",
+        "source_type": "regulator",
+        "jurisdiction": "CN",
+        "official_source_url": source,
+        "retrieved_at": "2026-08-17T00:00:00Z",
+        "published_at": "2026-08-16T00:00:00Z",
+        "as_of": "2026-08-15T00:00:00Z",
+        "effective_at": "2026-08-15T00:00:00Z",
+        "document_sha256": document_hash,
+        "timezone": "Asia/Shanghai",
+        "currency": "CNY",
+        "units": {
+            "nav": "CNY_per_share",
+            "weight": "bps",
+            "coverage": "bps",
+        },
+        "rights": {
+            "mode": "local_entitlement",
+            "terms_url": terms,
+            "reviewed_at": "2026-08-20T00:00:00Z",
+            "valid_until": "2026-09-01T00:00:00Z",
+            "cache_allowed": True,
+            "derived_works_allowed": True,
+            "redistribution_allowed": False,
+            "attribution_required": True,
+            "public_display_allowed": False,
+            "retention_days": 30,
+            "source_evidence_url": terms,
+        },
+        "items": [
+            item(
+                "identity-a",
+                "identity",
+                "share_class",
+                "synthetic-share-a",
+                [
+                    observation(
+                        "identity-a-name-1",
+                        "canonical_name",
+                        "Synthetic Fund A",
+                        quality_state="conflict",
+                        conflict_group="synthetic-name-conflict",
+                    ),
+                    observation(
+                        "identity-a-name-2",
+                        "canonical_name",
+                        "Synthetic Fund Class A",
+                        quality_state="conflict",
+                        conflict_group="synthetic-name-conflict",
+                    ),
+                    observation("identity-a-class", "class_code", "A"),
+                ],
+            ),
+            item(
+                "identity-c",
+                "identity",
+                "share_class",
+                "synthetic-share-c",
+                [
+                    observation(
+                        "identity-c-name", "canonical_name", "Synthetic Fund C"
+                    ),
+                    observation("identity-c-class", "class_code", "C"),
+                ],
+            ),
+            item(
+                "nav-a",
+                "nav",
+                "share_class",
+                "synthetic-share-a",
+                [
+                    observation(
+                        "nav-a-1",
+                        "nav",
+                        1.0,
+                        as_of="2026-08-14T00:00:00Z",
+                        currency="CNY",
+                        unit="CNY_per_share",
+                    ),
+                    observation(
+                        "nav-a-2",
+                        "nav",
+                        1.01,
+                        currency="CNY",
+                        unit="CNY_per_share",
+                    ),
+                ],
+            ),
+            item(
+                "report-q2",
+                "report",
+                "report",
+                "synthetic-report-q2",
+                [
+                    observation("report-url", "report_url", source),
+                    observation("report-hash", "report_document_hash", document_hash),
+                ],
+            ),
+            item(
+                "manager-tenure",
+                "manager_tenure",
+                "manager_tenure",
+                "synthetic-tenure",
+                [
+                    observation("tenure-manager", "manager_id", "synthetic-manager"),
+                    observation("tenure-fund", "fund_strategy_id", "synthetic-fund"),
+                    observation("tenure-start", "tenure_start", "2024-01-01"),
+                    observation("tenure-end", "tenure_end", None),
+                ],
+            ),
+            item(
+                "benchmark",
+                "benchmark",
+                "benchmark",
+                "synthetic-benchmark",
+                [
+                    observation(
+                        "benchmark-name", "canonical_name", "Synthetic Benchmark"
+                    )
+                ],
+            ),
+            item(
+                "holding",
+                "holding",
+                "holding",
+                "synthetic-holding",
+                [
+                    observation("holding-fund", "fund_strategy_id", "synthetic-fund"),
+                    observation("holding-instrument", "instrument_id", "SYN-CN-1"),
+                    observation("holding-weight", "weight", 6000, unit="bps"),
+                    observation("holding-coverage", "coverage", 8000, unit="bps"),
+                ],
+            ),
+            action("action-closed", "closed", "synthetic-closed", None),
+            action(
+                "action-merged",
+                "merged",
+                "synthetic-merged",
+                "synthetic-successor",
+            ),
+            action(
+                "action-transformed",
+                "transformed",
+                "synthetic-before-transform",
+                "synthetic-after-transform",
+            ),
+        ],
+    }

@@ -8,15 +8,21 @@ import tempfile
 import textwrap
 import unittest
 import venv
+from copy import deepcopy
 from pathlib import Path
 
+from openfundscore.mainland_official import MainlandOfficialSnapshotAdapter
 from tests.test_category_metrics_cli import cli_document, manager_handoff_document
+from tests.test_mainland_official_snapshot import (
+    bundle,
+    entitlement,
+    entitlement_document,
+)
 from tests.test_official_provider_adapters import SEC_FIXTURE, WORLD_BANK_PAGE_1
 from tests.test_record_validation import (
     external_rating,
     manager_record,
     provider_contract,
-    provider_record,
     score_evidence_usage,
 )
 
@@ -26,11 +32,13 @@ _EXPECTED_RESOURCE_SELECTORS = frozenset(
         ("metric-catalog", "openfundscore-category-metrics", "0.1.0"),
         ("peer-admission", "category-profile-buckets", "0.1.0"),
         ("schema", "external_rating", "0.1.0"),
+        ("schema", "mainland_official_snapshot", "0.1.0"),
         ("schema", "manager_research", "0.1.0"),
         ("schema", "provider_contract", "0.1.0"),
         ("schema", "provider_contract", "0.2.0"),
         ("schema", "provider_record", "0.1.0"),
         ("schema", "provider_record", "0.2.0"),
+        ("schema", "provider_record", "0.3.0"),
         ("schema", "score_evidence_usage", "0.1.0"),
         ("schema", "score_evidence_usage", "0.2.0"),
         ("scoring-config", "openfundscore-core", "0.1.0"),
@@ -139,13 +147,25 @@ class InstalledWheelResourceTests(unittest.TestCase):
                     (
                         "from openfundscore.resources import list_resources, resolve_resource;"
                         "items=list_resources();"
+                        "assert len(items)==14;"
+                        "import openfundscore;"
+                        "from openfundscore import MainlandOfficialSnapshotAdapter,SnapshotValidationError,load_mainland_entitlements;"
+                        "from openfundscore.fixtures import synthetic_mainland_snapshot_bundle;"
+                        "assert {'MainlandOfficialSnapshotAdapter','SnapshotValidationError','load_mainland_entitlements'} <= set(openfundscore.__all__);"
+                        "assert callable(MainlandOfficialSnapshotAdapter);"
+                        "assert callable(load_mainland_entitlements);"
+                        "assert synthetic_mainland_snapshot_bundle()['source_type']=='regulator';"
                         "selectors={(i.key.resource_type.value,i.key.name,i.key.version)"
                         " for i in items};"
                         f"assert selectors=={_EXPECTED_RESOURCE_SELECTORS!r};"
                         "legacy=resolve_resource(resource_type='schema',name='provider_record',version='0.1.0');"
                         "current=resolve_resource(resource_type='schema',name='provider_record',version='0.2.0');"
+                        "mainland=resolve_resource(resource_type='schema',name='provider_record',version='0.3.0');"
                         "assert 'macro_observation' not in legacy.load_json()['properties']['entity_type']['enum'];"
                         "assert 'macro_observation' in current.load_json()['properties']['entity_type']['enum'];"
+                        "assert 'macro_observation' in mainland.load_json()['properties']['entity_type']['enum'];"
+                        "assert 'report' in mainland.load_json()['properties']['entity_type']['enum'];"
+                        "assert 'valid_until' in mainland.load_json()['properties']['rights']['properties'];"
                         "[resolve_resource(resource_type=i.key.resource_type,"
                         "name=i.key.name,version=i.key.version).load_json() for i in items];"
                         "from openfundscore.strategy_mapping import map_strategy_family;"
@@ -429,7 +449,7 @@ class InstalledWheelResourceTests(unittest.TestCase):
                     with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
                         exit_code = main(["resources", "list", "--type", "schema"])
                     assert exit_code == 0
-                    assert len(json.loads(stdout.getvalue())) == 8
+                    assert len(json.loads(stdout.getvalue())) == 10
                     assert marker not in stderr.getvalue()
 
                     cutoff = datetime(2026, 8, 21, 12, 30, tzinfo=UTC)
@@ -472,6 +492,101 @@ class InstalledWheelResourceTests(unittest.TestCase):
             )
 
             executable = environment / "bin" / "openfundscore"
+            mainland_snapshot_path = runtime / "mainland-snapshot.json"
+            mainland_entitlement_path = runtime / "mainland-entitlements.json"
+            mainland_source = bundle()
+            mainland_source["rights"]["reviewed_at"] = "2026-08-19T19:00:00-05:00"  # type: ignore[index]
+            mainland_source["rights"]["valid_until"] = "2026-08-31T19:00:00-05:00"  # type: ignore[index]
+            installed_nav = mainland_source["items"][1]  # type: ignore[index]
+            installed_original = installed_nav["observations"][1]
+            installed_original["quality_state"] = "conflict"
+            installed_original["conflict_group"] = "installed-nav-conflict"
+            installed_alternative = deepcopy(installed_original)
+            installed_alternative["observation_id"] = "nav-a-2-installed-alternative"
+            installed_alternative["raw_value"] = 1.02
+            installed_alternative["as_of"] = "2026-08-15T08:00:00+08:00"
+            installed_alternative["valid_from"] = "2026-08-14T19:00:00-05:00"
+            installed_nav["observations"].append(installed_alternative)
+            mainland_snapshot_path.write_text(
+                json.dumps(mainland_source, ensure_ascii=False), encoding="utf-8"
+            )
+            mainland_entitlement_path.write_text(
+                json.dumps(entitlement_document()), encoding="utf-8"
+            )
+            installed_api_probe = subprocess.run(
+                [
+                    str(python),
+                    "-c",
+                    (
+                        "import json,pathlib;from datetime import UTC,datetime;"
+                        "from openfundscore import MainlandOfficialSnapshotAdapter,load_mainland_entitlements;"
+                        "source=json.loads(pathlib.Path('mainland-snapshot.json').read_text());"
+                        "rights=load_mainland_entitlements(pathlib.Path('mainland-entitlements.json'));"
+                        "records=MainlandOfficialSnapshotAdapter(entitlements=rights).parse("
+                        "source,evaluation_timestamp=datetime(2026,8,21,tzinfo=UTC));"
+                        "assert len(records)==20;"
+                        "assert all(r['rights']['reviewed_at']=='2026-08-19T19:00:00-05:00' "
+                        "and r['rights']['valid_until']=='2026-08-31T19:00:00-05:00' for r in records);"
+                        "nav=[r for r in records if r['field']=='nav'];"
+                        "assert [r['value'] for r in nav]==[1.0,1.01,1.02];"
+                        "assert [r['as_of'] for r in nav][-2:]==['2026-08-15T00:00:00Z','2026-08-15T08:00:00+08:00'];"
+                        "print('mainland-api-ok')"
+                    ),
+                ],
+                check=False,
+                cwd=runtime,
+                env=clean_environment,
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(
+                installed_api_probe.returncode,
+                0,
+                msg=(
+                    f"stdout={installed_api_probe.stdout}\n"
+                    f"stderr={installed_api_probe.stderr}"
+                ),
+            )
+            self.assertEqual(installed_api_probe.stdout.strip(), "mainland-api-ok")
+            mainland_probe = subprocess.run(
+                [
+                    str(executable),
+                    "provider",
+                    "mainland-parse",
+                    str(mainland_snapshot_path),
+                    "--entitlements",
+                    str(mainland_entitlement_path),
+                    "--evaluation-timestamp",
+                    "2026-08-21T00:00:00Z",
+                ],
+                check=False,
+                cwd=runtime,
+                env=clean_environment,
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(
+                mainland_probe.returncode,
+                0,
+                msg=f"stdout={mainland_probe.stdout}\nstderr={mainland_probe.stderr}",
+            )
+            installed_cli_records = json.loads(mainland_probe.stdout)
+            self.assertEqual(len(installed_cli_records), 20)
+            self.assertTrue(
+                all(
+                    record["rights"]["reviewed_at"] == "2026-08-19T19:00:00-05:00"
+                    and record["rights"]["valid_until"] == "2026-08-31T19:00:00-05:00"
+                    for record in installed_cli_records
+                )
+            )
+            self.assertEqual(
+                [
+                    record["value"]
+                    for record in installed_cli_records
+                    if record["field"] == "nav"
+                ],
+                [1.0, 1.01, 1.02],
+            )
             fixture_commands = (
                 (
                     [
@@ -611,7 +726,7 @@ class InstalledWheelResourceTests(unittest.TestCase):
                 "--name",
                 "provider_record",
                 "--version",
-                "0.1.0",
+                "0.2.0",
             ]
             resolve_probe = subprocess.run(
                 [str(executable), "resources", "resolve", *selector],
@@ -623,7 +738,7 @@ class InstalledWheelResourceTests(unittest.TestCase):
             )
             self.assertEqual(
                 json.loads(resolve_probe.stdout)["uri"],
-                "openfundscore://schema/provider_record/0.1.0",
+                "openfundscore://schema/provider_record/0.2.0",
             )
 
             show_probe = subprocess.run(
@@ -639,9 +754,12 @@ class InstalledWheelResourceTests(unittest.TestCase):
                 "https://json-schema.org/draft/2020-12/schema",
             )
 
+            current_provider_record = MainlandOfficialSnapshotAdapter(
+                entitlements=entitlement()
+            ).parse(bundle(), evaluation_timestamp=entitlement().evaluated_at)[0]
             records = {
                 "manager_research": manager_record(),
-                "provider_record": provider_record(),
+                "provider_record": current_provider_record,
                 "provider_contract": provider_contract(),
                 "external_rating": external_rating(),
                 "score_evidence_usage": score_evidence_usage(),
@@ -656,7 +774,8 @@ class InstalledWheelResourceTests(unittest.TestCase):
                         "import json,pathlib;"
                         "from openfundscore.validation import validate_record;"
                         "records=json.loads(pathlib.Path('records.json').read_text());"
-                        "[validate_record(kind,document,schema_version='0.1.0',"
+                        "[validate_record(kind,document,schema_version=("
+                        "'0.3.0' if kind=='provider_record' else '0.1.0'),"
                         "evaluation_timestamp=('2026-08-21T00:00:00Z' if kind in "
                         "{'provider_record','external_rating'} else None)) "
                         "for kind,document in records.items()];"
@@ -747,9 +866,9 @@ class InstalledWheelResourceTests(unittest.TestCase):
                         "record['rights'].update({'mode':'open_redistributable','cache_allowed':True,"
                         "'derived_works_allowed':True,'public_display_allowed':True,'redistribution_allowed':True,"
                         "'attribution_required':True,'retention_days':30,'terms_url':'https://example.com/terms',"
-                        "'reviewed_at':'2026-08-21T00:00:00Z'});"
+                        "'reviewed_at':'2026-08-21T00:00:00Z','valid_until':'2026-11-02T07:00:00Z'});"
                         "denied=False;"
-                        "\ntry:\n authorize_ingestion(Adapter(),record,schema_version='0.1.0',"
+                        "\ntry:\n authorize_ingestion(Adapter(),record,schema_version='0.3.0',"
                         "evaluation_timestamp=request_time,request=IngestionRequest(capability=ProviderCapability.GET_PROFILE),"
                         "rate_limit_budget=RateLimitBudget(provider_id='provider-1',period_started_at=request_time,requests_used=0))"
                         "\nexcept IngestionDenied as exc:\n denied=exc.code=='entitlement_contract_mismatch'"
@@ -774,6 +893,9 @@ class InstalledWheelResourceTests(unittest.TestCase):
 
             for record_type, document in records.items():
                 with self.subTest(installed_record_type=record_type):
+                    schema_version = (
+                        "0.3.0" if record_type == "provider_record" else "0.1.0"
+                    )
                     record_path = runtime / f"{record_type}.json"
                     record_path.write_text(json.dumps(document), encoding="utf-8")
                     command = [
@@ -782,7 +904,7 @@ class InstalledWheelResourceTests(unittest.TestCase):
                         "--type",
                         record_type,
                         "--schema-version",
-                        "0.1.0",
+                        schema_version,
                     ]
                     if record_type in {"provider_record", "external_rating"}:
                         command.extend(
@@ -810,7 +932,7 @@ class InstalledWheelResourceTests(unittest.TestCase):
                     )
                     self.assertEqual(
                         validation_cli_probe.stdout,
-                        f"valid: {record_type}@0.1.0 (schema+semantics)\n",
+                        f"valid: {record_type}@{schema_version} (schema+semantics)\n",
                     )
 
             ledger_v020_cli_probe = subprocess.run(

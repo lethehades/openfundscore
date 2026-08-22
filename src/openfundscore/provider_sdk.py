@@ -50,6 +50,7 @@ class ProviderCapability(StrEnum):
     GET_BENCHMARK = "get_benchmark"
     GET_MANAGER_TENURES = "get_manager_tenures"
     GET_HOLDINGS = "get_holdings"
+    GET_CORPORATE_ACTIONS = "get_corporate_actions"
     GET_FEES = "get_fees"
     GET_PURCHASE_STATUS = "get_purchase_status"
     GET_DISCLOSURES = "get_disclosures"
@@ -109,7 +110,8 @@ _MAX_RETENTION_DAYS = 36_500
 _MAX_PROVIDER_ID_LENGTH = 256
 _MAX_TERMS_URL_LENGTH = 2_048
 _MAX_ENTITLEMENT_SCOPE_ITEMS = 256
-_SCOPED_PROVIDER_SCHEMA_VERSION = "0.2.0"
+_SCOPED_PROVIDER_SCHEMA_VERSIONS = frozenset({"0.2.0", "0.3.0"})
+_VALID_UNTIL_PROVIDER_SCHEMA_VERSION = "0.3.0"
 _UNIX_EPOCH = datetime(1970, 1, 1, tzinfo=UTC)
 _CAPABILITY_ENTITY_TYPES: dict[ProviderCapability, frozenset[str]] = {
     ProviderCapability.LIST_FUNDS: frozenset({"fund_strategy", "share_class"}),
@@ -128,6 +130,7 @@ _CAPABILITY_ENTITY_TYPES: dict[ProviderCapability, frozenset[str]] = {
     ProviderCapability.GET_BENCHMARK: frozenset({"benchmark"}),
     ProviderCapability.GET_MANAGER_TENURES: frozenset({"manager_tenure"}),
     ProviderCapability.GET_HOLDINGS: frozenset({"holding"}),
+    ProviderCapability.GET_CORPORATE_ACTIONS: frozenset({"corporate_action"}),
     ProviderCapability.GET_FEES: frozenset({"fund_strategy", "share_class"}),
     ProviderCapability.GET_PURCHASE_STATUS: frozenset(
         {"share_class", "platform_listing"}
@@ -142,6 +145,8 @@ _CAPABILITY_ENTITY_TYPES: dict[ProviderCapability, frozenset[str]] = {
             "holding",
             "issuer",
             "platform_listing",
+            "report",
+            "corporate_action",
         }
     ),
     ProviderCapability.GET_EXTERNAL_RATINGS: frozenset({"external_rating"}),
@@ -659,6 +664,8 @@ def _contract_mismatch(path: str) -> Never:
 def _enforce_record_contract(
     record: Mapping[str, object],
     entitlements: ProviderEntitlements,
+    *,
+    schema_version: str,
 ) -> None:
     for field, expected in (
         ("provider_id", entitlements.provider_id),
@@ -704,9 +711,30 @@ def _enforce_record_contract(
                 path="$.rights.reviewed_at",
             )
         except ProviderRecordValidationError:
+            parsed_reviewed_at = None
+        if parsed_reviewed_at is None:
             _contract_mismatch("$.rights.reviewed_at")
         if parsed_reviewed_at != entitlements.rights_reviewed_at:
             _contract_mismatch("$.rights.reviewed_at")
+    if (
+        schema_version == _VALID_UNTIL_PROVIDER_SCHEMA_VERSION
+        and rights.get("valid_until") is not None
+    ):
+        try:
+            parsed_valid_until = parse_rfc3339_timestamp(
+                rights.get("valid_until"),
+                path="$.rights.valid_until",
+            )
+        except ProviderRecordValidationError:
+            parsed_valid_until = None
+        if parsed_valid_until is None:
+            _contract_mismatch("$.rights.valid_until")
+        entitlement_valid_until = entitlements.valid_until
+        if entitlement_valid_until is None or _as_utc(
+            parsed_valid_until,
+            path="$.rights.valid_until",
+        ) != _as_utc(entitlement_valid_until, path="$.valid_until"):
+            _contract_mismatch("$.rights.valid_until")
 
 
 def _deny(*, code: str, path: str, message: str) -> Never:
@@ -1081,11 +1109,11 @@ def authorize_ingestion(
     )
     if (
         entitlements.source_ids or entitlements.dataset_ids
-    ) and schema_version != _SCOPED_PROVIDER_SCHEMA_VERSION:
+    ) and schema_version not in _SCOPED_PROVIDER_SCHEMA_VERSIONS:
         _deny(
             code="scope_schema_version_mismatch",
             path="$schema_version",
-            message="source-scoped entitlements require provider record schema 0.2.0",
+            message="source-scoped entitlements require provider record schema 0.2.0 or 0.3.0",
         )
     if provider_id != entitlements.provider_id:
         _deny(
@@ -1124,7 +1152,11 @@ def authorize_ingestion(
             path="$.entity_type",
             message="provider capability does not authorize this record data plane",
         )
-    _enforce_record_contract(record, entitlements)
+    _enforce_record_contract(
+        record,
+        entitlements,
+        schema_version=schema_version,
+    )
     if entitlements.rights_mode is RightsMode.UNKNOWN_BLOCKED:
         _deny(
             code="rights_mode_blocked",

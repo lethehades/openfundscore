@@ -13,13 +13,17 @@ Every call selects an exact record type and packaged Schema version:
 - `external_rating`
 - `score_evidence_usage`
 
-All record types retain Schema `0.1.0`. `score_evidence_usage` additionally
-publishes `0.2.0`, which requires consumed `evidence_id`, `observation_as_of`,
-`window_basis`, `window_months` and inclusive window endpoints for category
-scoring. Manager primary rows additionally require `source_facts_sha256`; fund
-primary and capture-denominator rows forbid that manager-only field. The 0.1.0 bytes remain unchanged for explicit legacy
-validation. There is no `latest` alias, implicit version selection, downgrade or
-repository-path fallback.
+Every record type retains Schema `0.1.0`. `provider_record` additionally
+publishes immutable `0.2.0` for SEC/World Bank fields including
+`macro_observation`, and `0.3.0` as the closed union used by Mainland snapshots
+for exact identifiers, Mainland entity types and `rights.valid_until`.
+`score_evidence_usage` additionally publishes `0.2.0`, which requires consumed
+`evidence_id`, `observation_as_of`, `window_basis`, `window_months` and inclusive
+window endpoints for category scoring. Manager primary rows additionally require
+`source_facts_sha256`; fund primary and capture-denominator rows forbid that
+manager-only field. Published 0.1.0 and provider-record 0.2.0 bytes remain
+unchanged for explicit legacy validation. There is no `latest` alias, implicit
+version selection, downgrade or repository-path fallback.
 
 ## Python API
 
@@ -29,7 +33,7 @@ from openfundscore import RecordType, validate_record
 validate_record(
     RecordType.PROVIDER_RECORD,
     document,
-    schema_version="0.1.0",
+    schema_version="0.2.0",
     evaluation_timestamp="2026-08-21T00:00:00Z",
 )
 
@@ -67,7 +71,7 @@ chains.
 ```bash
 openfundscore validate-record \
   --type provider_record \
-  --schema-version 0.1.0 \
+  --schema-version 0.2.0 \
   --evaluation-timestamp 2026-08-21T00:00:00Z \
   provider-record.json
 
@@ -80,7 +84,7 @@ openfundscore validate-record \
 A valid document prints one line:
 
 ```text
-valid: provider_record@0.1.0 (schema+semantics)
+valid: provider_record@0.2.0 (schema+semantics)
 ```
 
 Invalid invocations and all document, Schema or semantic failures return exit

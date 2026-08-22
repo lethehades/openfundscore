@@ -1,0 +1,1503 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openfundscore.org/schemas/mainland_official_snapshot/0.1.0.schema.json",
+  "title": "OpenFundScore Mainland Official Frozen Snapshot Bundle",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "provider_id",
+    "snapshot_id",
+    "source_type",
+    "jurisdiction",
+    "official_source_url",
+    "retrieved_at",
+    "published_at",
+    "as_of",
+    "effective_at",
+    "document_sha256",
+    "timezone",
+    "currency",
+    "units",
+    "rights",
+    "items"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "0.1.0"
+    },
+    "provider_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "snapshot_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "source_type": {
+      "enum": [
+        "regulator",
+        "exchange",
+        "fund_company"
+      ]
+    },
+    "jurisdiction": {
+      "const": "CN"
+    },
+    "official_source_url": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2048
+    },
+    "retrieved_at": {
+      "$ref": "#/$defs/timestamp"
+    },
+    "published_at": {
+      "$ref": "#/$defs/timestamp"
+    },
+    "as_of": {
+      "$ref": "#/$defs/timestamp"
+    },
+    "effective_at": {
+      "$ref": "#/$defs/timestamp"
+    },
+    "document_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "timezone": {
+      "const": "Asia/Shanghai"
+    },
+    "currency": {
+      "const": "CNY"
+    },
+    "units": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "nav",
+        "weight",
+        "coverage"
+      ],
+      "properties": {
+        "nav": {
+          "const": "CNY_per_share"
+        },
+        "weight": {
+          "enum": [
+            "bps",
+            "percent",
+            "fraction"
+          ]
+        },
+        "coverage": {
+          "enum": [
+            "bps",
+            "percent",
+            "fraction"
+          ]
+        }
+      }
+    },
+    "rights": {
+      "$ref": "#/$defs/rights"
+    },
+    "items": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1000,
+      "items": {
+        "$ref": "#/$defs/item"
+      }
+    }
+  },
+  "$defs": {
+    "timestamp": {
+      "type": "string",
+      "maxLength": 64,
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]{1,6})?(?:Z|[+-](?:[01][0-9]|2[0-3]):[0-5][0-9])$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "rights": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "terms_url",
+        "reviewed_at",
+        "valid_until",
+        "cache_allowed",
+        "derived_works_allowed",
+        "redistribution_allowed",
+        "attribution_required",
+        "public_display_allowed",
+        "retention_days",
+        "source_evidence_url"
+      ],
+      "properties": {
+        "mode": {
+          "enum": [
+            "local_entitlement",
+            "unknown_blocked",
+            "derived_only",
+            "display_only",
+            "open_redistributable"
+          ]
+        },
+        "terms_url": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048
+        },
+        "reviewed_at": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "valid_until": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "cache_allowed": {
+          "type": "boolean"
+        },
+        "derived_works_allowed": {
+          "type": "boolean"
+        },
+        "redistribution_allowed": {
+          "type": "boolean"
+        },
+        "attribution_required": {
+          "type": "boolean"
+        },
+        "public_display_allowed": {
+          "type": "boolean"
+        },
+        "retention_days": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 36500
+        },
+        "source_evidence_url": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048
+        }
+      }
+    },
+    "identifier": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scheme",
+        "value",
+        "jurisdiction"
+      ],
+      "properties": {
+        "scheme": {
+          "enum": [
+            "cn_fund_code",
+            "csrc_registration_id",
+            "exchange_security_code",
+            "fund_company_official_id",
+            "official_document_id",
+            "official_entity_id"
+          ]
+        },
+        "value": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "jurisdiction": {
+          "const": "CN"
+        }
+      }
+    },
+    "observation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "observation_id",
+        "field",
+        "raw_value",
+        "as_of",
+        "published_at",
+        "fetched_at",
+        "valid_from",
+        "valid_to",
+        "currency",
+        "unit",
+        "source_url",
+        "source_document_hash",
+        "point_in_time_status",
+        "methodology",
+        "quality_state",
+        "conflict_group"
+      ],
+      "properties": {
+        "observation_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "field": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "raw_value": {},
+        "as_of": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "published_at": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "fetched_at": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "valid_from": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "valid_to": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/timestamp"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "currency": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[A-Z]{3}$",
+          "maxLength": 3
+        },
+        "unit": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 64
+        },
+        "source_url": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048
+        },
+        "source_document_hash": {
+          "$ref": "#/$defs/sha256"
+        },
+        "point_in_time_status": {
+          "enum": [
+            "verified",
+            "provider_claimed",
+            "reconstructed",
+            "not_point_in_time",
+            "unknown"
+          ]
+        },
+        "quality_state": {
+          "enum": [
+            "verified",
+            "unverified",
+            "stale",
+            "conflict",
+            "missing",
+            "not_applicable"
+          ]
+        },
+        "conflict_group": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 256
+        },
+        "methodology": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 65536
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "field": {
+                "enum": [
+                  "canonical_name",
+                  "class_code"
+                ]
+              }
+            },
+            "required": [
+              "field"
+            ]
+          },
+          "then": {
+            "properties": {
+              "raw_value": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 512,
+                "pattern": "^(?=.*[^\\s\\u200B\\u2060\\uFEFF]).+$"
+              },
+              "unit": {
+                "type": "null"
+              },
+              "currency": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "field": {
+                "enum": [
+                  "manager_id",
+                  "fund_strategy_id",
+                  "instrument_id",
+                  "before_id"
+                ]
+              }
+            },
+            "required": [
+              "field"
+            ]
+          },
+          "then": {
+            "properties": {
+              "raw_value": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 512,
+                "pattern": "^(?=.*[^\\s\\u200B\\u2060\\uFEFF]).+$"
+              },
+              "unit": {
+                "type": "null"
+              },
+              "currency": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "field": {
+                "enum": [
+                  "after_id"
+                ]
+              }
+            },
+            "required": [
+              "field"
+            ]
+          },
+          "then": {
+            "properties": {
+              "raw_value": {
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 512,
+                    "pattern": "^(?=.*[^\\s\\u200B\\u2060\\uFEFF]).+$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "unit": {
+                "type": "null"
+              },
+              "currency": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "field": {
+                "enum": [
+                  "nav"
+                ]
+              }
+            },
+            "required": [
+              "field"
+            ]
+          },
+          "then": {
+            "properties": {
+              "raw_value": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1000000000000
+              },
+              "unit": {
+                "const": "CNY_per_share"
+              },
+              "currency": {
+                "const": "CNY"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "field": {
+                "enum": [
+                  "report_url"
+                ]
+              }
+            },
+            "required": [
+              "field"
+            ]
+          },
+          "then": {
+            "properties": {
+              "raw_value": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2048
+              },
+              "unit": {
+                "type": "null"
+              },
+              "currency": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "field": {
+                "enum": [
+                  "report_document_hash"
+                ]
+              }
+            },
+            "required": [
+              "field"
+            ]
+          },
+          "then": {
+            "properties": {
+              "raw_value": {
+                "$ref": "#/$defs/sha256"
+              },
+              "unit": {
+                "type": "null"
+              },
+              "currency": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "field": {
+                "enum": [
+                  "tenure_start"
+                ]
+              }
+            },
+            "required": [
+              "field"
+            ]
+          },
+          "then": {
+            "properties": {
+              "raw_value": {
+                "type": "string",
+                "format": "date",
+                "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+              },
+              "unit": {
+                "type": "null"
+              },
+              "currency": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "field": {
+                "enum": [
+                  "tenure_end"
+                ]
+              }
+            },
+            "required": [
+              "field"
+            ]
+          },
+          "then": {
+            "properties": {
+              "raw_value": {
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "format": "date",
+                    "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "unit": {
+                "type": "null"
+              },
+              "currency": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "field": {
+                "enum": [
+                  "weight",
+                  "coverage"
+                ]
+              }
+            },
+            "required": [
+              "field"
+            ]
+          },
+          "then": {
+            "properties": {
+              "raw_value": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 10000
+              },
+              "unit": {
+                "enum": [
+                  "bps",
+                  "percent",
+                  "fraction"
+                ]
+              },
+              "currency": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "field": {
+                "enum": [
+                  "action_type"
+                ]
+              }
+            },
+            "required": [
+              "field"
+            ]
+          },
+          "then": {
+            "properties": {
+              "raw_value": {
+                "enum": [
+                  "closed",
+                  "merged",
+                  "transformed"
+                ]
+              },
+              "unit": {
+                "type": "null"
+              },
+              "currency": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "field": {
+                "enum": [
+                  "effective_at"
+                ]
+              }
+            },
+            "required": [
+              "field"
+            ]
+          },
+          "then": {
+            "properties": {
+              "raw_value": {
+                "$ref": "#/$defs/timestamp"
+              },
+              "unit": {
+                "type": "null"
+              },
+              "currency": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "point_in_time_status": {
+                "enum": [
+                  "reconstructed",
+                  "not_point_in_time"
+                ]
+              }
+            },
+            "required": [
+              "point_in_time_status"
+            ]
+          },
+          "then": {
+            "properties": {
+              "methodology": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^(?=.*[^\\s\\u200B\\u2060\\uFEFF]).+$"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "item_id",
+        "item_type",
+        "entity_type",
+        "entity_id",
+        "exact_identifiers",
+        "observations"
+      ],
+      "properties": {
+        "item_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "item_type": {
+          "enum": [
+            "identity",
+            "nav",
+            "report",
+            "manager_tenure",
+            "benchmark",
+            "holding",
+            "corporate_action"
+          ]
+        },
+        "entity_type": {
+          "enum": [
+            "fund_strategy",
+            "share_class",
+            "manager",
+            "benchmark",
+            "manager_tenure",
+            "holding",
+            "report",
+            "corporate_action"
+          ]
+        },
+        "entity_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "exact_identifiers": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 32,
+          "items": {
+            "$ref": "#/$defs/identifier"
+          }
+        },
+        "observations": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1000,
+          "items": {
+            "$ref": "#/$defs/observation"
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "item_type": {
+                "const": "nav"
+              }
+            },
+            "required": [
+              "item_type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "entity_type": {
+                "const": "share_class"
+              }
+            },
+            "allOf": [
+              {
+                "properties": {
+                  "observations": {
+                    "items": {
+                      "properties": {
+                        "field": {
+                          "enum": [
+                            "nav"
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "observations": {
+                    "contains": {
+                      "properties": {
+                        "field": {
+                          "const": "nav"
+                        }
+                      },
+                      "required": [
+                        "field"
+                      ]
+                    },
+                    "minContains": 1
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "item_type": {
+                "const": "report"
+              }
+            },
+            "required": [
+              "item_type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "entity_type": {
+                "const": "report"
+              }
+            },
+            "allOf": [
+              {
+                "properties": {
+                  "observations": {
+                    "items": {
+                      "properties": {
+                        "field": {
+                          "enum": [
+                            "report_document_hash",
+                            "report_url"
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "observations": {
+                    "contains": {
+                      "properties": {
+                        "field": {
+                          "const": "report_document_hash"
+                        }
+                      },
+                      "required": [
+                        "field"
+                      ]
+                    },
+                    "minContains": 1
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "observations": {
+                    "contains": {
+                      "properties": {
+                        "field": {
+                          "const": "report_url"
+                        }
+                      },
+                      "required": [
+                        "field"
+                      ]
+                    },
+                    "minContains": 1
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "item_type": {
+                "const": "manager_tenure"
+              }
+            },
+            "required": [
+              "item_type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "entity_type": {
+                "const": "manager_tenure"
+              }
+            },
+            "allOf": [
+              {
+                "properties": {
+                  "observations": {
+                    "items": {
+                      "properties": {
+                        "field": {
+                          "enum": [
+                            "manager_id",
+                            "fund_strategy_id",
+                            "tenure_start",
+                            "tenure_end"
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "observations": {
+                    "contains": {
+                      "properties": {
+                        "field": {
+                          "const": "manager_id"
+                        }
+                      },
+                      "required": [
+                        "field"
+                      ]
+                    },
+                    "minContains": 1
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "observations": {
+                    "contains": {
+                      "properties": {
+                        "field": {
+                          "const": "fund_strategy_id"
+                        }
+                      },
+                      "required": [
+                        "field"
+                      ]
+                    },
+                    "minContains": 1
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "observations": {
+                    "contains": {
+                      "properties": {
+                        "field": {
+                          "const": "tenure_start"
+                        }
+                      },
+                      "required": [
+                        "field"
+                      ]
+                    },
+                    "minContains": 1
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "observations": {
+                    "contains": {
+                      "properties": {
+                        "field": {
+                          "const": "tenure_end"
+                        }
+                      },
+                      "required": [
+                        "field"
+                      ]
+                    },
+                    "minContains": 1
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "item_type": {
+                "const": "benchmark"
+              }
+            },
+            "required": [
+              "item_type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "entity_type": {
+                "const": "benchmark"
+              }
+            },
+            "allOf": [
+              {
+                "properties": {
+                  "observations": {
+                    "items": {
+                      "properties": {
+                        "field": {
+                          "enum": [
+                            "canonical_name"
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "observations": {
+                    "contains": {
+                      "properties": {
+                        "field": {
+                          "const": "canonical_name"
+                        }
+                      },
+                      "required": [
+                        "field"
+                      ]
+                    },
+                    "minContains": 1
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "item_type": {
+                "const": "holding"
+              }
+            },
+            "required": [
+              "item_type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "entity_type": {
+                "const": "holding"
+              }
+            },
+            "allOf": [
+              {
+                "properties": {
+                  "observations": {
+                    "items": {
+                      "properties": {
+                        "field": {
+                          "enum": [
+                            "weight",
+                            "fund_strategy_id",
+                            "instrument_id",
+                            "coverage"
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "observations": {
+                    "contains": {
+                      "properties": {
+                        "field": {
+                          "const": "weight"
+                        }
+                      },
+                      "required": [
+                        "field"
+                      ]
+                    },
+                    "minContains": 1
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "observations": {
+                    "contains": {
+                      "properties": {
+                        "field": {
+                          "const": "fund_strategy_id"
+                        }
+                      },
+                      "required": [
+                        "field"
+                      ]
+                    },
+                    "minContains": 1
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "observations": {
+                    "contains": {
+                      "properties": {
+                        "field": {
+                          "const": "instrument_id"
+                        }
+                      },
+                      "required": [
+                        "field"
+                      ]
+                    },
+                    "minContains": 1
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "observations": {
+                    "contains": {
+                      "properties": {
+                        "field": {
+                          "const": "coverage"
+                        }
+                      },
+                      "required": [
+                        "field"
+                      ]
+                    },
+                    "minContains": 1
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "item_type": {
+                "const": "corporate_action"
+              }
+            },
+            "required": [
+              "item_type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "entity_type": {
+                "const": "corporate_action"
+              }
+            },
+            "allOf": [
+              {
+                "properties": {
+                  "observations": {
+                    "items": {
+                      "properties": {
+                        "field": {
+                          "enum": [
+                            "after_id",
+                            "action_type",
+                            "effective_at",
+                            "before_id"
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "observations": {
+                    "contains": {
+                      "properties": {
+                        "field": {
+                          "const": "after_id"
+                        }
+                      },
+                      "required": [
+                        "field"
+                      ]
+                    },
+                    "minContains": 1
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "observations": {
+                    "contains": {
+                      "properties": {
+                        "field": {
+                          "const": "action_type"
+                        }
+                      },
+                      "required": [
+                        "field"
+                      ]
+                    },
+                    "minContains": 1
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "observations": {
+                    "contains": {
+                      "properties": {
+                        "field": {
+                          "const": "effective_at"
+                        }
+                      },
+                      "required": [
+                        "field"
+                      ]
+                    },
+                    "minContains": 1
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "observations": {
+                    "contains": {
+                      "properties": {
+                        "field": {
+                          "const": "before_id"
+                        }
+                      },
+                      "required": [
+                        "field"
+                      ]
+                    },
+                    "minContains": 1
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "item_type": {
+                "const": "identity"
+              }
+            },
+            "required": [
+              "item_type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "entity_type": {
+                "enum": [
+                  "fund_strategy",
+                  "share_class",
+                  "manager",
+                  "benchmark"
+                ]
+              }
+            },
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "entity_type": {
+                      "const": "fund_strategy"
+                    }
+                  },
+                  "required": [
+                    "entity_type"
+                  ]
+                },
+                "then": {
+                  "allOf": [
+                    {
+                      "properties": {
+                        "observations": {
+                          "items": {
+                            "properties": {
+                              "field": {
+                                "enum": [
+                                  "canonical_name"
+                                ]
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "properties": {
+                        "observations": {
+                          "contains": {
+                            "properties": {
+                              "field": {
+                                "const": "canonical_name"
+                              }
+                            },
+                            "required": [
+                              "field"
+                            ]
+                          },
+                          "minContains": 1
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "entity_type": {
+                      "const": "share_class"
+                    }
+                  },
+                  "required": [
+                    "entity_type"
+                  ]
+                },
+                "then": {
+                  "allOf": [
+                    {
+                      "properties": {
+                        "observations": {
+                          "items": {
+                            "properties": {
+                              "field": {
+                                "enum": [
+                                  "class_code",
+                                  "canonical_name"
+                                ]
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "properties": {
+                        "observations": {
+                          "contains": {
+                            "properties": {
+                              "field": {
+                                "const": "class_code"
+                              }
+                            },
+                            "required": [
+                              "field"
+                            ]
+                          },
+                          "minContains": 1
+                        }
+                      }
+                    },
+                    {
+                      "properties": {
+                        "observations": {
+                          "contains": {
+                            "properties": {
+                              "field": {
+                                "const": "canonical_name"
+                              }
+                            },
+                            "required": [
+                              "field"
+                            ]
+                          },
+                          "minContains": 1
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "entity_type": {
+                      "const": "manager"
+                    }
+                  },
+                  "required": [
+                    "entity_type"
+                  ]
+                },
+                "then": {
+                  "allOf": [
+                    {
+                      "properties": {
+                        "observations": {
+                          "items": {
+                            "properties": {
+                              "field": {
+                                "enum": [
+                                  "canonical_name"
+                                ]
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "properties": {
+                        "observations": {
+                          "contains": {
+                            "properties": {
+                              "field": {
+                                "const": "canonical_name"
+                              }
+                            },
+                            "required": [
+                              "field"
+                            ]
+                          },
+                          "minContains": 1
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "entity_type": {
+                      "const": "benchmark"
+                    }
+                  },
+                  "required": [
+                    "entity_type"
+                  ]
+                },
+                "then": {
+                  "allOf": [
+                    {
+                      "properties": {
+                        "observations": {
+                          "items": {
+                            "properties": {
+                              "field": {
+                                "enum": [
+                                  "canonical_name"
+                                ]
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "properties": {
+                        "observations": {
+                          "contains": {
+                            "properties": {
+                              "field": {
+                                "const": "canonical_name"
+                              }
+                            },
+                            "required": [
+                              "field"
+                            ]
+                          },
+                          "minContains": 1
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}
