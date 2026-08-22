@@ -6,9 +6,26 @@ import argparse
 import json
 import sys
 from collections.abc import Sequence
+from dataclasses import asdict
+from datetime import datetime
 from pathlib import Path
 from typing import NoReturn
 
+from .category_metrics import (
+    ApplicabilityContext,
+    CaptureDenominatorAudit,
+    CaptureDenominatorStatus,
+    CategoryMetricError,
+    MetricObservation,
+    MetricState,
+    PeerObservation,
+    score_category_metrics,
+)
+from .manager_research import (
+    ManagerResearchHandoff,
+    ManagerResearchValidationError,
+    derive_manager_evidence_sources,
+)
 from .official_providers import (
     OFFICIAL_PROVIDER_SCHEMA_VERSION,
     ProviderHttpError,
@@ -37,6 +54,7 @@ from .strategy_mapping import (
 from .validation import RecordType, RecordValidationError, validate_record
 
 _MAX_RECORD_BYTES = 8 * 1024 * 1024
+_MAX_CATEGORY_BYTES = 8 * 1024 * 1024
 _MAX_PROVIDER_FIXTURE_BYTES = 2 * 1024 * 1024
 
 
@@ -146,6 +164,347 @@ def _load_record_document(
     return document
 
 
+def _load_category_document(path: str) -> object:
+    try:
+        with Path(path).open("rb") as stream:
+            payload = stream.read(_MAX_CATEGORY_BYTES + 1)
+    except OSError:
+        raise CategoryMetricError(
+            "document_io", "$document", "category score document could not be read"
+        ) from None
+    if len(payload) > _MAX_CATEGORY_BYTES:
+        raise CategoryMetricError(
+            "document_too_large",
+            "$document",
+            "category score document exceeds the size limit",
+        )
+    try:
+        text = payload.decode("utf-8", errors="strict")
+        return json.loads(
+            text,
+            object_pairs_hook=_unique_json_object,
+            parse_constant=_reject_json_constant,
+        )
+    except (UnicodeDecodeError, ValueError, RecursionError):
+        raise CategoryMetricError(
+            "document_format", "$document", "document must be strict UTF-8 JSON"
+        ) from None
+
+
+def _closed_document(value: object, *, fields: set[str], path: str) -> dict:
+    if type(value) is not dict or set(value) != fields:
+        raise CategoryMetricError(
+            "document_shape",
+            path,
+            "object must contain the exact required fields",
+        )
+    return value
+
+
+def _category_timestamp(value: object, *, path: str) -> datetime:
+    if type(value) is not str or len(value) > 64:
+        raise CategoryMetricError(
+            "document_timestamp", path, "timestamp must be bounded ISO 8601 text"
+        )
+    try:
+        return datetime.fromisoformat(value)
+    except ValueError:
+        raise CategoryMetricError(
+            "document_timestamp", path, "timestamp must be ISO 8601 text"
+        ) from None
+
+
+def _capture_denominator_from_document(
+    value: object, *, path: str
+) -> CaptureDenominatorAudit | None:
+    if value is None:
+        return None
+    item = _closed_document(
+        value,
+        fields={
+            "denominator_status",
+            "benchmark_downside_sample_count",
+            "evidence_id",
+            "lineage_id",
+            "series_id",
+        },
+        path=path,
+    )
+    try:
+        status = CaptureDenominatorStatus(item["denominator_status"])
+    except (TypeError, ValueError):
+        raise CategoryMetricError(
+            "document_state",
+            f"{path}.denominator_status",
+            "capture denominator status is unsupported",
+        ) from None
+    return CaptureDenominatorAudit(
+        denominator_status=status,
+        benchmark_downside_sample_count=item["benchmark_downside_sample_count"],
+        evidence_id=item["evidence_id"],
+        lineage_id=item["lineage_id"],
+        series_id=item["series_id"],
+    )
+
+
+def _manager_handoff_from_document(value: object) -> ManagerResearchHandoff:
+    item = _closed_document(
+        value,
+        fields={
+            "manager_research",
+            "as_of",
+            "fund_strategy_id",
+            "sources",
+            "assertion_status",
+        },
+        path="$document.manager_handoff",
+    )
+    if type(item["manager_research"]) is not dict:
+        raise CategoryMetricError(
+            "document_shape",
+            "$document.manager_handoff.manager_research",
+            "manager research must be a JSON object",
+        )
+    fund_strategy_id = item["fund_strategy_id"]
+    if (
+        type(fund_strategy_id) is not str
+        or not fund_strategy_id
+        or len(fund_strategy_id) > 64
+    ):
+        raise CategoryMetricError(
+            "document_shape",
+            "$document.manager_handoff.fund_strategy_id",
+            "manager target must be bounded text",
+        )
+    as_of = _category_timestamp(item["as_of"], path="$document.manager_handoff.as_of")
+    if as_of.tzinfo is None or as_of.utcoffset() is None:
+        raise CategoryMetricError(
+            "document_timestamp",
+            "$document.manager_handoff.as_of",
+            "manager handoff timestamp must include an offset",
+        )
+    if item["assertion_status"] != "caller_provided":
+        raise CategoryMetricError(
+            "document_manager_handoff",
+            "$document.manager_handoff.assertion_status",
+            "manager assertion status must be exactly caller_provided",
+        )
+    try:
+        sources = derive_manager_evidence_sources(
+            item["manager_research"],
+            fund_strategy_id,
+            item["sources"],
+        )
+        return ManagerResearchHandoff(
+            manager_research=item["manager_research"],
+            as_of=as_of,
+            fund_strategy_id=fund_strategy_id,
+            sources=sources,
+            assertion_status=item["assertion_status"],
+        )
+    except ManagerResearchValidationError:
+        raise CategoryMetricError(
+            "document_manager_handoff",
+            "$document.manager_handoff",
+            "manager handoff input is invalid",
+        ) from None
+
+
+def _category_score_from_document(document: object):
+    top_fields = {
+        "profile_id",
+        "peer_bucket",
+        "peer_bucket_version",
+        "peer_admission_version",
+        "history_months",
+        "adequate_regime_coverage",
+        "applicability_context",
+        "manager_handoff",
+        "evidence_ledger",
+        "config_version",
+        "metric_catalog_version",
+        "final_precision",
+        "observations",
+        "peers",
+    }
+    root = _closed_document(document, fields=top_fields, path="$document")
+    applicability_fields = {
+        "declared_benchmark",
+        "cross_border_or_currency_exposure",
+        "derivative_or_commodity_exposure",
+        "income_distributing_assets",
+        "lookthrough_portfolio",
+        "securities_lending_program",
+    }
+    applicability_document = _closed_document(
+        root["applicability_context"],
+        fields=applicability_fields,
+        path="$document.applicability_context",
+    )
+    for field in applicability_fields:
+        if type(applicability_document[field]) is not bool:
+            raise CategoryMetricError(
+                "document_shape",
+                f"$document.applicability_context.{field}",
+                "applicability prerequisites must be exact booleans",
+            )
+    applicability_context = ApplicabilityContext(**applicability_document)
+    observation_fields = {
+        "metric_id",
+        "state",
+        "raw_value",
+        "fund_id",
+        "series_id",
+        "evidence_id",
+        "lineage_id",
+        "as_of",
+        "published_at",
+        "evaluation_timestamp",
+        "sample_size",
+        "window_months",
+        "uncertainty",
+        "capture_denominator",
+    }
+    values = root["observations"]
+    if type(values) is not list or len(values) > 100:
+        raise CategoryMetricError(
+            "document_shape",
+            "$document.observations",
+            "observations must be a bounded array",
+        )
+    observations = []
+    for index, value in enumerate(values):
+        path = f"$document.observations[{index}]"
+        required_observation_fields = observation_fields - {"uncertainty"}
+        if (
+            type(value) is not dict
+            or not required_observation_fields <= set(value)
+            or not set(value) <= observation_fields
+        ):
+            raise CategoryMetricError(
+                "document_shape",
+                path,
+                "object must contain all required fields and only optional uncertainty",
+            )
+        item = value
+        try:
+            state = MetricState(item["state"])
+        except (TypeError, ValueError):
+            raise CategoryMetricError(
+                "document_state", f"{path}.state", "metric state is unsupported"
+            ) from None
+        observations.append(
+            MetricObservation(
+                metric_id=item["metric_id"],
+                state=state,
+                raw_value=item["raw_value"],
+                fund_id=item["fund_id"],
+                series_id=item["series_id"],
+                evidence_id=item["evidence_id"],
+                lineage_id=item["lineage_id"],
+                as_of=_category_timestamp(item["as_of"], path=f"{path}.as_of"),
+                published_at=_category_timestamp(
+                    item["published_at"], path=f"{path}.published_at"
+                ),
+                evaluation_timestamp=_category_timestamp(
+                    item["evaluation_timestamp"],
+                    path=f"{path}.evaluation_timestamp",
+                ),
+                sample_size=item["sample_size"],
+                window_months=item["window_months"],
+                uncertainty=item.get("uncertainty"),
+                capture_denominator=_capture_denominator_from_document(
+                    item["capture_denominator"], path=f"{path}.capture_denominator"
+                ),
+            )
+        )
+    peer_values = root["peers"]
+    if type(peer_values) is not list or len(peer_values) > 120_000:
+        raise CategoryMetricError(
+            "document_shape", "$document.peers", "peers must be a bounded array"
+        )
+    peers = []
+    for index, value in enumerate(peer_values):
+        path = f"$document.peers[{index}]"
+        item = _closed_document(
+            value,
+            fields={
+                "peer_id",
+                "metric_id",
+                "raw_value",
+                "series_id",
+                "source_id",
+                "lineage_id",
+                "as_of",
+                "published_at",
+                "evaluation_timestamp",
+                "peer_bucket",
+                "peer_bucket_version",
+                "category_profile",
+                "admission_contract_version",
+                "admission_contract_sha256",
+                "snapshot_hash",
+                "document_hash",
+                "sample_size",
+                "window_basis",
+                "window_months",
+                "window_start",
+                "window_end",
+                "capture_denominator",
+            },
+            path=path,
+        )
+        peers.append(
+            PeerObservation(
+                peer_id=item["peer_id"],
+                metric_id=item["metric_id"],
+                raw_value=item["raw_value"],
+                series_id=item["series_id"],
+                source_id=item["source_id"],
+                lineage_id=item["lineage_id"],
+                as_of=_category_timestamp(item["as_of"], path=f"{path}.as_of"),
+                published_at=_category_timestamp(
+                    item["published_at"], path=f"{path}.published_at"
+                ),
+                evaluation_timestamp=_category_timestamp(
+                    item["evaluation_timestamp"],
+                    path=f"{path}.evaluation_timestamp",
+                ),
+                peer_bucket=item["peer_bucket"],
+                peer_bucket_version=item["peer_bucket_version"],
+                category_profile=item["category_profile"],
+                admission_contract_version=item["admission_contract_version"],
+                admission_contract_sha256=item["admission_contract_sha256"],
+                snapshot_hash=item["snapshot_hash"],
+                document_hash=item["document_hash"],
+                sample_size=item["sample_size"],
+                window_basis=item["window_basis"],
+                window_months=item["window_months"],
+                window_start=item["window_start"],
+                window_end=item["window_end"],
+                capture_denominator=_capture_denominator_from_document(
+                    item["capture_denominator"], path=f"{path}.capture_denominator"
+                ),
+            )
+        )
+    return score_category_metrics(
+        profile_id=root["profile_id"],
+        peer_bucket=root["peer_bucket"],
+        peer_bucket_version=root["peer_bucket_version"],
+        peer_admission_version=root["peer_admission_version"],
+        history_months=root["history_months"],
+        adequate_regime_coverage=root["adequate_regime_coverage"],
+        applicability_context=applicability_context,
+        observations=tuple(observations),
+        peers=tuple(peers),
+        manager_handoff=_manager_handoff_from_document(root["manager_handoff"]),
+        evidence_ledger=root["evidence_ledger"],
+        config_version=root["config_version"],
+        metric_catalog_version=root["metric_catalog_version"],
+        final_precision=root["final_precision"],
+    )
+
+
 def _load_provider_fixture(path: str) -> bytes:
     payload: bytes | None = None
     try:
@@ -214,6 +573,14 @@ def _build_parser() -> argparse.ArgumentParser:
     validate_record_command.add_argument("--evaluation-timestamp")
     validate_record_command.add_argument("path", help="path to a contract JSON file")
 
+    category_score = subparsers.add_parser(
+        "category-score",
+        help="score strict audited JSON with manager handoff and evidence ledger 0.2.0",
+        description=(
+            "score strict audited JSON with manager handoff and evidence ledger 0.2.0"
+        ),
+    )
+    category_score.add_argument("path", help="path to a category score JSON document")
     provider_fixture = subparsers.add_parser(
         "provider-fixture",
         help="parse a bounded official-provider JSON fixture without network access",
@@ -287,6 +654,28 @@ def main(argv: Sequence[str] | None = None) -> int:
     """Run the OpenFundScore CLI and return a process exit code."""
     parser = _build_parser()
     args = parser.parse_args(argv)
+
+    if args.command == "category-score":
+        try:
+            result = _category_score_from_document(_load_category_document(args.path))
+            print(
+                json.dumps(
+                    asdict(result),
+                    allow_nan=False,
+                    indent=2,
+                    sort_keys=True,
+                )
+            )
+        except ManagerResearchValidationError:
+            print(
+                "openfundscore: error: invalid manager handoff input",
+                file=sys.stderr,
+            )
+            return 2
+        except CategoryMetricError as exc:
+            print(f"openfundscore: error: {exc}", file=sys.stderr)
+            return 2
+        return 0
 
     if args.command == "validate-record":
         try:

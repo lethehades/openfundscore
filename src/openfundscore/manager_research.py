@@ -2,11 +2,16 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 import re
 import unicodedata
+from calendar import monthrange
 from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
-from typing import Any
+from types import MappingProxyType
+from typing import Any, Literal, cast
 from urllib.parse import unquote
 
 from .provider_semantics import (
@@ -17,6 +22,105 @@ from .provider_semantics import (
 
 class ManagerResearchValidationError(ValueError):
     """Raised when manager research violates a semantic boundary."""
+
+
+ManagerComponent = Literal[
+    "tenure_attributed_performance",
+    "downside_control",
+    "cross_cycle_consistency",
+    "style_discipline",
+    "career_track_record",
+    "workload_capacity",
+    "research_platform_team",
+    "compliance_integrity",
+]
+ManagerSourceScope = Literal["current_fund", "external_career", "team_platform"]
+ManagerUsageMode = Literal["raw", "residualized", "orthogonal", "descriptive"]
+ManagerWindowBasis = Literal["point_in_time", "calendar_months", "actual_dates"]
+ManagerAssertionStatus = Literal["caller_provided"]
+
+
+@dataclass(frozen=True, slots=True)
+class ManagerEvidenceSource:
+    """Caller identity plus locally checkable structured-fact binding."""
+
+    component: ManagerComponent
+    evidence_id: str
+    lineage_id: str
+    series_id: str
+    facts_sha256: str
+    source_scope: ManagerSourceScope
+    usage_mode: ManagerUsageMode
+    fund_strategy_id: str | None
+    observation_as_of: datetime
+    window_basis: ManagerWindowBasis
+    window_months: int
+    window_start: date
+    window_end: date
+
+
+MANAGER_COMPONENT_SOURCE_MANIFEST: Mapping[str, frozenset[tuple[str, str]]] = (
+    MappingProxyType(
+        {
+            "tenure_attributed_performance": frozenset(
+                {("external_career", "residualized"), ("current_fund", "raw")}
+            ),
+            "downside_control": frozenset(
+                {("external_career", "orthogonal"), ("current_fund", "raw")}
+            ),
+            "cross_cycle_consistency": frozenset(
+                {("external_career", "orthogonal"), ("current_fund", "raw")}
+            ),
+            "style_discipline": frozenset({("external_career", "descriptive")}),
+            "career_track_record": frozenset({("external_career", "descriptive")}),
+            "workload_capacity": frozenset({("team_platform", "descriptive")}),
+            "research_platform_team": frozenset({("team_platform", "descriptive")}),
+            "compliance_integrity": frozenset({("external_career", "descriptive")}),
+        }
+    )
+)
+
+
+@dataclass(frozen=True, slots=True)
+class ManagerResearchHandoff:
+    """Immutable caller assertions and local recomputation inputs."""
+
+    manager_research: Mapping[str, Any]
+    as_of: datetime
+    fund_strategy_id: str
+    sources: tuple[ManagerEvidenceSource, ...]
+    assertion_status: ManagerAssertionStatus
+
+    def __post_init__(self) -> None:
+        if self.assertion_status != "caller_provided":
+            raise ManagerResearchValidationError(
+                "manager handoff assertion_status must be exactly caller_provided"
+            )
+        raw_input = _thaw_manager_input(self.manager_research)
+        if type(raw_input) is not dict:
+            raise ManagerResearchValidationError(
+                "manager handoff raw input must be an object"
+            )
+        snapshot = _canonical_manager_snapshot(raw_input)
+        object.__setattr__(self, "manager_research", _freeze_manager_input(snapshot))
+
+
+def _freeze_manager_input(value: object) -> object:
+    if type(value) is dict:
+        return MappingProxyType(
+            {key: _freeze_manager_input(child) for key, child in value.items()}
+        )
+    if type(value) is list:
+        return tuple(_freeze_manager_input(child) for child in value)
+    return value
+
+
+def _thaw_manager_input(value: object) -> object:
+    if type(value) is MappingProxyType:
+        return {key: _thaw_manager_input(child) for key, child in value.items()}
+    if type(value) is tuple:
+        return [_thaw_manager_input(child) for child in value]
+    return value
 
 
 _SENSITIVE_TEXT_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
@@ -346,6 +450,168 @@ def _date_value(value: object, *, path: str) -> date:
     return parsed
 
 
+def build_manager_evidence_sources(
+    records: Sequence[Mapping[str, object]],
+) -> tuple[ManagerEvidenceSource, ...]:
+    """Build the exact eight caller-supplied manager provenance rows.
+
+    JSON-compatible timestamps and dates are converted, but no identity, scope,
+    mode, target, or window value is supplied on the caller's behalf.
+    """
+    if type(records) not in {list, tuple} or len(records) != len(
+        MANAGER_COMPONENT_SOURCE_MANIFEST
+    ):
+        raise ManagerResearchValidationError(
+            "manager source records must be a bounded eight-item sequence"
+        )
+    fields = {
+        "component",
+        "evidence_id",
+        "lineage_id",
+        "series_id",
+        "facts_sha256",
+        "source_scope",
+        "usage_mode",
+        "fund_strategy_id",
+        "observation_as_of",
+        "window_basis",
+        "window_months",
+        "window_start",
+        "window_end",
+    }
+    built: list[ManagerEvidenceSource] = []
+    for index, record in enumerate(records):
+        path = f"$sources[{index}]"
+        if type(record) is not dict or set(record) != fields:
+            raise ManagerResearchValidationError(
+                f"{path}: manager source fields are closed and all required"
+            )
+        component = record["component"]
+        source_scope = record["source_scope"]
+        usage_mode = record["usage_mode"]
+        window_basis = record["window_basis"]
+        if (
+            type(component) is not str
+            or component not in MANAGER_COMPONENT_SOURCE_MANIFEST
+        ):
+            raise ManagerResearchValidationError(
+                f"{path}.component: component is unsupported"
+            )
+        if type(source_scope) is not str or source_scope not in {
+            "current_fund",
+            "external_career",
+            "team_platform",
+        }:
+            raise ManagerResearchValidationError(
+                f"{path}.source_scope: source scope is unsupported"
+            )
+        if type(usage_mode) is not str or usage_mode not in {
+            "raw",
+            "residualized",
+            "orthogonal",
+            "descriptive",
+        }:
+            raise ManagerResearchValidationError(
+                f"{path}.usage_mode: usage mode is unsupported"
+            )
+        if type(window_basis) is not str or window_basis not in {
+            "point_in_time",
+            "calendar_months",
+            "actual_dates",
+        }:
+            raise ManagerResearchValidationError(
+                f"{path}.window_basis: window basis is unsupported"
+            )
+        for field in ("evidence_id", "lineage_id", "series_id"):
+            value = record[field]
+            if type(value) is not str or not value or len(value) > 128:
+                raise ManagerResearchValidationError(
+                    f"{path}.{field}: identifier is invalid"
+                )
+            _require_canonical_identifier(value, f"{path}.{field}")
+        facts_sha256 = record["facts_sha256"]
+        if (
+            type(facts_sha256) is not str
+            or re.fullmatch(r"[0-9a-f]{64}", facts_sha256, re.ASCII) is None
+        ):
+            raise ManagerResearchValidationError(
+                f"{path}.facts_sha256: fact binding must be lowercase SHA-256"
+            )
+        fund_strategy_id = record["fund_strategy_id"]
+        if fund_strategy_id is not None and (
+            type(fund_strategy_id) is not str
+            or not fund_strategy_id
+            or len(fund_strategy_id) > 64
+        ):
+            raise ManagerResearchValidationError(
+                f"{path}.fund_strategy_id: target identifier is invalid"
+            )
+        if type(fund_strategy_id) is str:
+            _require_canonical_identifier(fund_strategy_id, f"{path}.fund_strategy_id")
+        observation_value = record["observation_as_of"]
+        if type(observation_value) is datetime:
+            observation_as_of = observation_value
+        elif type(observation_value) is str and len(observation_value) <= 64:
+            observation_as_of = _timestamp(
+                observation_value, path=f"{path}.observation_as_of"
+            )
+        else:
+            raise ManagerResearchValidationError(
+                f"{path}.observation_as_of: timestamp is invalid"
+            )
+        window_months = record["window_months"]
+        if type(window_months) is not int or not 0 <= window_months <= 1200:
+            raise ManagerResearchValidationError(
+                f"{path}.window_months: months must be a bounded integer"
+            )
+
+        def source_date(
+            field: str,
+            *,
+            source_record: Mapping[str, object] = record,
+            source_path: str = path,
+        ) -> date:
+            value = source_record[field]
+            if type(value) is date:
+                return value
+            if type(value) is str and len(value) == 10:
+                return _date_value(value, path=f"{source_path}.{field}")
+            raise ManagerResearchValidationError(
+                f"{source_path}.{field}: date is invalid"
+            )
+
+        built.append(
+            ManagerEvidenceSource(
+                component=cast(ManagerComponent, component),
+                evidence_id=cast(str, record["evidence_id"]),
+                lineage_id=cast(str, record["lineage_id"]),
+                series_id=cast(str, record["series_id"]),
+                facts_sha256=facts_sha256,
+                source_scope=cast(ManagerSourceScope, source_scope),
+                usage_mode=cast(ManagerUsageMode, usage_mode),
+                fund_strategy_id=cast(str | None, fund_strategy_id),
+                observation_as_of=observation_as_of,
+                window_basis=cast(ManagerWindowBasis, window_basis),
+                window_months=window_months,
+                window_start=source_date("window_start"),
+                window_end=source_date("window_end"),
+            )
+        )
+    if {source.component for source in built} != set(MANAGER_COMPONENT_SOURCE_MANIFEST):
+        raise ManagerResearchValidationError(
+            "manager source records must bind every exact component once"
+        )
+    return tuple(built)
+
+
+def _subtract_months(value: date, months: int) -> date:
+    """Shift back whole calendar months, clamping to the target month end."""
+    month_index = value.year * 12 + value.month - 1 - months
+    year, zero_based_month = divmod(month_index, 12)
+    month = zero_based_month + 1
+    return date(year, month, min(value.day, monthrange(year, month)[1]))
+
+
 def _validate_dated_ranges(
     document: Mapping[str, Any],
     *,
@@ -610,13 +876,324 @@ def _performance_observation_is_usable(item: Mapping[str, Any]) -> bool:
     )
 
 
-def _tenure_attribution(document: Mapping[str, Any]) -> dict[str, Any]:
+def _target_tenures(
+    document: Mapping[str, Any], fund_strategy_id: str
+) -> list[Mapping[str, Any]]:
+    target = [
+        tenure
+        for tenure in document.get("tenures", ())
+        if isinstance(tenure, Mapping)
+        and tenure.get("fund_strategy_id") == fund_strategy_id
+    ]
+    if not target:
+        raise ManagerResearchValidationError(
+            "$fund_strategy_id: target must exactly match at least one validated manager tenure"
+        )
+    return target
+
+
+def _utc_z(value: datetime) -> str:
+    return value.astimezone(UTC).isoformat().replace("+00:00", "Z")
+
+
+def _manager_facts_digest(component: str, facts: object) -> str:
+    payload = json.dumps(
+        {"component": component, "facts": facts},
+        allow_nan=False,
+        ensure_ascii=True,
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
+
+
+def _validated_manager_snapshot(document: Mapping[str, Any]) -> dict[str, Any]:
+    """Canonicalize, then run the unified manager Schema and semantic contract."""
+    from .validation import validate_record
+
+    snapshot = _canonical_manager_snapshot(document)
+    validate_record(
+        "manager_research",
+        snapshot,
+        schema_version="0.1.0",
+    )
+    return snapshot
+
+
+def _derive_manager_evidence_source_binding(
+    snapshot: Mapping[str, Any],
+    *,
+    component: ManagerComponent,
+    evidence_id: str,
+    fund_strategy_id: str,
+) -> dict[str, str | int]:
+    """Derive a local digest and PIT window from validated structured facts.
+
+    The digest binds the caller's manager document; it does not verify the
+    truth of those facts or of the caller-provided component score.
+    """
+    if component not in MANAGER_COMPONENT_SOURCE_MANIFEST:
+        raise ManagerResearchValidationError("manager source component is unsupported")
+    target_tenures = sorted(
+        _target_tenures(snapshot, fund_strategy_id), key=lambda item: item["tenure_id"]
+    )
+    target_tenure_ids = {item["tenure_id"] for item in target_tenures}
+    manager_as_of = _timestamp(snapshot.get("as_of"), path="$.as_of")
+
+    if component in {
+        "tenure_attributed_performance",
+        "downside_control",
+        "cross_cycle_consistency",
+    }:
+        rows = sorted(
+            (
+                item
+                for item in snapshot.get("performance_evidence", ())
+                if item.get("tenure_id") in target_tenure_ids
+                and evidence_id in item.get("evidence_ids", ())
+            ),
+            key=lambda item: item["observation_id"],
+        )
+        if not rows:
+            raise ManagerResearchValidationError(
+                f"$.score_components.{component}: no target-tenure structured performance facts bind the evidence ID"
+            )
+        starts = [
+            _date_value(
+                item.get("window_start"), path="$.performance_evidence.window_start"
+            )
+            for item in rows
+        ]
+        ends = [
+            _date_value(
+                item.get("window_end"), path="$.performance_evidence.window_end"
+            )
+            for item in rows
+        ]
+        window_start = min(starts)
+        window_end = max(ends)
+        observation_as_of = datetime.combine(
+            window_end, datetime.min.time(), tzinfo=UTC
+        )
+        facts: object = {
+            "performance_evidence": rows,
+            "target_tenures": target_tenures,
+        }
+        window_basis = "actual_dates"
+    elif component == "style_discipline":
+        style = snapshot.get("style_fingerprint")
+        if (
+            not isinstance(style, Mapping)
+            or evidence_id not in style.get("evidence_ids", ())
+            or not isinstance(style.get("factor_exposures"), Mapping)
+        ):
+            raise ManagerResearchValidationError(
+                "$.style_fingerprint.factor_exposures: structured factor facts must bind the evidence ID"
+            )
+        factor = style["factor_exposures"]
+        observation_as_of = _timestamp(
+            factor.get("as_of"), path="$.style_fingerprint.factor_exposures.as_of"
+        )
+        window_start = window_end = observation_as_of.astimezone(UTC).date()
+        window_basis = "point_in_time"
+        facts = {"factor_exposures": factor}
+    elif component == "career_track_record":
+        rows = sorted(
+            (
+                item
+                for item in snapshot.get("employment_history", ())
+                if evidence_id in item.get("evidence_ids", ())
+            ),
+            key=lambda item: (item["start_date"], item["organisation"], item["role"]),
+        )
+        if not rows:
+            raise ManagerResearchValidationError(
+                "$.employment_history: structured employment facts must bind the evidence ID"
+            )
+        starts = [
+            _date_value(item.get("start_date"), path="$.employment_history.start_date")
+            for item in rows
+        ]
+        ends = [
+            manager_as_of.astimezone(UTC).date()
+            if item.get("end_date") is None
+            else _date_value(item.get("end_date"), path="$.employment_history.end_date")
+            for item in rows
+        ]
+        window_start = min(starts)
+        window_end = max(ends)
+        observation_as_of = datetime.combine(
+            window_end, datetime.min.time(), tzinfo=UTC
+        )
+        window_basis = "actual_dates"
+        facts = {"employment_history": rows}
+    elif component in {"workload_capacity", "research_platform_team"}:
+        section_name = (
+            "workload" if component == "workload_capacity" else "research_platform"
+        )
+        section = snapshot.get(section_name)
+        if not isinstance(section, Mapping) or evidence_id not in section.get(
+            "evidence_ids", ()
+        ):
+            raise ManagerResearchValidationError(
+                f"$.{section_name}: structured facts must bind the evidence ID"
+            )
+        observation_as_of = manager_as_of
+        window_start = window_end = manager_as_of.astimezone(UTC).date()
+        window_basis = "point_in_time"
+        facts = {section_name: section}
+    else:
+        assessment = snapshot.get("compliance_assessment")
+        if not isinstance(assessment, Mapping) or evidence_id not in assessment.get(
+            "evidence_ids", ()
+        ):
+            raise ManagerResearchValidationError(
+                "$.compliance_assessment: structured facts must bind the evidence ID"
+            )
+        events = sorted(
+            (
+                item
+                for item in snapshot.get("compliance_events", ())
+                if evidence_id in item.get("evidence_ids", ())
+            ),
+            key=lambda item: json.dumps(item, sort_keys=True, separators=(",", ":")),
+        )
+        observation_as_of = _timestamp(
+            assessment.get("reviewed_at"), path="$.compliance_assessment.reviewed_at"
+        )
+        window_start = window_end = observation_as_of.astimezone(UTC).date()
+        window_basis = "point_in_time"
+        facts = {"compliance_assessment": assessment, "compliance_events": events}
+
+    window_months = (
+        0
+        if window_basis == "point_in_time"
+        else max(
+            0,
+            (window_end.year - window_start.year) * 12
+            + window_end.month
+            - window_start.month
+            - (window_end.day < window_start.day),
+        )
+    )
+    return {
+        "facts_sha256": _manager_facts_digest(component, facts),
+        "observation_as_of": _utc_z(observation_as_of),
+        "window_basis": window_basis,
+        "window_months": window_months,
+        "window_start": window_start.isoformat(),
+        "window_end": window_end.isoformat(),
+    }
+
+
+def derive_manager_evidence_source_binding(
+    document: Mapping[str, Any],
+    *,
+    component: ManagerComponent,
+    evidence_id: str,
+    fund_strategy_id: str,
+) -> dict[str, str | int]:
+    """Validate a manager document before deriving one local fact binding."""
+    snapshot = _validated_manager_snapshot(document)
+    return _derive_manager_evidence_source_binding(
+        snapshot,
+        component=component,
+        evidence_id=evidence_id,
+        fund_strategy_id=fund_strategy_id,
+    )
+
+
+def _derive_manager_evidence_sources(
+    document: Mapping[str, Any],
+    fund_strategy_id: str,
+    identity_rows: Sequence[Mapping[str, object]],
+) -> tuple[ManagerEvidenceSource, ...]:
+    snapshot = _validated_manager_snapshot(document)
+    identity_fields = {
+        "component",
+        "evidence_id",
+        "lineage_id",
+        "series_id",
+        "source_scope",
+        "usage_mode",
+        "fund_strategy_id",
+    }
+    if type(identity_rows) not in {list, tuple} or len(identity_rows) != len(
+        MANAGER_COMPONENT_SOURCE_MANIFEST
+    ):
+        raise ManagerResearchValidationError(
+            "manager source identities must be a bounded eight-item sequence"
+        )
+    complete_rows: list[dict[str, object]] = []
+    for index, row in enumerate(identity_rows):
+        path = f"$sources[{index}]"
+        if type(row) is not dict or set(row) != identity_fields:
+            raise ManagerResearchValidationError(
+                f"{path}: manager source identity fields are closed and all required"
+            )
+        component = row["component"]
+        evidence_id = row["evidence_id"]
+        if type(component) is not str or type(evidence_id) is not str:
+            raise ManagerResearchValidationError(
+                f"{path}: component and evidence identity must be text"
+            )
+        binding = _derive_manager_evidence_source_binding(
+            snapshot,
+            component=cast(ManagerComponent, component),
+            evidence_id=evidence_id,
+            fund_strategy_id=fund_strategy_id,
+        )
+        complete_row: dict[str, object] = dict(row)
+        complete_row.update(binding)
+        complete_rows.append(complete_row)
+    return build_manager_evidence_sources(complete_rows)
+
+
+def derive_manager_evidence_sources(
+    document: Mapping[str, Any],
+    fund_strategy_id: str,
+    identity_rows: Sequence[Mapping[str, object]],
+) -> tuple[ManagerEvidenceSource, ...]:
+    """Safely validate and bind source identities to local manager facts.
+
+    Ordinary failures are normalized at this public boundary without retaining
+    payload-bearing exception chains. Process-control ``BaseException`` values
+    continue to propagate.
+    """
+    failed = False
+    try:
+        return _derive_manager_evidence_sources(
+            document,
+            fund_strategy_id,
+            identity_rows,
+        )
+    except Exception:  # noqa: BLE001 - hostile public input boundary
+        failed = True
+    if failed:
+        raise ManagerResearchValidationError(
+            "manager evidence sources could not be safely derived"
+        )
+    raise AssertionError("unreachable")
+
+
+def _tenure_attribution(
+    document: Mapping[str, Any], fund_strategy_id: str | None = None
+) -> dict[str, Any]:
     component = document.get("score_components", {}).get(
         "tenure_attributed_performance", {}
     )
     if not isinstance(component, Mapping) or component.get("score") is None:
         return {"aggregate_factor": None, "tenures": [], "observations": []}
     references = set(component.get("evidence_ids", ()))
+    target_tenure_ids = (
+        {tenure["tenure_id"] for tenure in _target_tenures(document, fund_strategy_id)}
+        if fund_strategy_id is not None
+        else {
+            tenure["tenure_id"]
+            for tenure in document.get("tenures", ())
+            if isinstance(tenure, Mapping) and isinstance(tenure.get("tenure_id"), str)
+        }
+    )
     evidence_supports = {
         evidence.get("evidence_id"): set(evidence.get("supports_components", ()))
         for evidence in document.get("evidence", ())
@@ -640,6 +1217,7 @@ def _tenure_attribution(document: Mapping[str, Any]) -> dict[str, Any]:
         ]
         if (
             isinstance(tenure_id, str)
+            and tenure_id in target_tenure_ids
             and isinstance(item.get("factor_residual"), (int, float))
             and not isinstance(item.get("factor_residual"), bool)
             and isinstance(evidence_ids, Sequence)
@@ -1177,18 +1755,220 @@ def _canonical_manager_snapshot(document: Mapping[str, Any]) -> dict[str, Any]:
     return snapshot
 
 
-def score_manager_research(document: Mapping[str, Any]) -> dict[str, Any]:
-    """Return an auditable weighted manager score or explicit insufficiency."""
+def _canonical_manager_component_evidence(
+    snapshot: Mapping[str, Any],
+    component_evidence_ids: Mapping[str, list[str]],
+    *,
+    fund_strategy_id: str,
+    sources: tuple[ManagerEvidenceSource, ...],
+) -> list[dict[str, Any]]:
+    """Validate and expose caller-supplied provenance without inventing identity."""
+    if (
+        type(fund_strategy_id) is not str
+        or not fund_strategy_id
+        or len(fund_strategy_id) > 64
+    ):
+        raise ManagerResearchValidationError("fund_strategy_id must be bounded text")
+    _require_canonical_identifier(fund_strategy_id, "$fund_strategy_id")
+    if type(sources) is not tuple or len(sources) != len(
+        MANAGER_COMPONENT_SOURCE_MANIFEST
+    ):
+        raise ManagerResearchValidationError(
+            "manager sources must be an immutable tuple with one row per component"
+        )
+    if any(type(source) is not ManagerEvidenceSource for source in sources):
+        raise ManagerResearchValidationError(
+            "manager sources must use the closed ManagerEvidenceSource type"
+        )
+    components = [source.component for source in sources]
+    if len(set(components)) != len(components) or set(components) != set(
+        MANAGER_COMPONENT_SOURCE_MANIFEST
+    ):
+        raise ManagerResearchValidationError(
+            "manager sources must bind every exact component once"
+        )
+
+    manager_as_of = _timestamp(snapshot.get("as_of"), path="$.as_of")
+    manager_date = manager_as_of.astimezone(UTC).date()
+    result: list[dict[str, Any]] = []
+    for index, source in enumerate(sources):
+        path = f"$sources[{index}]"
+        allowed = MANAGER_COMPONENT_SOURCE_MANIFEST[source.component]
+        if (source.source_scope, source.usage_mode) not in allowed:
+            raise ManagerResearchValidationError(
+                f"{path}: source scope and usage mode are not allowed for {source.component}"
+            )
+        if source.source_scope == "current_fund":
+            if (
+                source.fund_strategy_id != fund_strategy_id
+                or source.usage_mode != "raw"
+            ):
+                raise ManagerResearchValidationError(
+                    f"{path}: current_fund source must use raw target strategy evidence"
+                )
+        elif source.fund_strategy_id is not None:
+            raise ManagerResearchValidationError(
+                f"{path}: non-current-fund source cannot name a fund strategy"
+            )
+        if source.source_scope == "external_career" and source.usage_mode == "raw":
+            raise ManagerResearchValidationError(
+                f"{path}: external_career evidence must be derived"
+            )
+        for field, value in (
+            ("evidence_id", source.evidence_id),
+            ("lineage_id", source.lineage_id),
+            ("series_id", source.series_id),
+        ):
+            if type(value) is not str or not value or len(value) > 128:
+                raise ManagerResearchValidationError(
+                    f"{path}.{field}: identifier is invalid"
+                )
+            _require_canonical_identifier(value, f"{path}.{field}")
+        expected_ids = component_evidence_ids[source.component]
+        if expected_ids != [source.evidence_id]:
+            raise ManagerResearchValidationError(
+                f"{path}.evidence_id: source must bind the component's sole consumed evidence ID"
+            )
+        derived_binding = _derive_manager_evidence_source_binding(
+            snapshot,
+            component=source.component,
+            evidence_id=source.evidence_id,
+            fund_strategy_id=fund_strategy_id,
+        )
+        if source.facts_sha256 != derived_binding["facts_sha256"]:
+            raise ManagerResearchValidationError(
+                f"{path}.facts_sha256: digest does not bind the consumed structured facts"
+            )
+        if (
+            type(source.observation_as_of) is not datetime
+            or source.observation_as_of.tzinfo is None
+            or source.observation_as_of.utcoffset() is None
+        ):
+            raise ManagerResearchValidationError(
+                f"{path}.observation_as_of: timestamp must be timezone-aware"
+            )
+        observation_as_of = source.observation_as_of.astimezone(UTC)
+        expected_observation = _timestamp(
+            derived_binding["observation_as_of"], path=f"{path}.observation_as_of"
+        )
+        if observation_as_of != expected_observation:
+            raise ManagerResearchValidationError(
+                f"{path}.observation_as_of: timestamp must be derived from structured facts"
+            )
+        if observation_as_of > manager_as_of:
+            raise ManagerResearchValidationError(
+                f"{path}.observation_as_of: observation exceeds manager as_of"
+            )
+        if (
+            type(source.window_months) is not int
+            or not 0 <= source.window_months <= 1200
+        ):
+            raise ManagerResearchValidationError(
+                f"{path}.window_months: months must be a bounded integer"
+            )
+        if type(source.window_start) is not date or type(source.window_end) is not date:
+            raise ManagerResearchValidationError(
+                f"{path}: window endpoints must be dates"
+            )
+        if (
+            source.window_start > source.window_end
+            or source.window_end > observation_as_of.date()
+            or source.window_end > manager_date
+        ):
+            raise ManagerResearchValidationError(
+                f"{path}: source window must end by observation and manager as_of"
+            )
+        actual_months = max(
+            0,
+            (source.window_end.year - source.window_start.year) * 12
+            + source.window_end.month
+            - source.window_start.month
+            - (source.window_end.day < source.window_start.day),
+        )
+        if source.window_basis == "point_in_time":
+            valid_window = (
+                source.window_months == 0
+                and source.window_start == observation_as_of.date()
+                and source.window_end == observation_as_of.date()
+            )
+        elif source.window_basis == "calendar_months":
+            month_index = (
+                observation_as_of.date().year * 12
+                + observation_as_of.date().month
+                - 1
+                - source.window_months
+            )
+            year, zero_based_month = divmod(month_index, 12)
+            month = zero_based_month + 1
+            expected_start = date(
+                year,
+                month,
+                min(observation_as_of.date().day, monthrange(year, month)[1]),
+            )
+            valid_window = (
+                source.window_end == observation_as_of.date()
+                and source.window_start == expected_start
+            )
+        elif source.window_basis == "actual_dates":
+            valid_window = source.window_months == actual_months
+        else:
+            valid_window = False
+        if not valid_window:
+            raise ManagerResearchValidationError(
+                f"{path}: window basis, months, and endpoints do not reconcile"
+            )
+        if (
+            source.window_basis != derived_binding["window_basis"]
+            or source.window_months != derived_binding["window_months"]
+            or source.window_start.isoformat() != derived_binding["window_start"]
+            or source.window_end.isoformat() != derived_binding["window_end"]
+        ):
+            raise ManagerResearchValidationError(
+                f"{path}: source window must be derived from consumed structured facts"
+            )
+        result.append(
+            {
+                "evidence_id": source.evidence_id,
+                "evidence_role": "primary",
+                "lineage_id": source.lineage_id,
+                "series_id": source.series_id,
+                "source_facts_sha256": source.facts_sha256,
+                "evidence_family": f"manager.{source.component}",
+                "target_component": f"manager_{source.component}",
+                "source_scope": source.source_scope,
+                "usage_mode": source.usage_mode,
+                "observation_as_of": observation_as_of.isoformat().replace(
+                    "+00:00", "Z"
+                ),
+                "window_basis": source.window_basis,
+                "window_months": source.window_months,
+                "window_start": source.window_start.isoformat(),
+                "window_end": source.window_end.isoformat(),
+            }
+        )
+    return result
+
+
+def score_manager_research(
+    document: Mapping[str, Any],
+    *,
+    fund_strategy_id: str | None = None,
+    sources: tuple[ManagerEvidenceSource, ...] | None = None,
+    assertion_status: ManagerAssertionStatus | None = None,
+) -> dict[str, Any]:
+    """Validate caller score assertions and recompute configured aggregation."""
     from .resources import resolve_resource
     from .score_config import validate_score_config
-    from .validation import validate_record
 
-    snapshot = _canonical_manager_snapshot(document)
-    validate_record(
-        "manager_research",
-        snapshot,
-        schema_version="0.1.0",
-    )
+    snapshot = _validated_manager_snapshot(document)
+    if (
+        fund_strategy_id is None
+        or sources is None
+        or assertion_status != "caller_provided"
+    ):
+        raise ManagerResearchValidationError(
+            "manager target, sources, and caller_provided assertion status are required"
+        )
     try:
         config = resolve_resource(
             resource_type="scoring-config",
@@ -1207,19 +1987,22 @@ def score_manager_research(document: Mapping[str, Any]) -> dict[str, Any]:
         ) from None
 
     components = snapshot["score_components"]
-    tenure_attribution = _tenure_attribution(snapshot)
+    _target_tenures(snapshot, fund_strategy_id)
+    tenure_attribution = _tenure_attribution(snapshot, fund_strategy_id)
     contributions: dict[str, float | None] = {}
+    raw_scores: dict[str, float | None] = {}
     component_evidence_ids: dict[str, list[str]] = {}
     weights: dict[str, int] = {}
     insufficient: list[str] = []
     confidence_rank = {"high": 0, "medium": 1, "low": 2, "insufficient": 3}
-    overall_confidence = "high"
+    overall_confidence = "low"
 
     for configured in configured_components:
         component_id = configured["id"]
         weight = configured["weight"]
         component = components[component_id]
         score = component["score"]
+        raw_scores[component_id] = None if score is None else float(score)
         confidence = component["confidence"]
         component_evidence_ids[component_id] = list(component["evidence_ids"])
         weights[component_id] = weight
@@ -1248,9 +2031,48 @@ def score_manager_research(document: Mapping[str, Any]) -> dict[str, Any]:
         "status": "insufficient" if insufficient else "scored",
         "score": result_score,
         "confidence": "insufficient" if insufficient else overall_confidence,
+        "manager_input_assertion_status": assertion_status,
         "component_weights": weights,
+        "component_raw_scores": raw_scores,
         "component_contributions": contributions,
         "component_evidence_ids": component_evidence_ids,
+        "component_evidence": _canonical_manager_component_evidence(
+            snapshot,
+            component_evidence_ids,
+            fund_strategy_id=fund_strategy_id,
+            sources=sources,
+        ),
         "tenure_attribution": tenure_attribution,
         "insufficient_components": insufficient,
     }
+
+
+def recompute_manager_handoff(handoff: ManagerResearchHandoff) -> dict[str, Any]:
+    """Recompute one handoff through the sole manager scoring implementation."""
+    if type(handoff) is not ManagerResearchHandoff:
+        raise ManagerResearchValidationError(
+            "manager handoff must use the closed ManagerResearchHandoff type"
+        )
+    if (
+        type(handoff.as_of) is not datetime
+        or handoff.as_of.tzinfo is None
+        or handoff.as_of.utcoffset() is None
+    ):
+        raise ManagerResearchValidationError(
+            "manager handoff as_of must be timezone-aware"
+        )
+    raw_input = _thaw_manager_input(handoff.manager_research)
+    if type(raw_input) is not dict:
+        raise ManagerResearchValidationError("manager handoff raw input is invalid")
+    snapshot = _canonical_manager_snapshot(raw_input)
+    document_as_of = _timestamp(snapshot.get("as_of"), path="$.as_of")
+    if document_as_of != handoff.as_of.astimezone(UTC):
+        raise ManagerResearchValidationError(
+            "manager handoff as_of must exactly match the raw manager input"
+        )
+    return score_manager_research(
+        snapshot,
+        fund_strategy_id=handoff.fund_strategy_id,
+        sources=handoff.sources,
+        assertion_status=handoff.assertion_status,
+    )

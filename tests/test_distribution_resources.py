@@ -14,8 +14,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).parents[1]
 _RESOURCE_PREFIX = "openfundscore/_resources/"
-_EXPECTED_SELECTORS = frozenset(
+_EXPECTED_RESOURCE_SELECTORS = frozenset(
     {
+        ("metric-catalog", "openfundscore-category-metrics", "0.1.0"),
+        ("peer-admission", "category-profile-buckets", "0.1.0"),
         ("schema", "external_rating", "0.1.0"),
         ("schema", "manager_research", "0.1.0"),
         ("schema", "provider_contract", "0.1.0"),
@@ -23,14 +25,18 @@ _EXPECTED_SELECTORS = frozenset(
         ("schema", "provider_record", "0.1.0"),
         ("schema", "provider_record", "0.2.0"),
         ("schema", "score_evidence_usage", "0.1.0"),
+        ("schema", "score_evidence_usage", "0.2.0"),
         ("scoring-config", "openfundscore-core", "0.1.0"),
         ("strategy-mapping", "complex_alternatives", "0.1.0"),
     }
 )
-_EXPECTED_RESOURCE_FILES = frozenset(
+_EXPECTED_SELECTORS = _EXPECTED_RESOURCE_SELECTORS
+_EXPECTED_RESOURCE_PAYLOADS = frozenset(
     {
         "__init__.py",
         "index.json",
+        "metric-catalog/openfundscore-category-metrics/0.1.0.json",
+        "peer-admission/category-profile-buckets/0.1.0.json",
         "schema/external_rating/0.1.0.schema.json",
         "schema/manager_research/0.1.0.schema.json",
         "schema/provider_contract/0.1.0.schema.json",
@@ -38,15 +44,18 @@ _EXPECTED_RESOURCE_FILES = frozenset(
         "schema/provider_record/0.1.0.schema.json",
         "schema/provider_record/0.2.0.schema.json",
         "schema/score_evidence_usage/0.1.0.schema.json",
+        "schema/score_evidence_usage/0.2.0.schema.json",
         "scoring-config/openfundscore-core/0.1.0.json",
         "strategy-mapping/complex_alternatives/0.1.0.json",
     }
 )
+_EXPECTED_RESOURCE_FILES = _EXPECTED_RESOURCE_PAYLOADS
 _README_DOCUMENT_LINKS = frozenset(
     {
         "docs/PROJECT_CHARTER.md",
         "docs/ROADMAP.md",
         "docs/CANONICAL_DATA_MODEL.md",
+        "docs/CATEGORY_METRICS.md",
         "docs/VALIDATION.md",
         "docs/PUBLICATION_GATE.md",
         "docs/PROVIDER_SDK.md",
@@ -299,10 +308,7 @@ class DistributionResourceTests(unittest.TestCase):
             self.assertEqual(
                 install_build.returncode,
                 0,
-                msg=(
-                    f"stdout={install_build.stdout}\n"
-                    f"stderr={install_build.stderr}"
-                ),
+                msg=(f"stdout={install_build.stdout}\nstderr={install_build.stderr}"),
             )
             build = subprocess.run(
                 [
@@ -393,7 +399,8 @@ class DistributionResourceTests(unittest.TestCase):
             wheel_payloads = _wheel_resources(wheels[0])
             sdist_payloads = _sdist_resources(sdists[0])
             self.assertEqual(wheel_payloads, sdist_payloads)
-            self.assertEqual(frozenset(wheel_payloads), _EXPECTED_RESOURCE_FILES)
+            # __init__.py + index.json + all twelve indexed logical resources.
+            self.assertEqual(frozenset(wheel_payloads), _EXPECTED_RESOURCE_PAYLOADS)
 
             subprocess.run(
                 [
@@ -443,8 +450,9 @@ class DistributionResourceTests(unittest.TestCase):
                     (
                         "from openfundscore.resources import list_resources,resolve_resource;"
                         "items=list_resources();"
-                        "selectors={(i.key.resource_type.value,i.key.name,i.key.version) for i in items};"
-                        f"assert selectors=={set(_EXPECTED_SELECTORS)!r};"
+                        "selectors={(i.key.resource_type.value,i.key.name,i.key.version)"
+                        " for i in items};"
+                        f"assert selectors=={_EXPECTED_RESOURCE_SELECTORS!r};"
                         "[resolve_resource(resource_type=i.key.resource_type,"
                         "name=i.key.name,version=i.key.version).load_json() for i in items];"
                         "print('sdist-wheel-ok')"

@@ -2,76 +2,100 @@
   "format_version": 1,
   "resources": [
     {
-      "type": "schema",
-      "name": "external_rating",
-      "version": "0.1.0",
+      "internal_path": "metric-catalog/openfundscore-category-metrics/0.1.0.json",
+      "media_type": "application/json",
+      "name": "openfundscore-category-metrics",
+      "sha256": "98e926532a7d2fea8528b9121fbd6486b15b1026aae5d46be2a10916fdd15e29",
+      "type": "metric-catalog",
+      "version": "0.1.0"
+    },
+    {
+      "internal_path": "peer-admission/category-profile-buckets/0.1.0.json",
+      "media_type": "application/json",
+      "name": "category-profile-buckets",
+      "sha256": "6d5e624015846ecb3941d51a4edc8323fa6c69691be75ce5e9e7a07fc61dda94",
+      "type": "peer-admission",
+      "version": "0.1.0"
+    },
+    {
       "internal_path": "schema/external_rating/0.1.0.schema.json",
       "media_type": "application/schema+json",
-      "sha256": "3e9c3dd58befab09f3d73c2fdca600f2f9e18687fe5b874789beecf429cd199e"
+      "name": "external_rating",
+      "sha256": "3e9c3dd58befab09f3d73c2fdca600f2f9e18687fe5b874789beecf429cd199e",
+      "type": "schema",
+      "version": "0.1.0"
     },
     {
-      "type": "schema",
-      "name": "manager_research",
-      "version": "0.1.0",
       "internal_path": "schema/manager_research/0.1.0.schema.json",
       "media_type": "application/schema+json",
-      "sha256": "2e6f15cc928583dd47407bfabfd4742743d72b522b5dde8a6a3a7d53828bb2fe"
+      "name": "manager_research",
+      "sha256": "2e6f15cc928583dd47407bfabfd4742743d72b522b5dde8a6a3a7d53828bb2fe",
+      "type": "schema",
+      "version": "0.1.0"
     },
     {
-      "type": "schema",
-      "name": "provider_contract",
-      "version": "0.1.0",
       "internal_path": "schema/provider_contract/0.1.0.schema.json",
       "media_type": "application/schema+json",
-      "sha256": "71add223d5f010c3bfa6c88669a8bfd4d4a1a9f47cd1f302d78919f315da7a09"
+      "name": "provider_contract",
+      "sha256": "71add223d5f010c3bfa6c88669a8bfd4d4a1a9f47cd1f302d78919f315da7a09",
+      "type": "schema",
+      "version": "0.1.0"
     },
     {
-      "type": "schema",
-      "name": "provider_contract",
-      "version": "0.2.0",
       "internal_path": "schema/provider_contract/0.2.0.schema.json",
       "media_type": "application/schema+json",
-      "sha256": "51d5590d9fd33615bbd8e708e851e7765ccd0ace590bb1119aa3fdf21cb1bc0c"
+      "name": "provider_contract",
+      "sha256": "51d5590d9fd33615bbd8e708e851e7765ccd0ace590bb1119aa3fdf21cb1bc0c",
+      "type": "schema",
+      "version": "0.2.0"
     },
     {
-      "type": "schema",
-      "name": "provider_record",
-      "version": "0.1.0",
       "internal_path": "schema/provider_record/0.1.0.schema.json",
       "media_type": "application/schema+json",
-      "sha256": "baf590e637dc0e0bdf01eddf9d51ccbe5e9d3c16057910a9cf7b9b58ccec65bf"
+      "name": "provider_record",
+      "sha256": "baf590e637dc0e0bdf01eddf9d51ccbe5e9d3c16057910a9cf7b9b58ccec65bf",
+      "type": "schema",
+      "version": "0.1.0"
     },
     {
-      "type": "schema",
-      "name": "provider_record",
-      "version": "0.2.0",
       "internal_path": "schema/provider_record/0.2.0.schema.json",
       "media_type": "application/schema+json",
-      "sha256": "36a25071c7622a6252a51c559c3adae49855a3b2e1bf954ce62c5a8b71c47f5f"
+      "name": "provider_record",
+      "sha256": "36a25071c7622a6252a51c559c3adae49855a3b2e1bf954ce62c5a8b71c47f5f",
+      "type": "schema",
+      "version": "0.2.0"
     },
     {
-      "type": "schema",
-      "name": "score_evidence_usage",
-      "version": "0.1.0",
       "internal_path": "schema/score_evidence_usage/0.1.0.schema.json",
       "media_type": "application/schema+json",
-      "sha256": "9ff9acffb1a19a8d6c0691d7dc99895211dd8224dac308f29f9270b56f7430f5"
+      "name": "score_evidence_usage",
+      "sha256": "9ff9acffb1a19a8d6c0691d7dc99895211dd8224dac308f29f9270b56f7430f5",
+      "type": "schema",
+      "version": "0.1.0"
     },
     {
-      "type": "scoring-config",
-      "name": "openfundscore-core",
-      "version": "0.1.0",
+      "internal_path": "schema/score_evidence_usage/0.2.0.schema.json",
+      "media_type": "application/schema+json",
+      "name": "score_evidence_usage",
+      "sha256": "96392610b708bc8372615efbca5ce882902be6880bee460ad0cbceb4c48124ab",
+      "type": "schema",
+      "version": "0.2.0"
+    },
+    {
       "internal_path": "scoring-config/openfundscore-core/0.1.0.json",
       "media_type": "application/json",
-      "sha256": "e0f9f8ed58e840a078924cce2c5acae661e5a903d82402ecaf152c1ac7c85a16"
+      "name": "openfundscore-core",
+      "sha256": "e0f9f8ed58e840a078924cce2c5acae661e5a903d82402ecaf152c1ac7c85a16",
+      "type": "scoring-config",
+      "version": "0.1.0"
     },
     {
-      "type": "strategy-mapping",
-      "name": "complex_alternatives",
-      "version": "0.1.0",
       "internal_path": "strategy-mapping/complex_alternatives/0.1.0.json",
       "media_type": "application/json",
-      "sha256": "17d39dec73d58243a11a6ce271ac7c995ea698709cf6392baad8ef0331c3b0bc"
+      "name": "complex_alternatives",
+      "sha256": "17d39dec73d58243a11a6ce271ac7c995ea698709cf6392baad8ef0331c3b0bc",
+      "type": "strategy-mapping",
+      "version": "0.1.0"
     }
   ]
 }

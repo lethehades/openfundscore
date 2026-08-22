@@ -161,19 +161,63 @@ Validation is deliberately split into two mandatory layers, in this order:
    workload, career, platform and compliance components require the same
    semantically matched evidence in their respective structured blocks.
 
-`openfundscore.score_manager_research(record)` first rebuilds the caller-owned
+`openfundscore.score_manager_research(record, fund_strategy_id=..., sources=...,
+assertion_status="caller_provided")`
+first rebuilds the caller-owned
 mapping into one bounded, finite snapshot containing only exact built-in JSON
 values. Unified validation and scoring consume that same snapshot, so overridden
 mapping/list/scalar methods cannot present one identity or component value to the
 Schema and another to the scorer. It then loads the manifest-verified
 `openfundscore-core / 0.1.0` manager weights. The result includes the manager and
-`as_of` identities, model version, component weights, per-component evidence IDs
-and contributions, tenure-attribution factors, aggregate confidence and final
-score. Numeric scores and `insufficient` confidence are mutually exclusive.
+`as_of` identities, model version, component weights/raw scores/contributions,
+per-component evidence IDs and closed component provenance, tenure-attribution
+factors, aggregate confidence and final score. Each component provenance row
+records evidence/lineage/series identity, family, target, scope, usage,
+`source_facts_sha256`, `observation_as_of`, `window_basis`, `window_months` and
+inclusive endpoints.
+`point_in_time` is a zero-month UTC observation date, `calendar_months` uses an
+exact reverse-clamped calendar window, and `actual_dates` preserves the real
+structured-fact endpoints. Numeric scores and `insufficient` confidence are
+mutually exclusive.
 Missing or `insufficient` components never become zero and are never silently
 reweighted: the aggregate status is `insufficient` and its score is `null`.
 The canonical boundary rejects cycles, depth above 512 and total node counts
 above 10,000 so hostile records cannot create unbounded traversal work.
+
+The `sources` tuple is not synthetic scorer provenance. The caller supplies eight
+closed source identity rows whose evidence IDs are the sole IDs consumed by the
+corresponding raw components, together with real lineage/series identity, scope,
+usage mode and optional fund target. `derive_manager_evidence_sources()` requires
+a tenure for the requested target strategy and derives each `ManagerEvidenceSource`
+fact digest, observation time and exact window from the consumed structured facts
+in the local manager document. Before reading tenure or nested fact fields, the
+public derivation boundary canonicalizes the input and runs the same manager Schema
+and semantic validation used by scoring. Ordinary malformed or hostile-input
+failures become one chain-free, payload-free `ManagerResearchValidationError`;
+process-control `BaseException` values propagate. Caller-supplied fact/window
+fields are not accepted at the CLI handoff boundary. The digest detects changes to those local consumed
+facts; it does not establish that the document or external evidence is true. The component manifest is
+closed: tenure performance may use `external_career/residualized` or
+`current_fund/raw`; downside control and cross-cycle consistency may use
+`external_career/orthogonal` or `current_fund/raw`; style, career and compliance
+use `external_career/descriptive`; workload and research platform use
+`team_platform/descriptive`. Current-fund rows must name the exact target strategy,
+and every emitted manager evidence row declares `evidence_role=primary`.
+
+Downstream category scoring accepts `ManagerResearchHandoff`, which freezes the
+raw manager snapshot, target, exact `caller_provided` assertion status and eight
+source rows and invokes
+`recompute_manager_handoff()`. A forged expected score/contribution summary, typed
+manager audit or legacy `manager_audit` is rejected rather than trusted. If a
+permitted current-fund/raw manager row shares evidence, lineage or series identity
+with an overlapping fund row, the 0.2 evidence ledger rejects the collision.
+
+Every raw component score in the manager document is a caller assertion. The
+package validates evidence conjunctions and recomputes configured weights,
+attribution and totals, but it does not independently verify the asserted score.
+Accordingly, a complete caller-provided manager score is capped at `low`
+confidence without any numeric score deduction. It remains private local research:
+the publication gate is `LOCAL_ONLY` for local use and `NO_GO` for hosted ratings.
 
 Passing the JSON Schema alone is not sufficient. Callers use the unified API or
 CLI so both layers always run and failures carry stable paths:

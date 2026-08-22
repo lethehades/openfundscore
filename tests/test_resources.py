@@ -199,6 +199,8 @@ class ResourceCatalogTests(unittest.TestCase):
                 for resource in resources
             ],
             [
+                ("metric-catalog", "openfundscore-category-metrics", "0.1.0"),
+                ("peer-admission", "category-profile-buckets", "0.1.0"),
                 ("schema", "external_rating", "0.1.0"),
                 ("schema", "manager_research", "0.1.0"),
                 ("schema", "provider_contract", "0.1.0"),
@@ -206,6 +208,7 @@ class ResourceCatalogTests(unittest.TestCase):
                 ("schema", "provider_record", "0.1.0"),
                 ("schema", "provider_record", "0.2.0"),
                 ("schema", "score_evidence_usage", "0.1.0"),
+                ("schema", "score_evidence_usage", "0.2.0"),
                 ("scoring-config", "openfundscore-core", "0.1.0"),
                 ("strategy-mapping", "complex_alternatives", "0.1.0"),
             ],
@@ -234,7 +237,7 @@ class ResourceCatalogTests(unittest.TestCase):
     def test_catalog_filters_by_resource_type(self) -> None:
         resources = list_resources(resource_type="schema")
 
-        self.assertEqual(len(resources), 7)
+        self.assertEqual(len(resources), 8)
         self.assertTrue(
             all(
                 resource.key.resource_type is ResourceType.SCHEMA
@@ -350,8 +353,31 @@ class ResourceCatalogTests(unittest.TestCase):
         self.assertEqual(document["model_version"], "0.1.0")
         self.assertEqual(hashlib.sha256(payload).hexdigest(), resource.info.sha256)
         self.assertEqual(
+            resource.info.sha256,
+            "e0f9f8ed58e840a078924cce2c5acae661e5a903d82402ecaf152c1ac7c85a16",
+        )
+        self.assertEqual(
             resource.info.uri,
             "openfundscore://scoring-config/openfundscore-core/0.1.0",
+        )
+
+    def test_resolves_independent_metric_catalog(self) -> None:
+        resource = resolve_resource(
+            resource_type="metric-catalog",
+            name="openfundscore-category-metrics",
+            version="0.1.0",
+        )
+
+        document = resource.load_json()
+        self.assertEqual(document["catalog_version"], "0.1.0")
+        self.assertEqual(len(document["profiles"]), 10)
+        self.assertEqual(
+            sum(
+                len(metrics)
+                for profile in document["profiles"].values()
+                for metrics in profile["dimensions"].values()
+            ),
+            120,
         )
 
     def test_invalid_selectors_fail_closed_without_reflecting_values(self) -> None:
@@ -469,6 +495,57 @@ class ResourceCatalogTests(unittest.TestCase):
         self.assertNotIn("private", str(raised.exception))
         self.assertIsNone(raised.exception.__cause__)
         self.assertIsNone(raised.exception.__context__)
+
+    def test_resource_json_rejects_duplicate_keys_and_nonfinite_numbers(self) -> None:
+        resource = resolve_resource(
+            resource_type="metric-catalog",
+            name="openfundscore-category-metrics",
+            version="0.1.0",
+        )
+        for payload in (
+            '{"catalog_id":"one","catalog_id":"two"}',
+            '{"value":NaN}',
+            '{"value":Infinity}',
+            '{"value":-Infinity}',
+        ):
+            with (
+                self.subTest(payload=payload),
+                patch.object(type(resource), "read_text", return_value=payload),
+                self.assertRaises(ResourceError) as raised,
+            ):
+                resource.load_json()
+            self.assertEqual(raised.exception.code, "resource_format")
+            self.assertEqual(raised.exception.path, "$resource")
+            self.assertIsNone(raised.exception.__cause__)
+
+    def test_resource_index_rejects_duplicate_keys_and_nonfinite_numbers(self) -> None:
+        class Index:
+            def __init__(self, payload: str) -> None:
+                self.payload = payload
+
+            def read_text(self, encoding: str) -> str:
+                return self.payload
+
+        class Root:
+            def __init__(self, payload: str) -> None:
+                self.payload = payload
+
+            def joinpath(self, name: str) -> Index:
+                return Index(self.payload)
+
+        for payload in (
+            '{"format_version":1,"format_version":1,"resources":[]}',
+            '{"format_version":NaN,"resources":[]}',
+        ):
+            with (
+                self.subTest(payload=payload),
+                patch("openfundscore.resources.files", return_value=Root(payload)),
+                self.assertRaises(ResourceError) as raised,
+            ):
+                _load_catalog()
+            self.assertEqual(raised.exception.code, "catalog_invalid")
+            self.assertEqual(raised.exception.path, "$catalog")
+            self.assertIsNone(raised.exception.__cause__)
 
     def test_non_object_json_uses_a_domain_format_error(self) -> None:
         resource = resolve_resource(
