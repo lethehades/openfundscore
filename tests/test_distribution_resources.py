@@ -1,16 +1,14 @@
 from __future__ import annotations
 
 import os
-from pathlib import Path
 import shutil
 import subprocess
-import sys
 import tarfile
 import tempfile
 import unittest
 import venv
 import zipfile
-
+from pathlib import Path
 
 ROOT = Path(__file__).parents[1]
 _RESOURCE_PREFIX = "openfundscore/_resources/"
@@ -70,8 +68,32 @@ class DistributionResourceTests(unittest.TestCase):
             clean_environment = os.environ.copy()
             clean_environment.pop("PYTHONPATH", None)
             clean_environment["PYTHONNOUSERSITE"] = "1"
+            uv = shutil.which("uv")
+            install_builder = (
+                [
+                    uv,
+                    "pip",
+                    "install",
+                    "--offline",
+                    "--python",
+                    str(builder_python),
+                    "build>=1.2",
+                    "setuptools>=68",
+                    "wheel",
+                ]
+                if uv is not None
+                else [
+                    str(builder_python),
+                    "-m",
+                    "pip",
+                    "install",
+                    "build>=1.2",
+                    "setuptools>=68",
+                    "wheel",
+                ]
+            )
             subprocess.run(
-                [str(builder_python), "-m", "pip", "install", "build>=1.2"],
+                install_builder,
                 check=True,
                 env=clean_environment,
                 stdout=subprocess.PIPE,
@@ -83,6 +105,7 @@ class DistributionResourceTests(unittest.TestCase):
                     str(builder_python),
                     "-m",
                     "build",
+                    "--no-isolation",
                     "--sdist",
                     "--wheel",
                     "--outdir",
@@ -112,6 +135,7 @@ class DistributionResourceTests(unittest.TestCase):
                     "pip",
                     "wheel",
                     str(sdists[0]),
+                    "--no-build-isolation",
                     "--no-deps",
                     "--wheel-dir",
                     str(rebuilt),

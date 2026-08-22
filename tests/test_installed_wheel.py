@@ -10,6 +10,7 @@ import unittest
 import venv
 from pathlib import Path
 
+from openfundscore.walk_forward_io import synthetic_fixture_document
 from tests.test_record_validation import (
     external_rating,
     manager_record,
@@ -51,6 +52,8 @@ class InstalledWheelResourceTests(unittest.TestCase):
                     "pip",
                     "wheel",
                     str(source),
+                    "--no-build-isolation",
+                    "--no-deps",
                     "--wheel-dir",
                     str(wheelhouse),
                 ],
@@ -67,6 +70,39 @@ class InstalledWheelResourceTests(unittest.TestCase):
             clean_environment = os.environ.copy()
             clean_environment.pop("PYTHONPATH", None)
             clean_environment["PYTHONNOUSERSITE"] = "1"
+            uv = shutil.which("uv")
+            if uv is not None:
+                subprocess.run(
+                    [
+                        uv,
+                        "pip",
+                        "install",
+                        "--offline",
+                        "--python",
+                        str(python),
+                        "jsonschema[format-nongpl]>=4.18,<5",
+                    ],
+                    check=True,
+                    env=clean_environment,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                )
+            else:
+                subprocess.run(
+                    [
+                        str(python),
+                        "-m",
+                        "pip",
+                        "install",
+                        "jsonschema[format-nongpl]>=4.18,<5",
+                    ],
+                    check=True,
+                    env=clean_environment,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                )
             subprocess.run(
                 [
                     str(python),
@@ -74,6 +110,7 @@ class InstalledWheelResourceTests(unittest.TestCase):
                     "pip",
                     "install",
                     "--force-reinstall",
+                    "--no-deps",
                     "--no-index",
                     "--find-links",
                     str(wheelhouse),
@@ -149,6 +186,42 @@ class InstalledWheelResourceTests(unittest.TestCase):
             self.assertEqual(api_probe.stdout.strip(), "api-ok")
 
             executable = environment / "bin" / "openfundscore"
+            walk_forward_path = runtime / "walk-forward.json"
+            walk_forward_path.write_text(
+                json.dumps(synthetic_fixture_document(), allow_nan=False),
+                encoding="utf-8",
+            )
+            walk_forward_probe = subprocess.run(
+                [str(executable), "walk-forward", str(walk_forward_path)],
+                check=False,
+                cwd=runtime,
+                env=clean_environment,
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(
+                walk_forward_probe.returncode,
+                0,
+                msg=(
+                    f"stdout={walk_forward_probe.stdout}\n"
+                    f"stderr={walk_forward_probe.stderr}"
+                ),
+            )
+            walk_forward_report = json.loads(walk_forward_probe.stdout)
+            self.assertEqual(walk_forward_report["report"]["summary"]["fold_count"], 2)
+            self.assertIn(
+                "component_diagnostics",
+                walk_forward_report["report"]["summary"],
+            )
+            first_fold = walk_forward_report["report"]["folds"][0]
+            self.assertEqual(len(first_fold["audit_score_ids"][0]), 3)
+            self.assertIn("strategy_id", first_fold["score_audit_trail"][0])
+            self.assertIn("revision_id", first_fold["score_audit_trail"][0])
+            self.assertIn(
+                "supersedes_revision_id",
+                first_fold["score_audit_trail"][0],
+            )
+
             list_probe = subprocess.run(
                 [str(executable), "resources", "list"],
                 check=True,

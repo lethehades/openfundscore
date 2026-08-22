@@ -28,6 +28,8 @@ from .strategy_mapping import (
     validate_strategy_mapping,
 )
 from .validation import RecordType, RecordValidationError, validate_record
+from .walk_forward import WalkForwardError, run_walk_forward
+from .walk_forward_io import walk_forward_from_document, walk_forward_report_document
 
 _MAX_RECORD_BYTES = 8 * 1024 * 1024
 
@@ -184,6 +186,12 @@ def _build_parser() -> argparse.ArgumentParser:
     validate_record_command.add_argument("--evaluation-timestamp")
     validate_record_command.add_argument("path", help="path to a contract JSON file")
 
+    walk_forward = subparsers.add_parser(
+        "walk-forward",
+        help="run a local point-in-time walk-forward report from strict JSON",
+    )
+    walk_forward.add_argument("path", help="path to a walk-forward JSON document")
+
     resources = subparsers.add_parser(
         "resources", help="inspect versioned package resources"
     )
@@ -224,6 +232,45 @@ def main(argv: Sequence[str] | None = None) -> int:
     """Run the OpenFundScore CLI and return a process exit code."""
     parser = _build_parser()
     args = parser.parse_args(argv)
+
+    if args.command == "walk-forward":
+        try:
+            try:
+                document = _load_record_document(
+                    args.path,
+                    record_type="walk_forward_input",
+                    schema_version="0.1.0",
+                )
+                config, candidates, snapshots, outcomes, scores = (
+                    walk_forward_from_document(document)
+                )
+            except (RecordValidationError, WalkForwardError):
+                raise WalkForwardError(
+                    code="walk_forward_document",
+                    path="$document",
+                    message="input must be bounded strict UTF-8 JSON",
+                ) from None
+            report = run_walk_forward(
+                config,
+                candidates=candidates,
+                snapshots=snapshots,
+                outcomes=outcomes,
+                precomputed_scores=scores,
+            )
+            output = walk_forward_report_document(report)
+            print(
+                json.dumps(
+                    output,
+                    allow_nan=False,
+                    ensure_ascii=False,
+                    indent=2,
+                    sort_keys=True,
+                )
+            )
+            return 0
+        except WalkForwardError as exc:
+            print(f"openfundscore: error: {exc}", file=sys.stderr)
+            return 2
 
     if args.command == "validate-record":
         try:

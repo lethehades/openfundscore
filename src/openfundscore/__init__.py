@@ -21,22 +21,50 @@ if TYPE_CHECKING:
         validate_strategy_mapping,
     )
     from .validation import RecordType, RecordValidationError, validate_record
+    from .walk_forward import (
+        CandidateFund,
+        FoldWindow,
+        FutureOutcome,
+        LifecycleInterval,
+        PrecomputedScore,
+        ScoreComponent,
+        ScoreResult,
+        ScoringView,
+        VersionedSnapshot,
+        WalkForwardConfig,
+        WalkForwardError,
+        WalkForwardReport,
+        run_walk_forward,
+    )
 
 
 __version__ = "0.2.0.dev0"
 
 __all__ = (
+    "CandidateFund",
+    "FoldWindow",
+    "FutureOutcome",
+    "LifecycleInterval",
     "MappingDecision",
+    "PrecomputedScore",
     "PublicationDecision",
     "PublicationGateError",
     "PublicationGateResult",
     "RecordType",
     "RecordValidationError",
+    "ScoreComponent",
+    "ScoreResult",
+    "ScoringView",
     "StrategyMappingError",
+    "VersionedSnapshot",
+    "WalkForwardConfig",
+    "WalkForwardError",
+    "WalkForwardReport",
     "evaluate_publication_gate",
     "load_packaged_strategy_mapping",
     "load_strategy_mapping",
     "map_strategy_family",
+    "run_walk_forward",
     "score_manager_research",
     "validate_record",
     "validate_strategy_mapping",
@@ -88,4 +116,22 @@ def __getattr__(name: str) -> Any:
             "evaluate_publication_gate": evaluate_publication_gate,
         }
         return publication_exports[name]
+    if name in {
+        "CandidateFund",
+        "FoldWindow",
+        "FutureOutcome",
+        "LifecycleInterval",
+        "PrecomputedScore",
+        "ScoreComponent",
+        "ScoreResult",
+        "ScoringView",
+        "VersionedSnapshot",
+        "WalkForwardConfig",
+        "WalkForwardError",
+        "WalkForwardReport",
+        "run_walk_forward",
+    }:
+        from . import walk_forward
+
+        return getattr(walk_forward, name)
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
