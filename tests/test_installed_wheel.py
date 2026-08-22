@@ -4,12 +4,12 @@ import json
 import os
 import shutil
 import subprocess
-import sys
 import tempfile
 import unittest
 import venv
 from pathlib import Path
 
+from tests.test_category_metrics_cli import cli_document, manager_handoff_document
 from tests.test_record_validation import (
     external_rating,
     manager_record,
@@ -19,6 +19,20 @@ from tests.test_record_validation import (
 )
 
 ROOT = Path(__file__).parents[1]
+_EXPECTED_RESOURCE_SELECTORS = frozenset(
+    {
+        ("metric-catalog", "openfundscore-category-metrics", "0.1.0"),
+        ("peer-admission", "category-profile-buckets", "0.1.0"),
+        ("schema", "external_rating", "0.1.0"),
+        ("schema", "manager_research", "0.1.0"),
+        ("schema", "provider_contract", "0.1.0"),
+        ("schema", "provider_record", "0.1.0"),
+        ("schema", "score_evidence_usage", "0.1.0"),
+        ("schema", "score_evidence_usage", "0.2.0"),
+        ("scoring-config", "openfundscore-core", "0.1.0"),
+        ("strategy-mapping", "complex_alternatives", "0.1.0"),
+    }
+)
 
 
 class InstalledWheelResourceTests(unittest.TestCase):
@@ -44,29 +58,39 @@ class InstalledWheelResourceTests(unittest.TestCase):
                 ),
             )
 
-            subprocess.run(
+            builder_python = shutil.which("python3")
+            self.assertIsNotNone(builder_python)
+            clean_environment = os.environ.copy()
+            clean_environment.pop("PYTHONPATH", None)
+            clean_environment["PYTHONNOUSERSITE"] = "1"
+            build_probe = subprocess.run(
                 [
-                    sys.executable,
+                    str(builder_python),
                     "-m",
                     "pip",
                     "wheel",
                     str(source),
+                    "--no-index",
+                    "--no-deps",
+                    "--no-build-isolation",
                     "--wheel-dir",
                     str(wheelhouse),
                 ],
-                check=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
+                check=False,
+                env=clean_environment,
+                capture_output=True,
                 text=True,
+            )
+            self.assertEqual(
+                build_probe.returncode,
+                0,
+                msg=(f"stdout={build_probe.stdout}\nstderr={build_probe.stderr}"),
             )
             wheels = tuple(wheelhouse.glob("openfundscore-*.whl"))
             self.assertEqual(len(wheels), 1)
 
             venv.EnvBuilder(with_pip=True).create(environment)
             python = environment / "bin" / "python"
-            clean_environment = os.environ.copy()
-            clean_environment.pop("PYTHONPATH", None)
-            clean_environment["PYTHONNOUSERSITE"] = "1"
             subprocess.run(
                 [
                     str(python),
@@ -87,7 +111,16 @@ class InstalledWheelResourceTests(unittest.TestCase):
             )
             shutil.rmtree(source)
 
-            manager_payload = json.dumps(manager_record())
+            manager_payload = json.dumps(manager_handoff_document())
+            validation_manager_payload = json.dumps(manager_record())
+            category_path = runtime / "category-score.json"
+            category_document = cli_document()
+            category_document["observations"][0].pop("uncertainty")
+            category_path.write_text(json.dumps(category_document), encoding="utf-8")
+            ledger_v020_path = runtime / "score-evidence-usage-0.2.0.json"
+            ledger_v020_path.write_text(
+                json.dumps(category_document["evidence_ledger"]), encoding="utf-8"
+            )
             api_probe = subprocess.run(
                 [
                     str(python),
@@ -95,7 +128,9 @@ class InstalledWheelResourceTests(unittest.TestCase):
                     (
                         "from openfundscore.resources import list_resources, resolve_resource;"
                         "items=list_resources();"
-                        "assert len(items)==7;"
+                        "selectors={(i.key.resource_type.value,i.key.name,i.key.version)"
+                        " for i in items};"
+                        f"assert selectors=={_EXPECTED_RESOURCE_SELECTORS!r};"
                         "[resolve_resource(resource_type=i.key.resource_type,"
                         "name=i.key.name,version=i.key.version).load_json() for i in items];"
                         "from openfundscore.strategy_mapping import map_strategy_family;"
@@ -103,16 +138,28 @@ class InstalledWheelResourceTests(unittest.TestCase):
                         "assert d.peer_bucket=='market_neutral';"
                         "assert d.score_profile=='unrated' and not d.is_rated;"
                         "assert d.unrated_reason=='insufficient_comparable_sample';"
-                        "from openfundscore import score_manager_research;"
-                        "import json;"
-                        f"m=score_manager_research(json.loads({manager_payload!r}));"
+                        "from openfundscore import ManagerResearchHandoff,"
+                        "derive_manager_evidence_sources,score_manager_research;"
+                        "from datetime import datetime;import json;"
+                        f"h=json.loads({manager_payload!r});"
+                        "dt=lambda v:datetime.fromisoformat(v.replace('Z','+00:00'));"
+                        "sources=derive_manager_evidence_sources(h['manager_research'],"
+                        "h['fund_strategy_id'],h['sources']);"
+                        "handoff=ManagerResearchHandoff(manager_research=h['manager_research'],"
+                        "as_of=dt(h['as_of']),fund_strategy_id=h['fund_strategy_id'],"
+                        "sources=sources,assertion_status=h['assertion_status']);"
+                        "m=score_manager_research(h['manager_research'],"
+                        "fund_strategy_id=handoff.fund_strategy_id,sources=handoff.sources,"
+                        "assertion_status=handoff.assertion_status);"
                         "assert m['manager_id']=='manager-1';"
                         "assert m['model_version']=='0.1.0';"
-                        "assert m['status']=='insufficient' and m['score'] is None;"
+                        "assert m['status']=='scored' and m['score']==80.0;"
                         "assert len(m['component_weights'])==8;"
-                        "assert m['tenure_attribution']['aggregate_factor'] is None;"
+                        "assert m['tenure_attribution']['aggregate_factor']==1.0;"
+                        "assert len(m['component_evidence'])==8;"
+                        "assert {x['evidence_role'] for x in m['component_evidence']}=={'primary'};"
                         "from openfundscore.validation import validate_record;"
-                        f"bad=json.loads({manager_payload!r});"
+                        f"bad=json.loads({validation_manager_payload!r});"
                         "bad['evidence']=[{'evidence_id':'e-url','tier':'A',"
                         "'source_url':'https://example.com/source',"
                         "'published_at':'2026-08-20T00:00:00Z',"
@@ -122,7 +169,9 @@ class InstalledWheelResourceTests(unittest.TestCase):
                         "urls=('https://example.com/2125550198',"
                         "'https://example.com/212%252D555%252D0198',"
                         "'https://example.com/person%2540example.com');"
-                        "apis=(lambda d: score_manager_research(d),"
+                        "apis=(lambda d: score_manager_research(d,"
+                        "fund_strategy_id=handoff.fund_strategy_id,sources=handoff.sources,"
+                        "assertion_status=handoff.assertion_status),"
                         "lambda d: validate_record('manager_research',d,schema_version='0.1.0'));"
                         "\ndef _expect_value_error(api, document):\n"
                         "    try:\n"
@@ -148,6 +197,94 @@ class InstalledWheelResourceTests(unittest.TestCase):
             )
             self.assertEqual(api_probe.stdout.strip(), "api-ok")
 
+            category_api_probe = subprocess.run(
+                [
+                    str(python),
+                    "-c",
+                    (
+                        "import json,pathlib;from datetime import datetime;"
+                        "from openfundscore import ApplicabilityContext,"
+                        "CaptureDenominatorAudit,CaptureDenominatorStatus,"
+                        "ManagerResearchHandoff,MetricObservation,MetricState,PeerObservation,"
+                        "derive_manager_evidence_sources,"
+                        "score_category_metrics;"
+                        "d=json.loads(pathlib.Path('category-score.json').read_text());"
+                        "dt=lambda v:datetime.fromisoformat(v.replace('Z','+00:00'));"
+                        "cd=lambda v:None if v is None else CaptureDenominatorAudit("
+                        "denominator_status=CaptureDenominatorStatus(v['denominator_status']),"
+                        "benchmark_downside_sample_count=v['benchmark_downside_sample_count'],"
+                        "evidence_id=v['evidence_id'],lineage_id=v['lineage_id'],"
+                        "series_id=v['series_id']);"
+                        "obs=tuple(MetricObservation(metric_id=o['metric_id'],"
+                        "state=MetricState(o['state']),raw_value=o['raw_value'],"
+                        "fund_id=o['fund_id'],series_id=o['series_id'],"
+                        "evidence_id=o['evidence_id'],lineage_id=o['lineage_id'],"
+                        "as_of=dt(o['as_of']),published_at=dt(o['published_at']),"
+                        "evaluation_timestamp=dt(o['evaluation_timestamp']),"
+                        "sample_size=o['sample_size'],window_months=o['window_months'],"
+                        "uncertainty=o.get('uncertainty'),"
+                        "capture_denominator=cd(o['capture_denominator']))"
+                        " for o in d['observations']);"
+                        "ps=tuple(PeerObservation(**{**p,"
+                        "'as_of':dt(p['as_of']),'published_at':dt(p['published_at']),"
+                        "'evaluation_timestamp':dt(p['evaluation_timestamp']),"
+                        "'capture_denominator':cd(p['capture_denominator'])})"
+                        " for p in d['peers']);"
+                        "h=d['manager_handoff'];"
+                        "mh=ManagerResearchHandoff(manager_research=h['manager_research'],"
+                        "as_of=dt(h['as_of']),fund_strategy_id=h['fund_strategy_id'],"
+                        "sources=derive_manager_evidence_sources(h['manager_research'],"
+                        "h['fund_strategy_id'],h['sources']),"
+                        "assertion_status=h['assertion_status']);"
+                        "r=score_category_metrics(profile_id=d['profile_id'],"
+                        "peer_bucket=d['peer_bucket'],"
+                        "peer_bucket_version=d['peer_bucket_version'],"
+                        "history_months=d['history_months'],"
+                        "adequate_regime_coverage=d['adequate_regime_coverage'],"
+                        "applicability_context=ApplicabilityContext(**d['applicability_context']),"
+                        "observations=obs,peers=ps,manager_handoff=mh,"
+                        "evidence_ledger=d['evidence_ledger'],"
+                        "config_version=d['config_version'],"
+                        "metric_catalog_version=d['metric_catalog_version'],"
+                        "final_precision=d['final_precision']);"
+                        "assert r.open_score==57.2 and r.catalog_version=='0.1.0';"
+                        "assert r.evidence_ledger_record_id==d['evidence_ledger']['score_record_id'];"
+                        "assert len(r.evidence_ledger_sha256)==64;"
+                        "assert r.manager_audit.manager_id=='manager-1';"
+                        "assert len(r.manager_audit.component_evidence)==8;"
+                        "assert r.manager_audit.manager_input_assertion_status=='caller_provided';"
+                        "assert all(len(x.source_facts_sha256)==64"
+                        " for x in r.manager_audit.component_evidence);"
+                        "assert {x.evidence_role for x in r.manager_audit.component_evidence}=={'primary'};"
+                        "assert len(r.peer_sets)==12 and len(r.peer_sets[0].records)==5;"
+                        "assert all(x.window_start and x.window_end and len(x.snapshot_hash)==64"
+                        " and len(x.document_hash)==64 for s in r.peer_sets for x in s.records);"
+                        "den=[x for x in d['evidence_ledger']['usage']"
+                        " if x['evidence_role']=='capture_denominator'];"
+                        "assert len(den)==1 and den[0]['target_component']=='fund_d2_downside_risk';"
+                        "assert all(x['evidence_role']=='primary' for x in d['evidence_ledger']['usage']"
+                        " if x['target_component'].startswith('manager_'));"
+                        "assert any(m.applicability=='requires_declared_benchmark' for m in r.metrics);"
+                        "assert r.not_applicable_metric_ids==();"
+                        "print('category-api-ok')"
+                    ),
+                ],
+                check=False,
+                cwd=runtime,
+                env=clean_environment,
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(
+                category_api_probe.returncode,
+                0,
+                msg=(
+                    f"stdout={category_api_probe.stdout}\n"
+                    f"stderr={category_api_probe.stderr}"
+                ),
+            )
+            self.assertEqual(category_api_probe.stdout.strip(), "category-api-ok")
+
             executable = environment / "bin" / "openfundscore"
             list_probe = subprocess.run(
                 [str(executable), "resources", "list"],
@@ -157,7 +294,38 @@ class InstalledWheelResourceTests(unittest.TestCase):
                 capture_output=True,
                 text=True,
             )
-            self.assertEqual(len(json.loads(list_probe.stdout)), 7)
+            listed_resources = json.loads(list_probe.stdout)
+            self.assertEqual(
+                {
+                    (item["type"], item["name"], item["version"])
+                    for item in listed_resources
+                },
+                _EXPECTED_RESOURCE_SELECTORS,
+            )
+
+            category_cli_probe = subprocess.run(
+                [str(executable), "category-score", str(category_path)],
+                check=False,
+                cwd=runtime,
+                env=clean_environment,
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(
+                category_cli_probe.returncode,
+                0,
+                msg=(
+                    f"stdout={category_cli_probe.stdout}\n"
+                    f"stderr={category_cli_probe.stderr}"
+                ),
+            )
+            self.assertEqual(
+                json.loads(category_cli_probe.stdout)["open_score"],
+                57.2,
+            )
+            category_output = json.loads(category_cli_probe.stdout)
+            self.assertEqual(category_output["manager_audit"]["status"], "scored")
+            self.assertEqual(len(category_output["peer_sets"][0]["records"]), 5)
 
             strategy_map_probe = subprocess.run(
                 [
@@ -233,6 +401,10 @@ class InstalledWheelResourceTests(unittest.TestCase):
                         "evaluation_timestamp=('2026-08-21T00:00:00Z' if kind in "
                         "{'provider_record','external_rating'} else None)) "
                         "for kind,document in records.items()];"
+                        "ledger=json.loads(pathlib.Path("
+                        "'score-evidence-usage-0.2.0.json').read_text());"
+                        "validate_record('score_evidence_usage',ledger,"
+                        "schema_version='0.2.0');"
                         "print('validation-api-ok')"
                     ),
                 ],
@@ -381,6 +553,35 @@ class InstalledWheelResourceTests(unittest.TestCase):
                         validation_cli_probe.stdout,
                         f"valid: {record_type}@0.1.0 (schema+semantics)\n",
                     )
+
+            ledger_v020_cli_probe = subprocess.run(
+                [
+                    str(executable),
+                    "validate-record",
+                    "--type",
+                    "score_evidence_usage",
+                    "--schema-version",
+                    "0.2.0",
+                    str(ledger_v020_path),
+                ],
+                check=False,
+                cwd=runtime,
+                env=clean_environment,
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(
+                ledger_v020_cli_probe.returncode,
+                0,
+                msg=(
+                    f"stdout={ledger_v020_cli_probe.stdout}\n"
+                    f"stderr={ledger_v020_cli_probe.stderr}"
+                ),
+            )
+            self.assertEqual(
+                ledger_v020_cli_probe.stdout,
+                "valid: score_evidence_usage@0.2.0 (schema+semantics)\n",
+            )
 
 
 if __name__ == "__main__":
