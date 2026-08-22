@@ -59,6 +59,23 @@ are reconstructed and revalidated for the same reason.
 Security-sensitive strings and frozen sets must have exact built-in runtime
 types. Subclasses with forged equality, iteration or membership behavior are
 rejected rather than treated as typed contract values.
+Optional `source_ids` and `dataset_ids` form one closed resource scope: they
+must be declared together and, when present, each must be a non-empty exact
+built-in `frozenset[str]` containing at most 256 unique values. Each value is a
+non-empty exact built-in string of at most 256 characters. The entitlement is
+reconstructed and both immutable exact built-in frozensets are revalidated at
+the authorization boundary, so forged or damaged entitlement state cannot
+change the authorization scope. The record must contain `value.source.id` and
+`value.source.dataset` and both must match exactly. Provider identity is checked
+independently before these fields, so a different provider cannot reuse another
+adapter's scope. Source-scoped authorization explicitly requires
+`provider_record@0.2.0`; legacy unscoped records continue to validate and
+authorize with `provider_record@0.1.0`. The packaged
+`provider_contract@0.2.0` JSON contract exposes the paired arrays with
+`dependentRequired`, uniqueness, the same 256-item cardinality and 256-character
+string bounds; semantic validation independently rechecks the pair and values.
+Published `provider_contract@0.1.0` remains byte-for-byte immutable and does not
+expose these fields.
 Provider identifiers are capped at 256 characters and terms URLs at 2,048
 characters in both typed and JSON contracts.
 
@@ -68,9 +85,9 @@ benchmarks, issuers and platform listings; share-class, NAV, benchmark,
 manager-tenure and holding calls cover their matching entity types; fees cover
 fund strategies and share classes; purchase status covers share classes and
 platform listings; disclosures cover canonical entities; and external ratings
-cover only the isolated `external_rating` namespace. A broad adapter capability
-therefore cannot authorize an unrelated record such as a holding fetched under
-`GET_PROFILE`.
+cover only the isolated `external_rating` namespace. `GET_MACRO_SERIES` covers
+only `macro_observation`. A broad adapter capability therefore cannot authorize
+an unrelated record such as a holding fetched under `GET_PROFILE`.
 
 ## Rate-limit state
 
@@ -116,3 +133,19 @@ A capability is not permission. A successful authorization is limited to the
 specific record, operation set, Schema version, evaluation instant and budget
 provided. It is not a licence, legal opinion, data subscription or public
 publication approval.
+
+The two current fixed-host pilot adapters, their field mappings, live-fetch
+clock boundary, offline fixture API/CLI, conservative rights posture and
+explicitly uncovered sources are documented in
+[Official Provider Pilots](OFFICIAL_PROVIDERS.md). The pilots live outside this
+entitlement core and do not change its fail-closed rules.
+
+At that official-adapter boundary, query mappings are materialized to at most 64
+entries; each exact built-in string key/value is limited to 1,024 characters and
+4,096 strict UTF-8 bytes, and the final encoded target to 8,192 UTF-8 bytes.
+Allowed request-header values are non-empty visible ASCII and at most 1,024
+characters. Exact built-in finite connect/read timeouts must satisfy
+`0 < timeout <= 60` seconds. Injected local limiters are defensively reconstructed
+as independent instances after validation. SEC Eastern time is resolved lazily:
+missing tzdb does not break resource CLI commands and produces a stable redacted
+`invalid_sec_payload` only when SEC row parsing requires that timezone.

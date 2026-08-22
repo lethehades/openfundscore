@@ -41,6 +41,13 @@ if TYPE_CHECKING:
         load_metric_catalog,
         validate_metric_catalog,
     )
+    from .official_providers import (
+        OFFICIAL_PROVIDER_SCHEMA_VERSION,
+        FixedHostHttpClient,
+        ProviderHttpError,
+        SecEdgarSubmissionsAdapter,
+        WorldBankIndicatorsAdapter,
+    )
     from .publication_gate import (
         PublicationDecision,
         PublicationGateError,
@@ -62,12 +69,14 @@ __version__ = "0.2.0.dev0"
 
 __all__ = (
     "MANAGER_COMPONENT_SOURCE_MANIFEST",
+    "OFFICIAL_PROVIDER_SCHEMA_VERSION",
     "ApplicabilityContext",
     "CaptureDenominatorAudit",
     "CaptureDenominatorStatus",
     "CategoryMetricError",
     "CategoryScoreResult",
     "DimensionScore",
+    "FixedHostHttpClient",
     "HistoryStage",
     "ManagerEvidenceSource",
     "ManagerResearchHandoff",
@@ -83,12 +92,15 @@ __all__ = (
     "PeerAuditRecord",
     "PeerObservation",
     "PeerSetAudit",
+    "ProviderHttpError",
     "PublicationDecision",
     "PublicationGateError",
     "PublicationGateResult",
     "RecordType",
     "RecordValidationError",
+    "SecEdgarSubmissionsAdapter",
     "StrategyMappingError",
+    "WorldBankIndicatorsAdapter",
     "build_manager_evidence_sources",
     "canonicalize_score_evidence_ledger_for_digest",
     "derive_manager_evidence_sources",
@@ -128,6 +140,14 @@ _CATEGORY_EXPORTS = {
     "score_category_metrics",
 }
 
+_OFFICIAL_PROVIDER_EXPORTS = {
+    "FixedHostHttpClient",
+    "OFFICIAL_PROVIDER_SCHEMA_VERSION",
+    "ProviderHttpError",
+    "SecEdgarSubmissionsAdapter",
+    "WorldBankIndicatorsAdapter",
+}
+
 _METRIC_CATALOG_EXPORTS = {
     "MetricCatalogValidationError",
     "load_metric_catalog",
@@ -153,6 +173,10 @@ def __getattr__(name: str) -> Any:
         from . import category_metrics
 
         return getattr(category_metrics, name)
+    if name in _OFFICIAL_PROVIDER_EXPORTS:
+        from . import official_providers
+
+        return getattr(official_providers, name)
     if name in _METRIC_CATALOG_EXPORTS:
         from . import metric_catalog
 

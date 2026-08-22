@@ -5,11 +5,13 @@ import os
 import shutil
 import subprocess
 import tempfile
+import textwrap
 import unittest
 import venv
 from pathlib import Path
 
 from tests.test_category_metrics_cli import cli_document, manager_handoff_document
+from tests.test_official_provider_adapters import SEC_FIXTURE, WORLD_BANK_PAGE_1
 from tests.test_record_validation import (
     external_rating,
     manager_record,
@@ -26,7 +28,9 @@ _EXPECTED_RESOURCE_SELECTORS = frozenset(
         ("schema", "external_rating", "0.1.0"),
         ("schema", "manager_research", "0.1.0"),
         ("schema", "provider_contract", "0.1.0"),
+        ("schema", "provider_contract", "0.2.0"),
         ("schema", "provider_record", "0.1.0"),
+        ("schema", "provider_record", "0.2.0"),
         ("schema", "score_evidence_usage", "0.1.0"),
         ("schema", "score_evidence_usage", "0.2.0"),
         ("scoring-config", "openfundscore-core", "0.1.0"),
@@ -121,6 +125,16 @@ class InstalledWheelResourceTests(unittest.TestCase):
             ledger_v020_path.write_text(
                 json.dumps(category_document["evidence_ledger"]), encoding="utf-8"
             )
+            sec_fixture_path = runtime / "sec-fixture.json"
+            sec_fixture_path.write_bytes(SEC_FIXTURE)
+            world_bank_fixture = json.loads(json.dumps(WORLD_BANK_PAGE_1))
+            world_bank_fixture[0]["pages"] = 1
+            world_bank_fixture[0]["total"] = 1
+            world_bank_fixture_path = runtime / "world-bank-fixture.json"
+            world_bank_fixture_path.write_text(
+                json.dumps(world_bank_fixture),
+                encoding="utf-8",
+            )
             api_probe = subprocess.run(
                 [
                     str(python),
@@ -131,6 +145,10 @@ class InstalledWheelResourceTests(unittest.TestCase):
                         "selectors={(i.key.resource_type.value,i.key.name,i.key.version)"
                         " for i in items};"
                         f"assert selectors=={_EXPECTED_RESOURCE_SELECTORS!r};"
+                        "legacy=resolve_resource(resource_type='schema',name='provider_record',version='0.1.0');"
+                        "current=resolve_resource(resource_type='schema',name='provider_record',version='0.2.0');"
+                        "assert 'macro_observation' not in legacy.load_json()['properties']['entity_type']['enum'];"
+                        "assert 'macro_observation' in current.load_json()['properties']['entity_type']['enum'];"
                         "[resolve_resource(resource_type=i.key.resource_type,"
                         "name=i.key.name,version=i.key.version).load_json() for i in items];"
                         "from openfundscore.strategy_mapping import map_strategy_family;"
@@ -140,7 +158,7 @@ class InstalledWheelResourceTests(unittest.TestCase):
                         "assert d.unrated_reason=='insufficient_comparable_sample';"
                         "from openfundscore import ManagerResearchHandoff,"
                         "derive_manager_evidence_sources,score_manager_research;"
-                        "from datetime import datetime;import json;"
+                        "from datetime import datetime;import json,pathlib;"
                         f"h=json.loads({manager_payload!r});"
                         "dt=lambda v:datetime.fromisoformat(v.replace('Z','+00:00'));"
                         "sources=derive_manager_evidence_sources(h['manager_research'],"
@@ -181,6 +199,18 @@ class InstalledWheelResourceTests(unittest.TestCase):
                         "    raise AssertionError('private source URL accepted')\n"
                         "[(lambda u,a: (bad['evidence'][0].__setitem__('source_url',u),"
                         "_expect_value_error(a,bad)))(u,a) for u in urls for a in apis];"
+                        "from datetime import UTC,datetime;"
+                        "from openfundscore import SecEdgarSubmissionsAdapter,WorldBankIndicatorsAdapter;"
+                        "cutoff=datetime(2026,8,21,12,30,tzinfo=UTC);"
+                        "sec=SecEdgarSubmissionsAdapter(user_agent='OpenFundScore security@openfundscore.org')"
+                        ".parse_submissions_fixture(pathlib.Path('sec-fixture.json').read_bytes(),"
+                        "cik='0000320193',fetched_at=cutoff,evaluation_timestamp=cutoff);"
+                        "wb=WorldBankIndicatorsAdapter(countries=frozenset({'US'}))"
+                        ".parse_page_fixture(pathlib.Path('world-bank-fixture.json').read_bytes(),"
+                        "country='US',indicator='NY.GDP.MKTP.CD',source=2,page=1,per_page=1,"
+                        "fetched_at=cutoff,evaluation_timestamp=cutoff);"
+                        "assert len(sec)==2 and sec[0]['entity_type']=='issuer';"
+                        "assert len(wb)==1 and wb[0]['entity_type']=='macro_observation';"
                         "print('api-ok')"
                     ),
                 ],
@@ -285,7 +315,239 @@ class InstalledWheelResourceTests(unittest.TestCase):
             )
             self.assertEqual(category_api_probe.stdout.strip(), "category-api-ok")
 
+            hostile_probe_path = runtime / "installed-hostile-probe.py"
+            hostile_probe_path.write_text(
+                textwrap.dedent(
+                    """
+                    import contextlib
+                    import io
+                    import json
+                    import pathlib
+                    import zoneinfo
+                    from datetime import UTC, datetime
+
+                    marker = "PRIVATE-TZDB-SENTINEL"
+
+                    def missing_zone(*args, **kwargs):
+                        raise zoneinfo.ZoneInfoNotFoundError(marker)
+
+                    zoneinfo.ZoneInfo = missing_zone
+
+                    import openfundscore.official_providers as official
+                    from openfundscore.cli import main
+                    from openfundscore.official_providers import (
+                        FixedHostHttpClient,
+                        LocalRateLimiter,
+                        ProviderHttpError,
+                        SecEdgarSubmissionsAdapter,
+                        WorldBankIndicatorsAdapter,
+                    )
+
+                    transport_calls = []
+
+                    def zero_transport(request):
+                        transport_calls.append(request)
+                        raise AssertionError("transport must not run")
+
+                    try:
+                        FixedHostHttpClient(
+                            host="data.sec.gov",
+                            transport=zero_transport,
+                            connect_timeout=60.000001,
+                        )
+                    except ProviderHttpError as exc:
+                        assert exc.code == "invalid_client_config"
+                    else:
+                        raise AssertionError("timeout above 60 seconds accepted")
+                    assert transport_calls == []
+
+                    client = FixedHostHttpClient(
+                        host="data.sec.gov",
+                        transport=zero_transport,
+                    )
+                    invalid_requests = (
+                        {"path": "/safe", "query": {"q": "\\ud800"}, "headers": {}},
+                        {"path": "/safe", "query": {}, "headers": {"Accept": "Ā"}},
+                        {"path": "/safe", "query": {}, "headers": {"Accept": "x\\x7f"}},
+                    )
+                    for request in invalid_requests:
+                        try:
+                            client.get_json(**request)
+                        except ProviderHttpError as exc:
+                            assert exc.code == "invalid_request"
+                        else:
+                            raise AssertionError("hostile query/header accepted")
+                    assert transport_calls == []
+
+                    world_bank = WorldBankIndicatorsAdapter(
+                        countries=frozenset({"US"}),
+                        transport=zero_transport,
+                    )
+                    try:
+                        world_bank.fetch_series(
+                            country="US",
+                            indicator="NY.GDP.MKTP.CD",
+                            source=1,
+                        )
+                    except ProviderHttpError as exc:
+                        assert exc.code == "unreviewed_world_bank_source"
+                    else:
+                        raise AssertionError("unreviewed World Bank source accepted")
+                    assert transport_calls == []
+
+                    current = [0.0]
+                    sleeps = []
+
+                    def monotonic():
+                        return current[0]
+
+                    def sleep(seconds):
+                        sleeps.append(seconds)
+                        current[0] += seconds
+
+                    injected = LocalRateLimiter(
+                        requests_per_second=1,
+                        monotonic=monotonic,
+                        sleep=sleep,
+                    )
+                    sec = SecEdgarSubmissionsAdapter(
+                        user_agent="OpenFundScore security@openfundscore.org",
+                        transport=zero_transport,
+                        requests_per_second=1,
+                        limiter=injected,
+                    )
+                    assert sec._limiter is not injected
+                    injected.requests_per_second = 10
+                    injected._interval = 0.001
+                    injected._next_allowed = -100.0
+                    sec._limiter.acquire()
+                    sec._limiter.acquire()
+                    assert sleeps == [1.0]
+                    assert sec.get_entitlements(
+                        evaluation_timestamp=datetime(2026, 8, 21, tzinfo=UTC)
+                    ).rate_limit.requests_per_period == 1
+
+                    stdout = io.StringIO()
+                    stderr = io.StringIO()
+                    with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+                        exit_code = main(["resources", "list", "--type", "schema"])
+                    assert exit_code == 0
+                    assert len(json.loads(stdout.getvalue())) == 8
+                    assert marker not in stderr.getvalue()
+
+                    cutoff = datetime(2026, 8, 21, 12, 30, tzinfo=UTC)
+                    try:
+                        sec.parse_submissions_fixture(
+                            pathlib.Path("sec-fixture.json").read_bytes(),
+                            cik="0000320193",
+                            fetched_at=cutoff,
+                            evaluation_timestamp=cutoff,
+                        )
+                    except ProviderHttpError as exc:
+                        assert exc.code == "invalid_sec_payload"
+                        assert marker not in str(exc)
+                        assert exc.__cause__ is None
+                        assert exc.__context__ is None
+                    else:
+                        raise AssertionError("SEC parse did not fail without timezone data")
+                    assert transport_calls == []
+                    print("installed-hostile-ok")
+                    """
+                ).lstrip(),
+                encoding="utf-8",
+            )
+            hostile_probe = subprocess.run(
+                [str(python), str(hostile_probe_path)],
+                check=False,
+                cwd=runtime,
+                env=clean_environment,
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(
+                hostile_probe.returncode,
+                0,
+                msg=(f"stdout={hostile_probe.stdout}\nstderr={hostile_probe.stderr}"),
+            )
+            self.assertEqual(
+                hostile_probe.stdout.strip(),
+                "installed-hostile-ok",
+            )
+
             executable = environment / "bin" / "openfundscore"
+            fixture_commands = (
+                (
+                    [
+                        str(executable),
+                        "provider-fixture",
+                        "sec",
+                        "--schema-version",
+                        "0.2.0",
+                        "--cik",
+                        "0000320193",
+                        "--user-agent",
+                        "OpenFundScore security@openfundscore.org",
+                        "--fetched-at",
+                        "2026-08-21T12:30:00Z",
+                        "--evaluation-timestamp",
+                        "2026-08-21T12:30:00Z",
+                        str(sec_fixture_path),
+                    ],
+                    2,
+                    "sec-edgar-submissions",
+                ),
+                (
+                    [
+                        str(executable),
+                        "provider-fixture",
+                        "world-bank",
+                        "--schema-version",
+                        "0.2.0",
+                        "--country",
+                        "US",
+                        "--indicator",
+                        "NY.GDP.MKTP.CD",
+                        "--source",
+                        "2",
+                        "--page",
+                        "1",
+                        "--per-page",
+                        "1",
+                        "--fetched-at",
+                        "2026-08-21T12:30:00Z",
+                        "--evaluation-timestamp",
+                        "2026-08-21T12:30:00Z",
+                        str(world_bank_fixture_path),
+                    ],
+                    1,
+                    "world-bank-indicators-v2",
+                ),
+            )
+            for command, expected_count, provider_id in fixture_commands:
+                fixture_probe = subprocess.run(
+                    command,
+                    check=False,
+                    cwd=runtime,
+                    env=clean_environment,
+                    capture_output=True,
+                    text=True,
+                )
+                self.assertEqual(
+                    fixture_probe.returncode,
+                    0,
+                    msg=(
+                        f"stdout={fixture_probe.stdout}\nstderr={fixture_probe.stderr}"
+                    ),
+                )
+                fixture_records = json.loads(fixture_probe.stdout)
+                self.assertEqual(len(fixture_records), expected_count)
+                self.assertTrue(
+                    all(
+                        record["provider_id"] == provider_id
+                        for record in fixture_records
+                    )
+                )
+
             list_probe = subprocess.run(
                 [str(executable), "resources", "list"],
                 check=True,

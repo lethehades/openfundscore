@@ -26,6 +26,13 @@ from .manager_research import (
     ManagerResearchValidationError,
     derive_manager_evidence_sources,
 )
+from .official_providers import (
+    OFFICIAL_PROVIDER_SCHEMA_VERSION,
+    ProviderHttpError,
+    SecEdgarSubmissionsAdapter,
+    WorldBankIndicatorsAdapter,
+)
+from .provider_semantics import parse_rfc3339_timestamp
 from .resources import (
     ResourceError,
     ResourceInfo,
@@ -48,6 +55,7 @@ from .validation import RecordType, RecordValidationError, validate_record
 
 _MAX_RECORD_BYTES = 8 * 1024 * 1024
 _MAX_CATEGORY_BYTES = 8 * 1024 * 1024
+_MAX_PROVIDER_FIXTURE_BYTES = 2 * 1024 * 1024
 
 
 class _DocumentFormatError(ValueError):
@@ -497,6 +505,28 @@ def _category_score_from_document(document: object):
     )
 
 
+def _load_provider_fixture(path: str) -> bytes:
+    payload: bytes | None = None
+    try:
+        with Path(path).open("rb") as stream:
+            payload = stream.read(_MAX_PROVIDER_FIXTURE_BYTES + 1)
+    except OSError:
+        pass
+    if payload is None:
+        raise ProviderHttpError(
+            code="fixture_io",
+            path="$fixture",
+            message="provider fixture could not be read",
+        ) from None
+    if len(payload) > _MAX_PROVIDER_FIXTURE_BYTES:
+        raise ProviderHttpError(
+            code="response_too_large",
+            path="$fixture",
+            message="provider fixture exceeds the size limit",
+        )
+    return payload
+
+
 def _add_resource_selector(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--type",
@@ -551,6 +581,38 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     category_score.add_argument("path", help="path to a category score JSON document")
+    provider_fixture = subparsers.add_parser(
+        "provider-fixture",
+        help="parse a bounded official-provider JSON fixture without network access",
+    )
+    provider_subparsers = provider_fixture.add_subparsers(
+        dest="provider_fixture_type", required=True
+    )
+    sec_fixture = provider_subparsers.add_parser("sec")
+    sec_fixture.add_argument(
+        "--schema-version",
+        choices=(OFFICIAL_PROVIDER_SCHEMA_VERSION,),
+        default=OFFICIAL_PROVIDER_SCHEMA_VERSION,
+    )
+    sec_fixture.add_argument("--cik", required=True)
+    sec_fixture.add_argument("--user-agent", required=True)
+    sec_fixture.add_argument("--fetched-at", required=True)
+    sec_fixture.add_argument("--evaluation-timestamp", required=True)
+    sec_fixture.add_argument("path")
+    world_bank_fixture = provider_subparsers.add_parser("world-bank")
+    world_bank_fixture.add_argument(
+        "--schema-version",
+        choices=(OFFICIAL_PROVIDER_SCHEMA_VERSION,),
+        default=OFFICIAL_PROVIDER_SCHEMA_VERSION,
+    )
+    world_bank_fixture.add_argument("--country", required=True)
+    world_bank_fixture.add_argument("--indicator", required=True)
+    world_bank_fixture.add_argument("--source", required=True, type=int)
+    world_bank_fixture.add_argument("--page", required=True, type=int)
+    world_bank_fixture.add_argument("--per-page", required=True, type=int)
+    world_bank_fixture.add_argument("--fetched-at", required=True)
+    world_bank_fixture.add_argument("--evaluation-timestamp", required=True)
+    world_bank_fixture.add_argument("path")
 
     resources = subparsers.add_parser(
         "resources", help="inspect versioned package resources"
@@ -632,6 +694,48 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(f"openfundscore: error: {exc}", file=sys.stderr)
             return 2
         print(f"valid: {args.record_type}@{args.schema_version} (schema+semantics)")
+        return 0
+
+    if args.command == "provider-fixture":
+        try:
+            payload = _load_provider_fixture(args.path)
+            fetched_at = parse_rfc3339_timestamp(
+                args.fetched_at,
+                path="$arguments.fetched_at",
+            )
+            evaluation_timestamp = parse_rfc3339_timestamp(
+                args.evaluation_timestamp,
+                path="$arguments.evaluation_timestamp",
+            )
+            if args.provider_fixture_type == "sec":
+                records = SecEdgarSubmissionsAdapter(
+                    user_agent=args.user_agent
+                ).parse_submissions_fixture(
+                    payload,
+                    cik=args.cik,
+                    fetched_at=fetched_at,
+                    evaluation_timestamp=evaluation_timestamp,
+                )
+            else:
+                records = WorldBankIndicatorsAdapter(
+                    countries=frozenset({args.country})
+                ).parse_page_fixture(
+                    payload,
+                    country=args.country,
+                    indicator=args.indicator,
+                    source=args.source,
+                    page=args.page,
+                    per_page=args.per_page,
+                    fetched_at=fetched_at,
+                    evaluation_timestamp=evaluation_timestamp,
+                )
+        except ValueError:
+            print(
+                "openfundscore: error: provider fixture parse failed",
+                file=sys.stderr,
+            )
+            return 2
+        print(json.dumps(records, indent=2, sort_keys=True))
         return 0
 
     if args.command == "resources":

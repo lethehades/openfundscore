@@ -4,6 +4,8 @@ import hashlib
 import unittest
 from unittest.mock import patch
 
+from referencing import Registry
+
 from openfundscore.resources import (
     ResolvedResource,
     ResourceError,
@@ -202,7 +204,9 @@ class ResourceCatalogTests(unittest.TestCase):
                 ("schema", "external_rating", "0.1.0"),
                 ("schema", "manager_research", "0.1.0"),
                 ("schema", "provider_contract", "0.1.0"),
+                ("schema", "provider_contract", "0.2.0"),
                 ("schema", "provider_record", "0.1.0"),
+                ("schema", "provider_record", "0.2.0"),
                 ("schema", "score_evidence_usage", "0.1.0"),
                 ("schema", "score_evidence_usage", "0.2.0"),
                 ("scoring-config", "openfundscore-core", "0.1.0"),
@@ -233,13 +237,108 @@ class ResourceCatalogTests(unittest.TestCase):
     def test_catalog_filters_by_resource_type(self) -> None:
         resources = list_resources(resource_type="schema")
 
-        self.assertEqual(len(resources), 6)
+        self.assertEqual(len(resources), 8)
         self.assertTrue(
             all(
                 resource.key.resource_type is ResourceType.SCHEMA
                 for resource in resources
             )
         )
+
+    def test_provider_record_0_1_0_is_immutable_and_0_2_0_adds_macro_observation(
+        self,
+    ) -> None:
+        legacy = resolve_resource(
+            resource_type="schema",
+            name="provider_record",
+            version="0.1.0",
+        )
+        current = resolve_resource(
+            resource_type="schema",
+            name="provider_record",
+            version="0.2.0",
+        )
+
+        legacy_schema = legacy.load_json()
+        current_schema = current.load_json()
+        self.assertEqual(
+            hashlib.sha256(legacy.read_bytes()).hexdigest(),
+            "baf590e637dc0e0bdf01eddf9d51ccbe5e9d3c16057910a9cf7b9b58ccec65bf",
+        )
+        self.assertEqual(
+            legacy_schema["$id"],
+            "https://openfundscore.org/schemas/provider_record.schema.json",
+        )
+        self.assertEqual(
+            current_schema["$id"],
+            "https://openfundscore.org/schemas/provider_record/0.2.0.schema.json",
+        )
+        self.assertNotEqual(legacy_schema["$id"], current_schema["$id"])
+        registry = Registry().with_contents(
+            [
+                (legacy_schema["$id"], legacy_schema),
+                (current_schema["$id"], current_schema),
+            ]
+        )
+        self.assertEqual(
+            set(registry.keys()),
+            {legacy_schema["$id"], current_schema["$id"]},
+        )
+        self.assertEqual(registry.contents(legacy_schema["$id"]), legacy_schema)
+        self.assertEqual(registry.contents(current_schema["$id"]), current_schema)
+        self.assertNotIn(
+            "macro_observation",
+            legacy_schema["properties"]["entity_type"]["enum"],
+        )
+        self.assertIn(
+            "macro_observation",
+            current_schema["properties"]["entity_type"]["enum"],
+        )
+
+    def test_provider_contract_0_1_0_is_immutable_and_0_2_0_adds_scopes(
+        self,
+    ) -> None:
+        legacy = resolve_resource(
+            resource_type="schema",
+            name="provider_contract",
+            version="0.1.0",
+        )
+        current = resolve_resource(
+            resource_type="schema",
+            name="provider_contract",
+            version="0.2.0",
+        )
+
+        legacy_schema = legacy.load_json()
+        current_schema = current.load_json()
+        self.assertEqual(
+            hashlib.sha256(legacy.read_bytes()).hexdigest(),
+            "71add223d5f010c3bfa6c88669a8bfd4d4a1a9f47cd1f302d78919f315da7a09",
+        )
+        self.assertEqual(
+            legacy_schema["$id"],
+            "https://openfundscore.org/schemas/provider_contract.schema.json",
+        )
+        self.assertEqual(
+            current_schema["$id"],
+            "https://openfundscore.org/schemas/provider_contract/0.2.0.schema.json",
+        )
+        self.assertNotIn("source_ids", legacy_schema["properties"])
+        self.assertNotIn("dataset_ids", legacy_schema["properties"])
+        self.assertIn("source_ids", current_schema["properties"])
+        self.assertIn("dataset_ids", current_schema["properties"])
+
+    def test_every_packaged_schema_has_a_unique_canonical_id(self) -> None:
+        schemas = [
+            resolve_resource(
+                resource_type=item.key.resource_type,
+                name=item.key.name,
+                version=item.key.version,
+            ).load_json()
+            for item in list_resources(resource_type="schema")
+        ]
+        ids = [schema["$id"] for schema in schemas]
+        self.assertEqual(len(ids), len(set(ids)))
 
     def test_resolves_and_reads_versioned_scoring_config(self) -> None:
         resource = resolve_resource(
