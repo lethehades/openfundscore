@@ -154,7 +154,9 @@ class WalkForwardTests(unittest.TestCase):
         self.assertEqual(raised.exception.code, code)
         self.assertNotIn("private-marker", str(raised.exception))
 
-    def test_callback_receives_only_point_in_time_data_and_share_classes_are_deduplicated(self) -> None:
+    def test_callback_receives_only_point_in_time_data_and_share_classes_are_deduplicated(
+        self,
+    ) -> None:
         import openfundscore
 
         self.assertIs(openfundscore.run_walk_forward, run_walk_forward)
@@ -238,8 +240,9 @@ class WalkForwardTests(unittest.TestCase):
             candidates=(fund,),
             snapshots=historical + (future_manager,),
             outcomes=(),
-            scorer=lambda view: views.append(view)
-            or score_result(70.0, (("total", 70.0),)),
+            scorer=lambda view: (
+                views.append(view) or score_result(70.0, (("total", 70.0),))
+            ),
         )
 
         self.assertEqual(len(views), 1)
@@ -256,7 +259,9 @@ class WalkForwardTests(unittest.TestCase):
             "provider-snapshot-1",
         )
 
-    def test_snapshot_revision_chain_selects_only_the_revision_known_at_decision(self) -> None:
+    def test_snapshot_revision_chain_selects_only_the_revision_known_at_decision(
+        self,
+    ) -> None:
         def revision(
             domain: str,
             value: str | float | bool,
@@ -347,14 +352,28 @@ class WalkForwardTests(unittest.TestCase):
         self.assertEqual(
             seen,
             [
-                ("fold-1", tuple(f"{domain}-r1" for domain in sorted({item.domain for item in snapshots}))),
-                ("fold-2", tuple(f"{domain}-r2" for domain in sorted({item.domain for item in snapshots}))),
+                (
+                    "fold-1",
+                    tuple(
+                        f"{domain}-r1"
+                        for domain in sorted({item.domain for item in snapshots})
+                    ),
+                ),
+                (
+                    "fold-2",
+                    tuple(
+                        f"{domain}-r2"
+                        for domain in sorted({item.domain for item in snapshots})
+                    ),
+                ),
             ],
         )
         self.assertEqual(report.folds[0].eligible_count, 1)
         self.assertEqual(report.folds[1].eligible_count, 1)
 
-    def test_snapshot_revision_chain_rejects_dangling_forks_duplicates_and_future_supersedes(self) -> None:
+    def test_snapshot_revision_chain_rejects_dangling_forks_duplicates_and_future_supersedes(
+        self,
+    ) -> None:
         base = replace(
             required_snapshots("alpha")[2],
             snapshot_id="manager-r1-snapshot",
@@ -455,8 +474,9 @@ class WalkForwardTests(unittest.TestCase):
             candidates=(fund,),
             snapshots=required_snapshots("alpha"),
             outcomes=(),
-            scorer=lambda view: seen.append(view.strategy_id)
-            or score_result(1.0, (("total", 1.0),)),
+            scorer=lambda view: (
+                seen.append(view.strategy_id) or score_result(1.0, (("total", 1.0),))
+            ),
         )
 
         self.assertEqual(seen, ["alpha"])
@@ -470,7 +490,9 @@ class WalkForwardTests(unittest.TestCase):
             fold().decision_at,
         )
 
-    def test_lifecycle_revision_replaces_same_effective_state_only_after_publication(self) -> None:
+    def test_lifecycle_revision_replaces_same_effective_state_only_after_publication(
+        self,
+    ) -> None:
         fund = CandidateFund(
             share_class_id="alpha-A",
             strategy_id="alpha",
@@ -548,7 +570,9 @@ class WalkForwardTests(unittest.TestCase):
         )
         self.assertEqual(unknown_report.folds[0].failures[0].code, "snapshot_unknown")
 
-    def test_reports_stability_turnover_breadth_outcomes_drawdown_and_uncertainty(self) -> None:
+    def test_reports_stability_turnover_breadth_outcomes_drawdown_and_uncertainty(
+        self,
+    ) -> None:
         second_fold = FoldWindow(
             fold_id="fold-2",
             train_start=dt("2019-02-01T00:00:00Z"),
@@ -633,9 +657,13 @@ class WalkForwardTests(unittest.TestCase):
         self.assertEqual(first.wealth.recovery_periods, 1)
         self.assertEqual(report.summary.fold_count, 2)
         self.assertLess(report.summary.wealth.max_drawdown, 0.0)
-        self.assertEqual(report.summary.disclaimer, "research_only_not_a_return_guarantee")
+        self.assertEqual(
+            report.summary.disclaimer, "research_only_not_a_return_guarantee"
+        )
 
-    def test_component_correlation_and_leave_one_out_sensitivity_are_diagnostic(self) -> None:
+    def test_component_correlation_and_leave_one_out_sensitivity_are_diagnostic(
+        self,
+    ) -> None:
         strategies = ("alpha", "beta", "gamma")
         audits = {
             "alpha": score_result(90.0, (("quality", 60.0), ("risk", 30.0))),
@@ -656,7 +684,10 @@ class WalkForwardTests(unittest.TestCase):
 
         diagnostics = report.folds[0].component_diagnostics
         self.assertEqual(
-            tuple((item.component_name, item.sample_size, item.missing_count) for item in diagnostics.coverage),
+            tuple(
+                (item.component_name, item.sample_size, item.missing_count)
+                for item in diagnostics.coverage
+            ),
             (("quality", 3, 0), ("risk", 3, 0)),
         )
         quality_risk = next(
@@ -674,9 +705,13 @@ class WalkForwardTests(unittest.TestCase):
         )
         self.assertEqual(risk_omitted.method, "leave_one_component_out_no_refit")
         self.assertEqual(risk_omitted.baseline_selected_strategy_ids, ("alpha", "beta"))
-        self.assertEqual(risk_omitted.perturbed_selected_strategy_ids, ("alpha", "beta"))
+        self.assertEqual(
+            risk_omitted.perturbed_selected_strategy_ids, ("alpha", "beta")
+        )
         self.assertEqual(risk_omitted.selection_turnover.value, 0.0)
-        self.assertEqual(report.summary.component_diagnostics.coverage[0].sample_size, 3)
+        self.assertEqual(
+            report.summary.component_diagnostics.coverage[0].sample_size, 3
+        )
         self.assertEqual(report.summary.sensitivity[0].fold_count, 1)
 
     def test_sensitivity_recomputes_ranking_without_using_future_outcomes(self) -> None:
@@ -699,8 +734,7 @@ class WalkForwardTests(unittest.TestCase):
             return run_walk_forward(
                 WalkForwardConfig(folds=(fold(),), select_count=1),
                 candidates=tuple(
-                    candidate(f"{strategy_id}-A", strategy_id)
-                    for strategy_id in audits
+                    candidate(f"{strategy_id}-A", strategy_id) for strategy_id in audits
                 ),
                 snapshots=tuple(
                     point
@@ -745,7 +779,9 @@ class WalkForwardTests(unittest.TestCase):
         self.assertEqual(positive.folds[0].sensitivity, negative.folds[0].sensitivity)
         self.assertEqual(positive.summary.sensitivity, negative.summary.sensitivity)
 
-    def test_component_diagnostics_report_missing_and_constant_statuses_per_scope(self) -> None:
+    def test_component_diagnostics_report_missing_and_constant_statuses_per_scope(
+        self,
+    ) -> None:
         audits = {
             "alpha": score_result(10.0, (("constant", 5.0), ("optional", 5.0))),
             "beta": score_result(9.0, (("constant", 5.0), ("optional", None))),
@@ -770,7 +806,9 @@ class WalkForwardTests(unittest.TestCase):
             report.summary.component_diagnostics,
         ):
             optional = next(
-                item for item in diagnostics.coverage if item.component_name == "optional"
+                item
+                for item in diagnostics.coverage
+                if item.component_name == "optional"
             )
             self.assertEqual(optional.status, "partial")
             self.assertEqual(optional.sample_size, 2)
@@ -824,7 +862,9 @@ class WalkForwardTests(unittest.TestCase):
         self.assertEqual(correlation.value, 1.0)
         walk_forward_report_document(report)
 
-    def test_huge_integer_inputs_and_finite_sensitivity_overflow_fail_stably(self) -> None:
+    def test_huge_integer_inputs_and_finite_sensitivity_overflow_fail_stably(
+        self,
+    ) -> None:
         huge = 10**400
         for code, action in (
             (
@@ -1059,10 +1099,12 @@ class WalkForwardTests(unittest.TestCase):
             candidates=(candidate("alpha-A", "alpha"), future),
             snapshots=required_snapshots("alpha") + required_snapshots("future"),
             outcomes=(),
-            scorer=lambda view: calls.append(view.strategy_id)
-            or score_result(
-                100.0 if view.strategy_id == "future" else 1.0,
-                (("total", 100.0 if view.strategy_id == "future" else 1.0),),
+            scorer=lambda view: (
+                calls.append(view.strategy_id)
+                or score_result(
+                    100.0 if view.strategy_id == "future" else 1.0,
+                    (("total", 100.0 if view.strategy_id == "future" else 1.0),),
+                )
             ),
         )
 
@@ -1071,7 +1113,9 @@ class WalkForwardTests(unittest.TestCase):
         self.assertEqual(report.folds[0].coverage.total, 1)
         self.assertEqual(report.folds[0].selected_strategy_ids, ("alpha",))
 
-    def test_provider_snapshot_and_score_audit_versions_must_match_per_fold(self) -> None:
+    def test_provider_snapshot_and_score_audit_versions_must_match_per_fold(
+        self,
+    ) -> None:
         mismatched_manager = replace(
             required_snapshots("alpha")[2],
             provider_snapshot_id="provider-snapshot-2",
@@ -1084,8 +1128,9 @@ class WalkForwardTests(unittest.TestCase):
             candidates=(candidate("alpha-A", "alpha"),),
             snapshots=tuple(snapshots),
             outcomes=(),
-            scorer=lambda view: calls.append(view.strategy_id)
-            or score_result(1.0, (("quality", 1.0),)),
+            scorer=lambda view: (
+                calls.append(view.strategy_id) or score_result(1.0, (("quality", 1.0),))
+            ),
         )
         self.assertEqual(calls, [])
         self.assertEqual(report.folds[0].failures[0].code, "provider_snapshot_conflict")
@@ -1102,7 +1147,9 @@ class WalkForwardTests(unittest.TestCase):
             scorer=lambda view: mismatched_score,
         )
         self.assertEqual(score_report.folds[0].eligible_count, 0)
-        self.assertEqual(score_report.folds[0].failures[0].code, "score_provider_mismatch")
+        self.assertEqual(
+            score_report.folds[0].failures[0].code, "score_provider_mismatch"
+        )
 
         stale_score_time = replace(
             score_result(1.0, (("quality", 1.0),)),
@@ -1152,7 +1199,9 @@ class WalkForwardTests(unittest.TestCase):
             lambda: run_walk_forward(**arguments, scorer=lambda view: 1.0),
         )
 
-    def test_callback_score_audit_is_retained_and_none_is_structured_missing(self) -> None:
+    def test_callback_score_audit_is_retained_and_none_is_structured_missing(
+        self,
+    ) -> None:
         audit = score_result(42.0, (("quality", 42.0),))
         report = run_walk_forward(
             WalkForwardConfig(folds=(fold(),), select_count=1),
@@ -1171,7 +1220,9 @@ class WalkForwardTests(unittest.TestCase):
             replace(report.folds[0].score_audit_trail[0], strategy_id=None),
             audit,
         )
-        self.assertEqual(report.folds[0].score_audit_trail[0].revision_id, "callback-revision-1")
+        self.assertEqual(
+            report.folds[0].score_audit_trail[0].revision_id, "callback-revision-1"
+        )
 
         missing = run_walk_forward(
             WalkForwardConfig(folds=(fold(),), select_count=1),
@@ -1205,7 +1256,9 @@ class WalkForwardTests(unittest.TestCase):
             ),
             snapshots=required_snapshots("alpha") + required_snapshots("beta"),
             outcomes=(),
-            scorer=lambda view: shared_audit if view.strategy_id == "alpha" else beta_audit,
+            scorer=lambda view: (
+                shared_audit if view.strategy_id == "alpha" else beta_audit
+            ),
         )
 
         self.assertEqual(report.folds[0].eligible_count, 2)
@@ -1262,7 +1315,9 @@ class WalkForwardTests(unittest.TestCase):
             ),
         )
 
-    def test_callback_audit_identity_reuse_with_same_content_is_retained_per_fold(self) -> None:
+    def test_callback_audit_identity_reuse_with_same_content_is_retained_per_fold(
+        self,
+    ) -> None:
         shared_audit = replace(
             score_result(1.0, (("quality", 1.0),)),
             audit_id="shared-audit",
@@ -1328,14 +1383,15 @@ class WalkForwardTests(unittest.TestCase):
                     ),
                 )
         for exception_type in (KeyboardInterrupt, SystemExit):
-            with self.subTest(
-                exception_type=exception_type.__name__
-            ), self.assertRaises(exception_type):
+            with (
+                self.subTest(exception_type=exception_type.__name__),
+                self.assertRaises(exception_type),
+            ):
                 run_walk_forward(
                     **arguments,
-                    scorer=lambda view, exception_type=exception_type: (_ for _ in ()).throw(
-                        exception_type("private-marker")
-                    ),
+                    scorer=lambda view, exception_type=exception_type: (
+                        _ for _ in ()
+                    ).throw(exception_type("private-marker")),
                 )
 
         cyclic: list[object] = []
@@ -1350,7 +1406,9 @@ class WalkForwardTests(unittest.TestCase):
                     ),
                 )
 
-    def test_precomputed_scores_are_point_in_time_and_do_not_require_an_engine(self) -> None:
+    def test_precomputed_scores_are_point_in_time_and_do_not_require_an_engine(
+        self,
+    ) -> None:
         score = PrecomputedScore(
             score_id="score-alpha-1",
             strategy_id="alpha",
@@ -1415,7 +1473,9 @@ class WalkForwardTests(unittest.TestCase):
                     precomputed_scores=(excluded,),
                 )
                 self.assertEqual(excluded_report.folds[0].eligible_count, 0)
-                self.assertEqual(excluded_report.folds[0].failures[0].code, "score_missing")
+                self.assertEqual(
+                    excluded_report.folds[0].failures[0].code, "score_missing"
+                )
         mismatch_report = run_walk_forward(
             WalkForwardConfig(folds=(fold(),), select_count=1),
             candidates=(candidate("alpha-A", "alpha"),),
@@ -1423,7 +1483,9 @@ class WalkForwardTests(unittest.TestCase):
             outcomes=(),
             precomputed_scores=(mismatched_provider,),
         )
-        self.assertEqual(mismatch_report.folds[0].failures[0].code, "score_provider_mismatch")
+        self.assertEqual(
+            mismatch_report.folds[0].failures[0].code, "score_provider_mismatch"
+        )
         self.assert_walk_forward_error(
             "revision_chain_conflict",
             lambda: run_walk_forward(
@@ -1435,7 +1497,9 @@ class WalkForwardTests(unittest.TestCase):
             ),
         )
 
-    def test_precomputed_score_revision_chain_selects_old_then_revised_audit(self) -> None:
+    def test_precomputed_score_revision_chain_selects_old_then_revised_audit(
+        self,
+    ) -> None:
         original = PrecomputedScore(
             score_id="score-alpha-original",
             revision_id="score-revision-1",
@@ -1501,10 +1565,16 @@ class WalkForwardTests(unittest.TestCase):
             report.folds[1].audit_score_ids,
             (("alpha", "score-alpha-revised", "score-revision-2"),),
         )
-        self.assertEqual(report.folds[0].score_audit_trail[0].revision_id, "score-revision-1")
-        self.assertEqual(report.folds[1].score_audit_trail[0].revision_id, "score-revision-2")
+        self.assertEqual(
+            report.folds[0].score_audit_trail[0].revision_id, "score-revision-1"
+        )
+        self.assertEqual(
+            report.folds[1].score_audit_trail[0].revision_id, "score-revision-2"
+        )
 
-    def test_features_obey_publication_lag_and_unavailable_funds_are_not_scored(self) -> None:
+    def test_features_obey_publication_lag_and_unavailable_funds_are_not_scored(
+        self,
+    ) -> None:
         historical_feature = snapshot(
             "alpha",
             "feature:downside_risk",
@@ -1535,11 +1605,16 @@ class WalkForwardTests(unittest.TestCase):
             snapshots=required_snapshots("alpha")
             + (historical_feature, future_feature),
             outcomes=(),
-            scorer=lambda view: views.append(view)
-            or score_result(50.0, (("total", 50.0),)),
+            scorer=lambda view: (
+                views.append(view) or score_result(50.0, (("total", 50.0),))
+            ),
         )
         self.assertEqual(
-            [item.value for item in views[0].snapshots if item.domain.startswith("feature:")],
+            [
+                item.value
+                for item in views[0].snapshots
+                if item.domain.startswith("feature:")
+            ],
             [20.0],
         )
         self.assertIn("risk-known", report.folds[0].audit_snapshot_ids)
@@ -1698,7 +1773,9 @@ class WalkForwardTests(unittest.TestCase):
             lambda: walk_forward_report_document(poisoned),
         )
 
-    def test_json_object_boundary_rejects_depth_width_cycles_and_invalid_unicode(self) -> None:
+    def test_json_object_boundary_rejects_depth_width_cycles_and_invalid_unicode(
+        self,
+    ) -> None:
         deep: list[object] = []
         cursor = deep
         for _ in range(65):

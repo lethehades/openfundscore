@@ -34,7 +34,10 @@ where = ["src"]
 [tool.setuptools.package-data]
 "openfundscore._resources" = [
   "index.json",
+  "metric-catalog/*/*.json",
+  "peer-admission/*/*.json",
   "schema/*/*.json",
   "scoring-config/*/*.json",
   "strategy-mapping/*/*.json",
+  "platform-boundary/*/*.json",
 ]

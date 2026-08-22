@@ -1,0 +1,17 @@
+{
+  "contract_id": "category-profile-peer-admission",
+  "contract_version": "0.1.0",
+  "status": "research-preview",
+  "profiles": {
+    "active_equity_mixed": {"allowed_peer_buckets": ["active-equity-cn"], "peer_bucket_versions": {"active-equity-cn": "0.1.0"}},
+    "fixed_income_plus": {"allowed_peer_buckets": ["fixed-income-plus-cn"], "peer_bucket_versions": {"fixed-income-plus-cn": "0.1.0"}},
+    "index_etf": {"allowed_peer_buckets": ["index-etf-cn"], "peer_bucket_versions": {"index-etf-cn": "0.1.0"}},
+    "bond": {"allowed_peer_buckets": ["bond-cn"], "peer_bucket_versions": {"bond-cn": "0.1.0"}},
+    "money_market": {"allowed_peer_buckets": ["money-market-cn"], "peer_bucket_versions": {"money-market-cn": "0.1.0"}},
+    "qdii_active": {"allowed_peer_buckets": ["qdii-active-global"], "peer_bucket_versions": {"qdii-active-global": "0.1.0"}},
+    "qdii_index": {"allowed_peer_buckets": ["qdii-index-global"], "peer_bucket_versions": {"qdii-index-global": "0.1.0"}},
+    "fof_pension": {"allowed_peer_buckets": ["fof-pension-cn"], "peer_bucket_versions": {"fof-pension-cn": "0.1.0"}},
+    "gold_commodity": {"allowed_peer_buckets": ["gold-commodity-cn"], "peer_bucket_versions": {"gold-commodity-cn": "0.1.0"}},
+    "public_reit": {"allowed_peer_buckets": ["public-reit-cn"], "peer_bucket_versions": {"public-reit-cn": "0.1.0"}}
+  }
+}

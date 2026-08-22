@@ -155,9 +155,17 @@ class CandidateFund:
         _non_empty(self.strategy_id, "$.candidate.strategy_id")
         _aware(self.inception_at, "$.candidate.inception_at")
         if type(self.lifecycle) is not tuple or not self.lifecycle:
-            _fail("invalid_container", "$.candidate.lifecycle", "lifecycle must be a tuple")
+            _fail(
+                "invalid_container",
+                "$.candidate.lifecycle",
+                "lifecycle must be a tuple",
+            )
         if len(self.lifecycle) > _MAX_INPUT_ITEMS:
-            _fail("input_too_large", "$.candidate.lifecycle", "lifecycle exceeds the size limit")
+            _fail(
+                "input_too_large",
+                "$.candidate.lifecycle",
+                "lifecycle exceeds the size limit",
+            )
         if any(type(item) is not LifecycleInterval for item in self.lifecycle):
             _fail("invalid_type", "$.candidate.lifecycle", "lifecycle entry is invalid")
         ordered = tuple(
@@ -173,9 +181,15 @@ class CandidateFund:
             )
         )
         if ordered != self.lifecycle:
-            _fail("lifecycle_order", "$.candidate.lifecycle", "intervals must be sorted")
+            _fail(
+                "lifecycle_order", "$.candidate.lifecycle", "intervals must be sorted"
+            )
         if len(ordered) != len(set(ordered)):
-            _fail("duplicate_lifecycle", "$.candidate.lifecycle", "lifecycle records repeat")
+            _fail(
+                "duplicate_lifecycle",
+                "$.candidate.lifecycle",
+                "lifecycle records repeat",
+            )
         groups: dict[
             tuple[datetime, datetime | None],
             list[LifecycleInterval],
@@ -277,7 +291,11 @@ class VersionedSnapshot:
         ):
             _fail("unknown_domain", "$.snapshot.domain", "domain is unsupported")
         if len(self.domain) > _MAX_IDENTIFIER_LENGTH:
-            _fail("invalid_identifier", "$.snapshot.domain", "domain exceeds the length limit")
+            _fail(
+                "invalid_identifier",
+                "$.snapshot.domain",
+                "domain exceeds the length limit",
+            )
         for path, value in (
             ("$.snapshot.as_of", self.as_of),
             ("$.snapshot.published_at", self.published_at),
@@ -288,7 +306,11 @@ class VersionedSnapshot:
         if self.effective_to is not None:
             _aware(self.effective_to, "$.snapshot.effective_to")
             if self.effective_from >= self.effective_to:
-                _fail("snapshot_chronology", "$.snapshot.effective_from", "interval is invalid")
+                _fail(
+                    "snapshot_chronology",
+                    "$.snapshot.effective_from",
+                    "interval is invalid",
+                )
         if not self.as_of <= self.published_at <= self.knowledge_at:
             _fail("snapshot_chronology", "$.snapshot.as_of", "chronology is invalid")
         if type(self.value) not in {str, int, float, bool, type(None)}:
@@ -306,7 +328,9 @@ class VersionedSnapshot:
                 "text value exceeds the length limit",
             )
         if self.domain == "availability" and type(self.value) not in {bool, type(None)}:
-            _fail("invalid_snapshot_value", "$.snapshot.value", "availability is invalid")
+            _fail(
+                "invalid_snapshot_value", "$.snapshot.value", "availability is invalid"
+            )
         if (
             self.domain in {"classification", "benchmark", "manager"}
             and self.value is not None
@@ -350,15 +374,23 @@ def _validate_score_components(
 ) -> None:
     total = _finite_number(total_score, f"{path}.total_score", code="invalid_score")
     if type(components) is not tuple or not components:
-        _fail("invalid_components", f"{path}.components", "components must be non-empty")
+        _fail(
+            "invalid_components", f"{path}.components", "components must be non-empty"
+        )
     typed_components = cast(tuple[ScoreComponent, ...], components)
     if len(typed_components) > _MAX_INPUT_ITEMS:
-        _fail("input_too_large", f"{path}.components", "components exceed the size limit")
+        _fail(
+            "input_too_large", f"{path}.components", "components exceed the size limit"
+        )
     if any(type(item) is not ScoreComponent for item in typed_components):
         _fail("invalid_components", f"{path}.components", "component entry is invalid")
     names = tuple(item.name for item in typed_components)
     if len(names) != len(set(names)):
-        _fail("duplicate_component", f"{path}.components", "component names must be unique")
+        _fail(
+            "duplicate_component",
+            f"{path}.components",
+            "component names must be unique",
+        )
     contributions = tuple(
         float(item.contribution)
         for item in typed_components
@@ -482,7 +514,9 @@ class PrecomputedScore:
         if self.effective_to is not None:
             _aware(self.effective_to, "$.score.effective_to")
             if self.effective_from >= self.effective_to:
-                _fail("score_chronology", "$.score.effective_from", "interval is invalid")
+                _fail(
+                    "score_chronology", "$.score.effective_from", "interval is invalid"
+                )
         if not self.score_as_of <= self.published_at <= self.knowledge_at:
             _fail("score_chronology", "$.score.score_as_of", "chronology is invalid")
 
@@ -551,7 +585,9 @@ class FoldWindow:
         except OverflowError:
             _fail("invalid_embargo", "$.fold.embargo_seconds", "embargo is invalid")
         if embargo_end > self.outcome_start:
-            _fail("embargo_violation", "$.fold.outcome_start", "embargo is not satisfied")
+            _fail(
+                "embargo_violation", "$.fold.outcome_start", "embargo is not satisfied"
+            )
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -561,7 +597,9 @@ class WalkForwardConfig:
 
     def __post_init__(self) -> None:
         if type(self.folds) is not tuple or not self.folds:
-            _fail("invalid_container", "$.config.folds", "folds must be a non-empty tuple")
+            _fail(
+                "invalid_container", "$.config.folds", "folds must be a non-empty tuple"
+            )
         if len(self.folds) > _MAX_INPUT_ITEMS:
             _fail("input_too_large", "$.config.folds", "folds exceed the size limit")
         if any(type(item) is not FoldWindow for item in self.folds):
@@ -571,7 +609,11 @@ class WalkForwardConfig:
             or not isinstance(self.select_count, int)
             or self.select_count < 1
         ):
-            _fail("invalid_select_count", "$.config.select_count", "selection size is invalid")
+            _fail(
+                "invalid_select_count",
+                "$.config.select_count",
+                "selection size is invalid",
+            )
         decisions = tuple(item.decision_at for item in self.folds)
         if len(decisions) != len(set(decisions)):
             _fail("duplicate_decision", "$.config.folds", "decisions must be unique")
@@ -579,7 +621,9 @@ class WalkForwardConfig:
             _fail("window_order", "$.config.folds", "folds must be time sorted")
         identifiers = tuple(item.fold_id for item in self.folds)
         if len(identifiers) != len(set(identifiers)):
-            _fail("duplicate_entity", "$.config.folds", "fold identifiers must be unique")
+            _fail(
+                "duplicate_entity", "$.config.folds", "fold identifiers must be unique"
+            )
         for previous, current in pairwise(self.folds):
             if current.outcome_start <= previous.outcome_end:
                 _fail(
@@ -630,7 +674,11 @@ class FutureOutcome:
             for value in values:
                 numeric = _finite_number(value, path, code="invalid_outcome")
                 if not -1.0 <= numeric <= _MAX_SIMPLE_RETURN:
-                    _fail("invalid_outcome", path, "simple return is outside the supported range")
+                    _fail(
+                        "invalid_outcome",
+                        path,
+                        "simple return is outside the supported range",
+                    )
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -1048,8 +1096,7 @@ def _uncertainty(values: tuple[float, ...]) -> Uncertainty:
         for item in values
     )
     variance = _derived_number(
-        _safe_sum(squared_deviations, "$.uncertainty.variance")
-        / (len(values) - 1),
+        _safe_sum(squared_deviations, "$.uncertainty.variance") / (len(values) - 1),
         "$.uncertainty.variance",
     )
     standard_error = _derived_number(
@@ -1361,27 +1408,21 @@ def _component_diagnostics(audits: tuple[ScoreResult, ...]) -> ComponentDiagnost
                     )
                     numerator = _safe_sum(
                         tuple(
-                            _safe_multiply(
-                                item[0], item[1], "$.component_correlation"
-                            )
+                            _safe_multiply(item[0], item[1], "$.component_correlation")
                             for item in deviations
                         ),
                         "$.component_correlation",
                     )
                     left_scale = _safe_sum(
                         tuple(
-                            _safe_multiply(
-                                item[0], item[0], "$.component_correlation"
-                            )
+                            _safe_multiply(item[0], item[0], "$.component_correlation")
                             for item in deviations
                         ),
                         "$.component_correlation",
                     )
                     right_scale = _safe_sum(
                         tuple(
-                            _safe_multiply(
-                                item[1], item[1], "$.component_correlation"
-                            )
+                            _safe_multiply(item[1], item[1], "$.component_correlation")
                             for item in deviations
                         ),
                         "$.component_correlation",
@@ -1509,9 +1550,7 @@ def _sensitivity_diagnostics(
                 baseline_selected_strategy_ids=selected,
                 perturbed_selected_strategy_ids=perturbed_selected,
                 baseline_ranks=baseline_ranks,
-                perturbed_ranks=tuple(
-                    sorted(_ranks(perturbed, score_ids).items())
-                ),
+                perturbed_ranks=tuple(sorted(_ranks(perturbed, score_ids).items())),
                 selection_turnover=_turnover(selected, perturbed_selected),
                 rank_correlation=_score_stability(scores, perturbed),
                 selected_mean_score_delta=(
@@ -1738,10 +1777,14 @@ def _validate_inputs(
         _fail("invalid_scorer", "$.scorer", "score callback must be callable")
     share_ids = tuple(item.share_class_id for item in typed_candidates)
     if len(share_ids) != len(set(share_ids)):
-        _fail("duplicate_entity", "$.candidates", "share-class identifiers must be unique")
+        _fail(
+            "duplicate_entity", "$.candidates", "share-class identifiers must be unique"
+        )
     candidate_ids = {item.strategy_id for item in typed_candidates}
     for strategy_id in candidate_ids:
-        versions = tuple(item for item in typed_candidates if item.strategy_id == strategy_id)
+        versions = tuple(
+            item for item in typed_candidates if item.strategy_id == strategy_id
+        )
         if len({(item.inception_at, item.lifecycle) for item in versions}) != 1:
             _fail(
                 "entity_conflict",
@@ -1758,9 +1801,7 @@ def _validate_inputs(
             _fail("duplicate_entity", path, "record identifiers must be unique")
         if any(item.strategy_id not in candidate_ids for item in items):
             _fail("unknown_strategy_id", path, "record references an unknown strategy")
-    fold_windows = {
-        (item.outcome_start, item.outcome_end) for item in config.folds
-    }
+    fold_windows = {(item.outcome_start, item.outcome_end) for item in config.folds}
     if any(
         (item.window_start, item.window_end) not in fold_windows
         for item in typed_outcomes
@@ -1769,7 +1810,8 @@ def _validate_inputs(
     _validate_snapshot_revision_groups(typed_snapshots)
     _validate_score_revision_groups(typed_scores)
     outcome_keys = tuple(
-        (item.strategy_id, item.window_start, item.window_end) for item in typed_outcomes
+        (item.strategy_id, item.window_start, item.window_end)
+        for item in typed_outcomes
     )
     if len(outcome_keys) != len(set(outcome_keys)):
         _fail("duplicate_outcome", "$.outcomes", "strategy outcome must be unique")

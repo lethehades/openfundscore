@@ -51,9 +51,7 @@ def _candidate(strategy_id: str, terminal_status: str | None) -> CandidateFund:
             LifecycleInterval(
                 status=terminal_status,
                 effective_from=(
-                    _dt(2018, 1, 1)
-                    if same_effective_revision
-                    else _dt(2021, 2, 1)
+                    _dt(2018, 1, 1) if same_effective_revision else _dt(2021, 2, 1)
                 ),
                 published_at=_dt(2021, 2, 20),
                 knowledge_at=_dt(2021, 2, 20),
@@ -257,9 +255,7 @@ def synthetic_walk_forward_fixture() -> SyntheticWalkForwardFixture:
             effective_from=old_start,
             effective_to=None,
             revision_id=(
-                "score-revision-r1"
-                if strategy_id == "synthetic-active"
-                else "original"
+                "score-revision-r1" if strategy_id == "synthetic-active" else "original"
             ),
         )
         for strategy_id, value in score_values.items()

@@ -38,7 +38,9 @@ class WalkForwardCliTests(unittest.TestCase):
             document["methodology"]["score_stability"],
             "Spearman rank correlation on scores for overlapping eligible strategies",
         )
-        self.assertEqual(document["methodology"]["selection_turnover"], "Jaccard distance")
+        self.assertEqual(
+            document["methodology"]["selection_turnover"], "Jaccard distance"
+        )
         self.assertEqual(
             document["methodology"]["component_correlation"],
             "Pearson correlation using pairwise-complete component contributions",
@@ -63,7 +65,9 @@ class WalkForwardCliTests(unittest.TestCase):
         self.assertIn("revision_id", first_fold["score_audit_trail"][0])
         self.assertIn("supersedes_revision_id", first_fold["score_audit_trail"][0])
 
-    def test_cli_rejects_non_strict_or_oversized_json_without_echoing_content(self) -> None:
+    def test_cli_rejects_non_strict_or_oversized_json_without_echoing_content(
+        self,
+    ) -> None:
         cases = (
             b"\xffprivate-marker",
             b'{"schema_version":"0.1.0","schema_version":"private-marker"}',

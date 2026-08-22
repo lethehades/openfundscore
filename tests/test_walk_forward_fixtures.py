@@ -7,7 +7,9 @@ from openfundscore.walk_forward_fixtures import synthetic_walk_forward_fixture
 
 
 class WalkForwardFixtureTests(unittest.TestCase):
-    def test_fixture_covers_lifecycle_versions_and_publication_lag_deterministically(self) -> None:
+    def test_fixture_covers_lifecycle_versions_and_publication_lag_deterministically(
+        self,
+    ) -> None:
         first = synthetic_walk_forward_fixture()
         second = synthetic_walk_forward_fixture()
 

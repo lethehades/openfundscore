@@ -6,6 +6,9 @@ from collections.abc import Callable
 from copy import deepcopy
 from typing import Any, cast
 
+from openfundscore.manager_research import derive_manager_evidence_sources
+from tests.test_manager_handoff import manager_sources
+
 COMPONENT_IDS = (
     "tenure_attributed_performance",
     "downside_control",
@@ -16,6 +19,30 @@ COMPONENT_IDS = (
     "research_platform_team",
     "compliance_integrity",
 )
+
+
+def scoring_sources(record: dict[str, Any]):
+    """Bind all eight source rows to IDs consumed by this exact fixture."""
+    identity_rows = []
+    for source in manager_sources():
+        evidence_ids = record["score_components"][source.component]["evidence_ids"]
+        if len(evidence_ids) != 1:
+            raise AssertionError(
+                f"fixture component {source.component} must consume one real evidence ID"
+            )
+        evidence_id = evidence_ids[0]
+        identity_rows.append(
+            {
+                "component": source.component,
+                "evidence_id": evidence_id,
+                "lineage_id": f"lineage-{source.component}-{evidence_id}",
+                "series_id": f"series-{source.component}-{evidence_id}",
+                "source_scope": source.source_scope,
+                "usage_mode": source.usage_mode,
+                "fund_strategy_id": source.fund_strategy_id,
+            }
+        )
+    return derive_manager_evidence_sources(record, "strategy-1", identity_rows)
 
 
 class SplitManagerRecord(dict):
@@ -248,11 +275,21 @@ class ManagerSemanticsTests(unittest.TestCase):
                     evidence = self._evidence()
                     evidence["source_url"] = source_url
                     record["evidence"] = [evidence]
+                    for component in record["score_components"].values():
+                        component["evidence_ids"] = [evidence["evidence_id"]]
                     with self.assertRaisesRegex(
                         ValueError,
                         r"\$\.evidence\[0\]\.source_url",
                     ):
-                        api(record)
+                        if api_name == "score_manager_research":
+                            api(
+                                record,
+                                fund_strategy_id="strategy-1",
+                                sources=manager_sources(),
+                                assertion_status="caller_provided",
+                            )
+                        else:
+                            api(record)
 
     def test_all_nested_evidence_references_must_resolve_to_top_level_evidence(
         self,
@@ -620,9 +657,11 @@ class ManagerSemanticsTests(unittest.TestCase):
         self,
     ) -> None:
         module = importlib.import_module("openfundscore.manager_research")
-        scorer = getattr(module, "score_manager_research", None)
-        assert callable(scorer)
-        scorer = cast(Callable[[dict[str, Any]], dict[str, Any]], scorer)
+        raw_scorer = cast(
+            Callable[..., dict[str, Any]],
+            getattr(module, "score_manager_research", None),
+        )
+        assert callable(raw_scorer)
 
         record = self._record()
         record["evidence"] = [
@@ -645,6 +684,15 @@ class ManagerSemanticsTests(unittest.TestCase):
                 }
             )
         record["score_components"]["tenure_attributed_performance"]["score"] = 100
+        record["employment_history"] = [
+            {
+                "organisation": "Example Asset Manager",
+                "role": "Portfolio Manager",
+                "start_date": "2010-01-01",
+                "end_date": "2019-12-31",
+                "evidence_ids": ["e-score"],
+            }
+        ]
         record["tenures"] = [self._tenure()]
         record["tenures"][0]["evidence_ids"] = ["e-score"]
         residual = self._performance()
@@ -690,10 +738,19 @@ class ManagerSemanticsTests(unittest.TestCase):
             "evidence_ids": ["e-score"],
         }
 
+        def scorer(document: dict[str, Any]) -> dict[str, Any]:
+            return raw_scorer(
+                document,
+                fund_strategy_id="strategy-1",
+                sources=scoring_sources(document),
+                assertion_status="caller_provided",
+            )
+
         result = scorer(record)
         self.assertEqual("scored", result["status"])
         self.assertEqual(25.0, result["score"])
-        self.assertEqual("high", result["confidence"])
+        self.assertEqual("low", result["confidence"])
+        self.assertEqual("caller_provided", result["manager_input_assertion_status"])
         self.assertEqual(
             25.0,
             result["component_contributions"]["tenure_attributed_performance"],
@@ -704,6 +761,49 @@ class ManagerSemanticsTests(unittest.TestCase):
         self.assertEqual(
             ["e-score"],
             result["component_evidence_ids"]["tenure_attributed_performance"],
+        )
+        self.assertEqual(8, len(result["component_evidence"]))
+        provenance_by_component = {
+            item["target_component"].removeprefix("manager_"): item
+            for item in result["component_evidence"]
+        }
+        self.assertEqual(set(COMPONENT_IDS), set(provenance_by_component))
+        self.assertEqual(
+            {"primary"},
+            {item["evidence_role"] for item in result["component_evidence"]},
+        )
+        source_by_component = {
+            source.component: source for source in scoring_sources(record)
+        }
+        for component, source in source_by_component.items():
+            with self.subTest(component=component):
+                item = provenance_by_component[component]
+                self.assertEqual(item["evidence_id"], source.evidence_id)
+                self.assertEqual(item["lineage_id"], source.lineage_id)
+                self.assertEqual(item["series_id"], source.series_id)
+                self.assertEqual(item["source_facts_sha256"], source.facts_sha256)
+                self.assertEqual(item["source_scope"], source.source_scope)
+                self.assertEqual(item["usage_mode"], source.usage_mode)
+                self.assertEqual(
+                    item["observation_as_of"],
+                    source.observation_as_of.isoformat().replace("+00:00", "Z"),
+                )
+                self.assertEqual(item["window_basis"], source.window_basis)
+                self.assertEqual(item["window_months"], source.window_months)
+                self.assertEqual(item["window_start"], source.window_start.isoformat())
+                self.assertEqual(item["window_end"], source.window_end.isoformat())
+                self.assertEqual(f"manager.{component}", item["evidence_family"])
+
+        evidence_usage = importlib.import_module("openfundscore.evidence_usage")
+        evidence_usage.validate_score_evidence_usage(
+            {
+                "score_record_id": "score-manager-provenance",
+                "model_version": "0.1.0",
+                "fund_strategy_id": "strategy-1",
+                "category_profile": "active_equity_mixed",
+                "as_of": result["as_of"],
+                "usage": result["component_evidence"],
+            }
         )
 
         split_result = scorer(SplitManagerRecord(record))
@@ -748,13 +848,15 @@ class ManagerSemanticsTests(unittest.TestCase):
         unresolved = deepcopy(record)
         unresolved["tenures"][0]["attribution_mode"] = "unresolved"
         with self.assertRaises(
-            importlib.import_module("openfundscore.validation").RecordValidationError
+            importlib.import_module(
+                "openfundscore.manager_research"
+            ).ManagerResearchValidationError
         ):
             scorer(unresolved)
 
         missing = deepcopy(record)
         missing["score_components"]["workload_capacity"].update(
-            {"score": None, "confidence": "insufficient", "evidence_ids": []}
+            {"score": None, "confidence": "insufficient"}
         )
         result = scorer(missing)
         self.assertEqual("insufficient", result["status"])
@@ -766,8 +868,8 @@ class ManagerSemanticsTests(unittest.TestCase):
         self,
     ) -> None:
         module = importlib.import_module("openfundscore.manager_research")
-        scorer = cast(
-            Callable[[dict[str, Any]], dict[str, Any]],
+        raw_scorer = cast(
+            Callable[..., dict[str, Any]],
             module.score_manager_research,
         )
         record = self._record()
@@ -816,13 +918,44 @@ class ManagerSemanticsTests(unittest.TestCase):
             }
         )
         record["performance_evidence"] = [qualified, noise]
+        record["employment_history"] = [
+            {
+                "organisation": "Example Asset Manager",
+                "role": "Portfolio Manager",
+                "start_date": "2010-01-01",
+                "end_date": "2019-12-31",
+                "evidence_ids": ["e-qualified"],
+            }
+        ]
+        record["style_fingerprint"] = {
+            "factor_exposures": {
+                "as_of": "2026-08-21T00:00:00Z",
+                "measures": [{"name": "value", "value": 0.4}],
+            },
+            "evidence_ids": ["e-qualified"],
+        }
+        record["workload"] = {"evidence_ids": ["e-qualified"]}
+        record["research_platform"] = {"evidence_ids": ["e-qualified"]}
+        record["compliance_assessment"] = {
+            "reviewed_at": "2026-08-21T00:00:00Z",
+            "evidence_ids": ["e-qualified"],
+        }
         record["score_components"]["tenure_attributed_performance"] = {
             "score": 100,
             "confidence": "medium",
-            "evidence_ids": ["e-qualified", "e-audit-noise", "e-inject"],
+            "evidence_ids": ["e-qualified"],
         }
 
-        result = scorer(record)
+        for component_id, component in record["score_components"].items():
+            if component_id != "tenure_attributed_performance":
+                component["evidence_ids"] = ["e-qualified"]
+
+        result = raw_scorer(
+            record,
+            fund_strategy_id="strategy-1",
+            sources=scoring_sources(record),
+            assertion_status="caller_provided",
+        )
 
         self.assertEqual(0.1, result["tenure_attribution"]["aggregate_factor"])
         self.assertEqual(
@@ -1505,7 +1638,15 @@ class ManagerSemanticsTests(unittest.TestCase):
                         ValueError,
                         r"\$\.performance_evidence\[1\]\.metric_id",
                     ):
-                        getattr(module, api_name)(attacked)
+                        api = getattr(module, api_name)
+                        if api_name == "score_manager_research":
+                            api(
+                                attacked,
+                                fund_strategy_id="strategy-1",
+                                sources=manager_sources(),
+                            )
+                        else:
+                            api(attacked)
 
     def test_style_change_point_requires_the_same_component_support_evidence(
         self,

@@ -334,7 +334,9 @@ def walk_forward_from_document(
         "$",
     )
     if root["schema_version"] != _SCHEMA_VERSION:
-        _fail("unsupported_version", "$.schema_version", "schema version is unsupported")
+        _fail(
+            "unsupported_version", "$.schema_version", "schema version is unsupported"
+        )
     config_document = _object(root["config"], "$.config")
     _exact_keys(config_document, {"folds", "select_count"}, "$.config")
     folds = _array(config_document["folds"], "$.config.folds")
@@ -373,13 +375,17 @@ def _jsonable(value: object) -> Any:
     if isinstance(value, datetime):
         return value.astimezone(UTC).isoformat().replace("+00:00", "Z")
     if is_dataclass(value) and not isinstance(value, type):
-        return {field.name: _jsonable(getattr(value, field.name)) for field in fields(value)}
+        return {
+            field.name: _jsonable(getattr(value, field.name)) for field in fields(value)
+        }
     if isinstance(value, tuple):
         return [_jsonable(item) for item in value]
     if type(value) is float:
         numeric = cast(float, value)
         if not math.isfinite(numeric):
-            _fail("serialization_failed", "$report", "report contains a non-finite number")
+            _fail(
+                "serialization_failed", "$report", "report contains a non-finite number"
+            )
         return numeric
     if type(value) in {str, int, bool, type(None)}:
         return value

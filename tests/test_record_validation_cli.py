@@ -174,6 +174,46 @@ class RecordValidationCliTests(unittest.TestCase):
                     self.assertNotIn("private-marker", stderr)
                     self.assertNotIn("Traceback", stderr)
 
+    def test_validate_record_cli_rejects_utc_normalization_overflow(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            path = Path(temporary_directory) / "provider-record-v3.json"
+            document = provider_record()
+            document["exact_identifiers"] = [
+                {
+                    "scheme": "official_entity_id",
+                    "value": "official:benchmark-1",
+                    "jurisdiction": "CN",
+                }
+            ]
+            document["effective_status"] = "current"
+            marker = "9999-12-31T23:59:59-23:59"
+            document["rights"]["valid_until"] = marker
+            path.write_text(json.dumps(document), encoding="utf-8")
+            stdout = io.StringIO()
+            stderr = io.StringIO()
+
+            with redirect_stdout(stdout), redirect_stderr(stderr):
+                exit_code = main(
+                    [
+                        "validate-record",
+                        "--type",
+                        "provider_record",
+                        "--schema-version",
+                        "0.3.0",
+                        "--evaluation-timestamp",
+                        "2026-08-21T00:00:00Z",
+                        str(path),
+                    ]
+                )
+
+            self.assertEqual(2, exit_code)
+            self.assertEqual("", stdout.getvalue())
+            self.assertIn("invalid_rfc3339 at $.rights.valid_until", stderr.getvalue())
+            self.assertNotIn(marker, stderr.getvalue())
+            self.assertNotIn(str(path), stderr.getvalue())
+            self.assertNotIn("Traceback", stderr.getvalue())
+            self.assertEqual(len(stderr.getvalue().splitlines()), 1)
+
     def test_validate_record_cli_wraps_parser_value_error(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             path = Path(temporary_directory) / "valid.json"
