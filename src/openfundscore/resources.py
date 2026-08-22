@@ -25,9 +25,34 @@ class ResourceError(ValueError):
         super().__init__(f"{code} at {path}: {message}")
 
 
+class _StrictJSONError(ValueError):
+    """Internal sentinel for duplicate keys and non-finite JSON constants."""
+
+
+def _strict_json_loads(text: str) -> Any:
+    def object_from_pairs(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+        result: dict[str, Any] = {}
+        for key, value in pairs:
+            if key in result:
+                raise _StrictJSONError("duplicate object key")
+            result[key] = value
+        return result
+
+    def reject_constant(value: str) -> None:
+        raise _StrictJSONError("non-finite numeric constant")
+
+    return json.loads(
+        text,
+        object_pairs_hook=object_from_pairs,
+        parse_constant=reject_constant,
+    )
+
+
 class ResourceType(StrEnum):
     """Published OpenFundScore resource families."""
 
+    METRIC_CATALOG = "metric-catalog"
+    PEER_ADMISSION = "peer-admission"
     SCHEMA = "schema"
     SCORING_CONFIG = "scoring-config"
     STRATEGY_MAPPING = "strategy-mapping"
@@ -91,13 +116,9 @@ class ResolvedResource:
                 "resource handle identity is invalid",
             )
         extension = (
-            ".schema.json"
-            if key.resource_type is ResourceType.SCHEMA
-            else ".json"
+            ".schema.json" if key.resource_type is ResourceType.SCHEMA else ".json"
         )
-        expected_path = (
-            f"{key.resource_type.value}/{key.name}/{key.version}{extension}"
-        )
+        expected_path = f"{key.resource_type.value}/{key.name}/{key.version}{extension}"
         expected_uri = (
             f"openfundscore://{key.resource_type.value}/{key.name}/{key.version}"
         )
@@ -164,9 +185,9 @@ class ResolvedResource:
         parsed = False
         document: Any = None
         try:
-            document = json.loads(text)
+            document = _strict_json_loads(text)
             parsed = True
-        except (json.JSONDecodeError, RecursionError):
+        except (json.JSONDecodeError, RecursionError, _StrictJSONError):
             pass
         if not parsed:
             raise ResourceError(
@@ -206,7 +227,10 @@ def _parse_catalog(document: object) -> tuple[_CatalogEntry, ...]:
             "$catalog",
             "package-resource catalog fields are closed",
         )
-    if type(document.get("format_version")) is not int or document["format_version"] != 1:
+    if (
+        type(document.get("format_version")) is not int
+        or document["format_version"] != 1
+    ):
         raise ResourceError(
             "catalog_invalid",
             "$catalog",
@@ -266,9 +290,7 @@ def _parse_catalog(document: object) -> tuple[_CatalogEntry, ...]:
             version=version,
         )
         extension = ".schema.json" if resource_type is ResourceType.SCHEMA else ".json"
-        expected_path = (
-            f"{resource_type.value}/{key.name}/{key.version}{extension}"
-        )
+        expected_path = f"{resource_type.value}/{key.name}/{key.version}{extension}"
         if item["internal_path"] != expected_path:
             raise ResourceError(
                 "catalog_invalid",
@@ -302,9 +324,7 @@ def _parse_catalog(document: object) -> tuple[_CatalogEntry, ...]:
         seen_keys.add(key)
         info = ResourceInfo(
             key=key,
-            uri=(
-                f"openfundscore://{resource_type.value}/{key.name}/{key.version}"
-            ),
+            uri=(f"openfundscore://{resource_type.value}/{key.name}/{key.version}"),
             media_type=item["media_type"],
             sha256=item["sha256"],
         )
@@ -336,9 +356,9 @@ def _load_catalog() -> tuple[_CatalogEntry, ...]:
     parsed = False
     document: Any = None
     try:
-        document = json.loads(text)
+        document = _strict_json_loads(text)
         parsed = True
-    except json.JSONDecodeError:
+    except (json.JSONDecodeError, RecursionError, _StrictJSONError):
         pass
     if not parsed:
         raise ResourceError(

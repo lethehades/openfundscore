@@ -47,6 +47,42 @@ class AntFortuneBoundaryTests(unittest.TestCase):
         )
         self.assertFalse(fields["platform_brand_entry"]["open_score_eligible"])
 
+    def test_cli_validates_a_local_boundary_document_without_network(self) -> None:
+        import json
+        import tempfile
+        from contextlib import redirect_stderr, redirect_stdout
+        from io import StringIO
+        from pathlib import Path
+
+        from openfundscore.ant_fortune_boundary import load_ant_fortune_boundary
+        from openfundscore.cli import main
+
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            path = Path(temporary_directory) / "boundary.json"
+            path.write_text(
+                json.dumps(load_ant_fortune_boundary(boundary_version="0.1.0")),
+                encoding="utf-8",
+            )
+            output = StringIO()
+            error = StringIO()
+            with redirect_stdout(output), redirect_stderr(error):
+                exit_code = main(
+                    [
+                        "platform-boundary",
+                        "validate",
+                        str(path),
+                        "--boundary-version",
+                        "0.1.0",
+                    ]
+                )
+
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(error.getvalue(), "")
+        self.assertRegex(
+            output.getvalue(),
+            r"^valid: ant_fortune@0\.1\.0; sha256=[0-9a-f]{64}\n$",
+        )
+
     def test_validator_returns_an_immutable_auditable_boundary_decision(self) -> None:
         from dataclasses import FrozenInstanceError
 

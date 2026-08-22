@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Mapping
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 _RFC3339_TIMESTAMP = re.compile(
@@ -97,7 +97,17 @@ def _parse_timestamp_value(value: object, *, path: str) -> datetime:
             path=path,
             message="timestamp must include an explicit offset",
         )
-    return parsed
+    try:
+        canonical = parsed.astimezone(UTC)
+    except (OverflowError, OSError, ValueError):
+        canonical = None
+    if canonical is None:
+        raise ProviderRecordValidationError(
+            code="invalid_rfc3339",
+            path=path,
+            message="timestamp must be representable as a UTC instant",
+        ) from None
+    return canonical
 
 
 def parse_rfc3339_timestamp(value: object, *, path: str) -> datetime:
@@ -218,11 +228,23 @@ def validate_provider_record_semantics(
             rights["reviewed_at"],
             path="$.rights.reviewed_at",
         )
+    rights_valid_until = None
+    if rights.get("valid_until") is not None:
+        rights_valid_until = _parse_timestamp_value(
+            rights["valid_until"],
+            path="$.rights.valid_until",
+        )
     _validate_rights(rights)
     evaluation_at = _parse_timestamp_value(
         evaluation_timestamp,
         path="$evaluation_timestamp",
     )
+    if rights_valid_until is not None and evaluation_at > rights_valid_until:
+        raise ProviderRecordValidationError(
+            code="expired_rights",
+            path="$.rights.valid_until",
+            message="provider record rights do not cover the evaluation instant",
+        )
     if published_at > fetched_at:
         raise ProviderRecordValidationError(
             code="chronology_violation",

@@ -38,13 +38,47 @@ class CliTests(unittest.TestCase):
 
         self.assertEqual(0, exit_code)
         document = json.loads(output.getvalue())
-        self.assertEqual(len(document), 5)
+        self.assertEqual(len(document), 10)
         self.assertEqual(
-            [item["name"] for item in document],
-            sorted(item["name"] for item in document),
+            [(item["name"], item["version"]) for item in document],
+            sorted((item["name"], item["version"]) for item in document),
         )
         self.assertTrue(all(item["type"] == "schema" for item in document))
-        self.assertTrue(all(item["version"] == "0.1.0" for item in document))
+        self.assertEqual(
+            [(item["name"], item["version"]) for item in document],
+            [
+                ("external_rating", "0.1.0"),
+                ("mainland_official_snapshot", "0.1.0"),
+                ("manager_research", "0.1.0"),
+                ("provider_contract", "0.1.0"),
+                ("provider_contract", "0.2.0"),
+                ("provider_record", "0.1.0"),
+                ("provider_record", "0.2.0"),
+                ("provider_record", "0.3.0"),
+                ("score_evidence_usage", "0.1.0"),
+                ("score_evidence_usage", "0.2.0"),
+            ],
+        )
+        self.assertEqual(
+            [
+                (item["name"], item["version"])
+                for item in document
+                if item["name"] == "provider_contract"
+            ],
+            [("provider_contract", "0.1.0"), ("provider_contract", "0.2.0")],
+        )
+        self.assertEqual(
+            [
+                (item["name"], item["version"])
+                for item in document
+                if item["name"] == "provider_record"
+            ],
+            [
+                ("provider_record", "0.1.0"),
+                ("provider_record", "0.2.0"),
+                ("provider_record", "0.3.0"),
+            ],
+        )
 
     def test_resources_resolve_returns_logical_metadata_not_a_path(self) -> None:
         output = io.StringIO()
@@ -58,7 +92,7 @@ class CliTests(unittest.TestCase):
                     "--name",
                     "provider_record",
                     "--version",
-                    "0.1.0",
+                    "0.2.0",
                 ]
             )
 
@@ -66,18 +100,18 @@ class CliTests(unittest.TestCase):
         document = json.loads(output.getvalue())
         self.assertEqual(
             document["uri"],
-            "openfundscore://schema/provider_record/0.1.0",
+            "openfundscore://schema/provider_record/0.2.0",
         )
         self.assertEqual(document["type"], "schema")
         self.assertEqual(document["name"], "provider_record")
-        self.assertEqual(document["version"], "0.1.0")
+        self.assertEqual(document["version"], "0.2.0")
         self.assertNotIn("path", document)
 
     def test_resources_show_emits_the_exact_packaged_json_text(self) -> None:
         expected = resolve_resource(
             resource_type="schema",
             name="provider_record",
-            version="0.1.0",
+            version="0.2.0",
         ).read_text()
         output = io.StringIO()
         with redirect_stdout(output):
@@ -90,7 +124,7 @@ class CliTests(unittest.TestCase):
                     "--name",
                     "provider_record",
                     "--version",
-                    "0.1.0",
+                    "0.2.0",
                 ]
             )
 
@@ -185,7 +219,11 @@ class CliTests(unittest.TestCase):
         self.assertNotIn("private-marker", stderr.getvalue())
         self.assertNotIn("Traceback", stderr.getvalue())
         read_text.assert_called_once_with()
-        parse_json.assert_called_once_with(payload)
+        parse_json.assert_called_once()
+        args, kwargs = parse_json.call_args
+        self.assertEqual((payload,), args)
+        self.assertEqual({"object_pairs_hook", "parse_constant"}, set(kwargs))
+        self.assertTrue(all(callable(value) for value in kwargs.values()))
 
     def test_resource_lookup_failures_return_2_without_traceback(self) -> None:
         output = io.StringIO()
