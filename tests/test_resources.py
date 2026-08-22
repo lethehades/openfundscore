@@ -201,6 +201,7 @@ class ResourceCatalogTests(unittest.TestCase):
             [
                 ("metric-catalog", "openfundscore-category-metrics", "0.1.0"),
                 ("peer-admission", "category-profile-buckets", "0.1.0"),
+                ("platform-boundary", "ant_fortune", "0.1.0"),
                 ("schema", "external_rating", "0.1.0"),
                 ("schema", "mainland_official_snapshot", "0.1.0"),
                 ("schema", "manager_research", "0.1.0"),

@@ -5,6 +5,17 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
+    from .ant_fortune_boundary import (
+        AccessMode,
+        BoundaryConclusion,
+        BoundaryUse,
+        BoundaryValidationError,
+        FieldDecision,
+        UseDecision,
+        decide_ant_fortune_field,
+        load_ant_fortune_boundary,
+        validate_ant_fortune_boundary,
+    )
     from .category_metrics import (
         ApplicabilityContext,
         CaptureDenominatorAudit,
@@ -75,12 +86,17 @@ __version__ = "0.2.0.dev0"
 __all__ = (
     "MANAGER_COMPONENT_SOURCE_MANIFEST",
     "OFFICIAL_PROVIDER_SCHEMA_VERSION",
+    "AccessMode",
     "ApplicabilityContext",
+    "BoundaryConclusion",
+    "BoundaryUse",
+    "BoundaryValidationError",
     "CaptureDenominatorAudit",
     "CaptureDenominatorStatus",
     "CategoryMetricError",
     "CategoryScoreResult",
     "DimensionScore",
+    "FieldDecision",
     "FixedHostHttpClient",
     "HistoryStage",
     "MainlandOfficialSnapshotAdapter",
@@ -107,11 +123,14 @@ __all__ = (
     "SecEdgarSubmissionsAdapter",
     "SnapshotValidationError",
     "StrategyMappingError",
+    "UseDecision",
     "WorldBankIndicatorsAdapter",
     "build_manager_evidence_sources",
     "canonicalize_score_evidence_ledger_for_digest",
+    "decide_ant_fortune_field",
     "derive_manager_evidence_sources",
     "evaluate_publication_gate",
+    "load_ant_fortune_boundary",
     "load_mainland_entitlements",
     "load_metric_catalog",
     "load_packaged_strategy_mapping",
@@ -121,11 +140,24 @@ __all__ = (
     "recompute_manager_handoff",
     "score_category_metrics",
     "score_manager_research",
+    "validate_ant_fortune_boundary",
     "validate_metric_catalog",
     "validate_record",
     "validate_strategy_mapping",
 )
 
+
+_ANT_FORTUNE_EXPORTS = {
+    "AccessMode",
+    "BoundaryConclusion",
+    "BoundaryUse",
+    "BoundaryValidationError",
+    "FieldDecision",
+    "UseDecision",
+    "decide_ant_fortune_field",
+    "load_ant_fortune_boundary",
+    "validate_ant_fortune_boundary",
+}
 
 _MAINLAND_EXPORTS = {
     "MainlandOfficialSnapshotAdapter",
@@ -183,6 +215,10 @@ _MANAGER_EXPORTS = {
 
 
 def __getattr__(name: str) -> Any:
+    if name in _ANT_FORTUNE_EXPORTS:
+        from . import ant_fortune_boundary
+
+        return getattr(ant_fortune_boundary, name)
     if name in _MAINLAND_EXPORTS:
         from . import mainland_official
 

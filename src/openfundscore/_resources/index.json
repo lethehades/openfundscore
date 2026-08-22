@@ -18,6 +18,14 @@
       "version": "0.1.0"
     },
     {
+      "internal_path": "platform-boundary/ant_fortune/0.1.0.json",
+      "media_type": "application/json",
+      "name": "ant_fortune",
+      "sha256": "31a25304e64ccea2cb5134a2b9e5b8a30546c654bef9bf785b1b470a4bf1a95c",
+      "type": "platform-boundary",
+      "version": "0.1.0"
+    },
+    {
       "internal_path": "schema/external_rating/0.1.0.schema.json",
       "media_type": "application/schema+json",
       "name": "external_rating",

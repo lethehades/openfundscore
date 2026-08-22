@@ -56,6 +56,7 @@ class ResourceType(StrEnum):
     SCHEMA = "schema"
     SCORING_CONFIG = "scoring-config"
     STRATEGY_MAPPING = "strategy-mapping"
+    PLATFORM_BOUNDARY = "platform-boundary"
 
 
 @dataclass(frozen=True, slots=True)

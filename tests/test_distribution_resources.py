@@ -18,6 +18,7 @@ _EXPECTED_RESOURCE_SELECTORS = frozenset(
     {
         ("metric-catalog", "openfundscore-category-metrics", "0.1.0"),
         ("peer-admission", "category-profile-buckets", "0.1.0"),
+        ("platform-boundary", "ant_fortune", "0.1.0"),
         ("schema", "external_rating", "0.1.0"),
         ("schema", "mainland_official_snapshot", "0.1.0"),
         ("schema", "manager_research", "0.1.0"),
@@ -39,6 +40,7 @@ _EXPECTED_RESOURCE_PAYLOADS = frozenset(
         "index.json",
         "metric-catalog/openfundscore-category-metrics/0.1.0.json",
         "peer-admission/category-profile-buckets/0.1.0.json",
+        "platform-boundary/ant_fortune/0.1.0.json",
         "schema/external_rating/0.1.0.schema.json",
         "schema/mainland_official_snapshot/0.1.0.schema.json",
         "schema/manager_research/0.1.0.schema.json",
@@ -63,6 +65,7 @@ _README_DOCUMENT_LINKS = frozenset(
         "docs/VALIDATION.md",
         "docs/PUBLICATION_GATE.md",
         "docs/PROVIDER_SDK.md",
+        "docs/ANT_FORTUNE_BOUNDARY.md",
         "docs/OFFICIAL_PROVIDERS.md",
         "docs/MAINLAND_OFFICIAL_SNAPSHOT.md",
         "docs/FUND_TAXONOMY.md",
@@ -404,7 +407,7 @@ class DistributionResourceTests(unittest.TestCase):
             wheel_payloads = _wheel_resources(wheels[0])
             sdist_payloads = _sdist_resources(sdists[0])
             self.assertEqual(wheel_payloads, sdist_payloads)
-            # __init__.py + index.json + all fourteen indexed logical resources.
+            # __init__.py + index.json + all fifteen indexed logical resources.
             self.assertEqual(frozenset(wheel_payloads), _EXPECTED_RESOURCE_PAYLOADS)
 
             subprocess.run(
